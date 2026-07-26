@@ -11,7 +11,7 @@ services:
       - postgres_data:/var/lib/postgresql/data
     ports:
       # Exposto no host para inspeção (ex.: DBeaver). Remova se não precisar.
-      - "5432:5432"
+      - "${DB_PORT:-5432}:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-admin_neologismo} -d ${POSTGRES_DB:-banco_neologismo}"]
       interval: 5s
@@ -29,6 +29,8 @@ services:
       SECRET_KEY: ${SECRET_KEY}
       DEBUG: ${DEBUG:-True}
       ALLOWED_HOSTS: ${ALLOWED_HOSTS:-127.0.0.1,localhost,backend}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000}
+      CSRF_TRUSTED_ORIGINS: ${CSRF_TRUSTED_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000}
       DATABASE_URL: postgres://${POSTGRES_USER:-admin_neologismo}:${POSTGRES_PASSWORD:-senha123}@db:5432/${POSTGRES_DB:-banco_neologismo}
       # Usados pelo entrypoint.sh para aguardar o banco
       POSTGRES_HOST: db
@@ -48,6 +50,9 @@ services:
       - backend
     environment:
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000/api}
+      CHOKIDAR_USEPOLLING: "true"
+      WATCHPACK_POLLING: "true"
+    command: npm run dev -- --hostname 0.0.0.0 --port 3000
     volumes:
       # Hot-reload do Next, preservando node_modules e .next do container
       - ./frontend:/app

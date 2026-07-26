@@ -17,6 +17,7 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
+from django.views.generic import RedirectView
 
 from neologismo.views import NeologismoViewSet
 from usuario.views import RegistroView, LoginView, MeView
@@ -27,6 +28,7 @@ router = DefaultRouter()
 router.register(r'neologismos', NeologismoViewSet)
 
 urlpatterns = [
+    path('', RedirectView.as_view(url='/api/docs/', permanent=False)),
     path('admin/', admin.site.urls),
     path('api/', include(router.urls)),
     path('api/login/', LoginView.as_view(), name='api_login'),

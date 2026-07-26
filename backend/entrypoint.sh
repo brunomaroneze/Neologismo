@@ -7,7 +7,7 @@ if [ -n "$POSTGRES_HOST" ]; then
     until pg_isready -h "$POSTGRES_HOST" -p "${POSTGRES_PORT:-5432}" -q; do
         sleep 1
     done
-    echo "Postgres disponível."
+    echo "Postgres disponivel."
 fi
 
 # Aplica migrações e coleta estáticos
