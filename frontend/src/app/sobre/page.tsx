@@ -98,10 +98,10 @@ export default function SobrePage() {
       <section className="bg-purple-light/10 py-14 px-4">
         <div className="max-w-3xl mx-auto text-center mb-10">
           <h2 className="text-2xl sm:text-3xl font-extrabold text-gray-900 mb-3">
-            A proposta do Neo scópio
+            A proposta do Neoscópio
           </h2>
           <p className="text-base text-gray-600 max-w-2xl mx-auto">
-            O <span className="font-semibold text-purple-dark">Neo scópio</span>{" "}
+            O <span className="font-semibold text-purple-dark">Neoscópio</span>{" "}
             é um dicionário colaborativo dedicado a registrar, explorar e
             discutir os neologismos que moldam o português do nosso tempo. A
             ideia é simples: dar um lugar para as palavras que o brasileiro cria

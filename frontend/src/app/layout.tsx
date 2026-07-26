@@ -8,7 +8,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Neo scópio — Dicionário Colaborativo de Neologismos",
+  title: "Neoscópio — Dicionário Colaborativo de Neologismos",
   description: "Registre, explore e discuta os neologismos que moldam o português do nosso tempo.",
 };
 

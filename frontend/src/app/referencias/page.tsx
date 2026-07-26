@@ -75,7 +75,7 @@ export default function ReferenciasPage() {
           </h1>
           <p className="text-base text-gray-600 max-w-2xl mx-auto">
             Obras, dicionários e materiais que embasam o trabalho de registro e
-            curadoria dos neologismos no Neo scópio. As referências seguem o
+            curadoria dos neologismos no Neoscópio. As referências seguem o
             padrão ABNT.
           </p>
         </div>

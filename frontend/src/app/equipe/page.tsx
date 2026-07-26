@@ -79,7 +79,7 @@ export default function EquipePage() {
             Nossa equipe
           </h1>
           <p className="text-base text-gray-600 max-w-2xl mx-auto">
-            O Neo scópio é construído por um time apaixonado pela língua
+            O Neoscópio é construído por um time apaixonado pela língua
             portuguesa e pela forma como ela se reinventa todos os dias. Conheça
             quem está por trás do projeto.
           </p>
@@ -142,7 +142,7 @@ export default function EquipePage() {
             Quer fazer parte?
           </h2>
           <p className="text-sm text-gray-500 mb-6">
-            O Neo scópio cresce com a colaboração da comunidade. Contribua com
+            O Neoscópio cresce com a colaboração da comunidade. Contribua com
             novas palavras e ajude a mapear o português do nosso tempo.
           </p>
           <div className="flex items-center justify-center gap-3">
