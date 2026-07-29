@@ -33,3 +33,6 @@ docker compose up --build
 - O backend aplica migrações automaticamente no start do container.
 - O frontend roda em modo dev com hot-reload.
 - Em Windows/OneDrive, o polling de arquivos está habilitado no frontend para melhorar detecção de mudanças.
+
+
+teste
