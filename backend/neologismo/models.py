@@ -8,6 +8,12 @@ from django.contrib.postgres.fields import ArrayField
 class Neologismo (models.Model):
     #sobre o neologismo
 
+    data_registro = models.DateTimeField(
+        blank=True,
+        null=True,
+        help_text='Data e hora de registro informada na fonte dos dados'
+    )
+
     #campos antigos que mudaram de nome
     titulo = models.CharField(max_length=50, help_text='Nome do neologismo')
     definicao = models.TextField(help_text='Descrição completa do significado') 
@@ -15,6 +21,16 @@ class Neologismo (models.Model):
     
     #novos campos
     classe_gramatical = models.CharField(max_length=50, help_text='Substantivo, Verbo, Adjetivo, etc.')
+    tipologia = models.CharField(
+        max_length=100,
+        blank=True,
+        help_text='Processo de formação do neologismo. Ex: derivação prefixal'
+    )
+    elaborado_por = models.CharField(
+        max_length=150,
+        blank=True,
+        help_text='Nome informado como elaborador na fonte dos dados'
+    )
     
     # tags (array[str], opcional) - Usando ArrayField do Postgres
     tags = ArrayField(
