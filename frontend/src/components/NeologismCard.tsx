@@ -31,21 +31,30 @@ export default function NeologismCard({
 
         <Link href={`/neologismo/${neologismo.id}`}>
           <h2 className="font-sans text-2xl font-bold text-gray-900 mb-1 hover:text-purple-dark transition-colors">
-            {neologismo.titulo.toLocaleLowerCase()}
+            {neologismo.titulo}
           </h2>
         </Link>
 
-        <p className="text-sm text-gray-600 leading-relaxed mb-3">
-          {neologismo.definicao}
-        </p>
+        {neologismo.tipologia && (
+          <p className="text-xs font-medium text-purple-dark mb-2">
+            {neologismo.tipologia}
+          </p>
+        )}
 
         <div className="bg-gray-50 rounded-xl p-3 mb-4">
           <p className="text-xs text-gray-500 italic leading-relaxed">
             &ldquo;{neologismo.contexto_uso}&rdquo;
           </p>
-          <p className="text-[10px] text-gray-400 font-medium mt-1">
-            — {neologismo.autor_nome}
-          </p>
+          {neologismo.contextos[0]?.link && (
+            <a
+              href={neologismo.contextos[0].link}
+              target="_blank"
+              rel="noreferrer"
+              className="block truncate text-[10px] text-purple-dark font-medium mt-1 hover:underline"
+            >
+              {neologismo.contextos[0].link}
+            </a>
+          )}
         </div>
 
         <div className="flex items-center justify-between pt-3 border-t border-gray-100">

@@ -105,7 +105,7 @@ class Contexto(models.Model):
         blank=True,
         help_text='Quem disse ou onde foi publicado. Ex: "@usuario no X"'
     )
-    link = models.URLField(blank=True, help_text='Link para a fonte original')
+    link = models.URLField(max_length=500, blank=True, help_text='Link para a fonte original')
     data_criacao = models.DateTimeField(auto_now_add=True)
 
     class Meta:

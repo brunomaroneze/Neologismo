@@ -13,8 +13,11 @@ export interface ContextoCreate {
 
 export interface Neologismo {
   id: number;
+  data_registro: string | null;
   titulo: string;
   classe_gramatical: string;
+  tipologia: string;
+  elaborado_por: string;
   definicao: string;
   contexto_uso: string;
   contextos: Contexto[];
