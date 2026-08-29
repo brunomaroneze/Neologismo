@@ -120,7 +120,7 @@ export default function CadastroPage() {
                 className="w-full flex items-center justify-center gap-2 px-6 py-2.5 text-sm font-semibold text-white bg-purple-dark rounded-full hover:bg-purple-dark transition-colors disabled:opacity-60"
               >
                 {loading && <Loader2 className="w-4 h-4 animate-spin" />}
-                Cadastrar
+                Cadastrar-se
               </button>
             </form>
 
