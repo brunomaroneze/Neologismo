@@ -65,7 +65,7 @@ export default function Home() {
           </span>
 
           <h1 className="font-sans text-3xl sm:text-4xl font-extrabold text-gray-900 leading-tight mb-2">
-            O brasileiro deve ser estudado.
+            O brasileiro precisa ser estudado.
             <br />
             As palavras que ele cria também.
           </h1>

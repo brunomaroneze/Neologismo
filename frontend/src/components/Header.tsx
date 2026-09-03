@@ -74,7 +74,7 @@ export default function Header() {
                   href="/cadastro"
                   className="hidden sm:inline-flex items-center px-4 py-1.5 text-sm font-medium text-white bg-purple-dark rounded-full hover:bg-purple-dark transition-colors"
                 >
-                  Cadastrar
+                  Cadastrar-se
                 </Link>
               </>
             )}

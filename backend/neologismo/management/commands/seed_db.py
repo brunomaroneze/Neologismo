@@ -13,10 +13,21 @@ from usuario.models import Usuario
 class Command(BaseCommand):
     help = 'Importa os neologismos do arquivo BancoDeNeologismos.csv'
 
+    def add_arguments(self, parser):
+        parser.add_argument(
+            '--limpar',
+            action='store_true',
+            help='Apaga todos os neologismos existentes antes de importar o CSV.',
+        )
+
     def handle(self, *args, **kwargs):
         csv_path = Path(__file__).resolve().parents[2] / 'data' / 'BancoDeNeologismos.csv'
         if not csv_path.exists():
             raise FileNotFoundError(f'Arquivo CSV não encontrado: {csv_path}')
+
+        if kwargs['limpar']:
+            apagados, _ = Neologismo.objects.all().delete()
+            self.stdout.write(self.style.WARNING(f'{apagados} registro(s) apagado(s) do banco.'))
 
         importador, _ = Usuario.objects.get_or_create(
             username='importador_csv',
