@@ -4,6 +4,7 @@ import type {
   LikeResponse,
   LoginPayload,
   LoginResponse,
+  PaginatedResponse,
   RegistroPayload,
   RegistroResponse,
   NeologismoStatus,
@@ -39,11 +40,25 @@ function getHeaders(): Record<string, string> {
   return headers;
 }
 
-export async function fetchNeologismos(
-  status?: NeologismoStatus
-): Promise<Neologismo[]> {
-  const query = status ? `?status=${status}` : "";
-  const res = await fetch(`${API_URL}/neologismos/${query}`, {
+export interface FetchNeologismosParams {
+  status?: NeologismoStatus;
+  page?: number;
+  search?: string;
+  tag?: string;
+}
+
+// Busca uma única página de resultados (usado para carregamento por etapas / scroll infinito).
+export async function fetchNeologismosPage(
+  params: FetchNeologismosParams = {}
+): Promise<PaginatedResponse<Neologismo>> {
+  const query = new URLSearchParams();
+  if (params.status) query.set("status", params.status);
+  if (params.page) query.set("page", String(params.page));
+  if (params.search) query.set("search", params.search);
+  if (params.tag) query.set("tag", params.tag);
+  const queryString = query.toString();
+
+  const res = await fetch(`${API_URL}/neologismos/${queryString ? `?${queryString}` : ""}`, {
     headers: getHeaders(),
     cache: "no-store",
   });
@@ -51,6 +66,24 @@ export async function fetchNeologismos(
   if (!res.ok) await parseError(res, "Falha ao carregar neologismos");
 
   return res.json();
+}
+
+// Busca todas as páginas e retorna a lista completa (usado pelo painel admin).
+export async function fetchNeologismos(
+  status?: NeologismoStatus
+): Promise<Neologismo[]> {
+  const all: Neologismo[] = [];
+  let page = 1;
+  let hasNext = true;
+
+  while (hasNext) {
+    const data = await fetchNeologismosPage({ status, page });
+    all.push(...data.results);
+    hasNext = Boolean(data.next);
+    page += 1;
+  }
+
+  return all;
 }
 
 export async function fetchNeologismoById(id: number): Promise<Neologismo> {

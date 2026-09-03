@@ -3,6 +3,7 @@ from rest_framework.decorators import action
 from rest_framework.permissions import IsAdminUser
 from rest_framework.response import Response
 from django.db import transaction
+from django.db.models import Q
 from django.utils import timezone
 from .models import Neologismo
 from .serializers import NeologismoSerializer
@@ -19,6 +20,18 @@ class NeologismoViewSet(viewsets.ModelViewSet):
         status_param = self.request.query_params.get('status')
         if status_param:
             qs = qs.filter(status=status_param)
+
+        # Filtro opcional por tag (?tag=Anglicismo).
+        tag_param = self.request.query_params.get('tag')
+        if tag_param:
+            qs = qs.filter(tags__contains=[tag_param])
+
+        # Busca opcional por texto (?search=termo), usada pela Home.
+        search_param = self.request.query_params.get('search')
+        if search_param:
+            qs = qs.filter(
+                Q(titulo__icontains=search_param) | Q(definicao__icontains=search_param)
+            )
         return qs
 
     def perform_create(self, serializer):

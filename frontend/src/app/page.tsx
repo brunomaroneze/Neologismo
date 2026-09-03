@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import Header from "@/components/Header";
 import NeologismCard from "@/components/NeologismCard";
@@ -17,21 +17,42 @@ const filterCategories = [
 ];
 
 export default function Home() {
-  const { data, loading, error, refetch, onLike, onDeslike } = useNeologismos();
   const [activeCategory, setActiveCategory] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
 
-  const filteredNeologismos = data.filter((n) => {
-    const matchesCategory =
-      activeCategory === "all" || n.tags.includes(activeCategory);
+  // Aguarda o usuário parar de digitar antes de refazer a busca no servidor.
+  useEffect(() => {
+    const timeout = setTimeout(() => setDebouncedSearch(searchQuery), 400);
+    return () => clearTimeout(timeout);
+  }, [searchQuery]);
 
-    const matchesSearch =
-      searchQuery === "" ||
-      n.titulo.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      n.definicao.toLowerCase().includes(searchQuery.toLowerCase());
+  const { data, loading, loadingMore, hasMore, error, refetch, loadMore, onLike, onDeslike } =
+    useNeologismos({
+      search: debouncedSearch || undefined,
+      tag: activeCategory === "all" ? undefined : activeCategory,
+    });
 
-    return matchesCategory && matchesSearch;
-  });
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
+
+  // Dispara o carregamento da próxima página quando o sentinela entra na tela.
+  useEffect(() => {
+    const node = sentinelRef.current;
+    if (!node) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          loadMore();
+        }
+      },
+      { rootMargin: "200px" }
+    );
+
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [loadMore]);
+
 
   return (
     <>
@@ -121,7 +142,7 @@ export default function Home() {
         {!loading && !error && (
           <>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
-              {filteredNeologismos.map((neologismo) => (
+              {data.map((neologismo) => (
                 <NeologismCard
                   key={neologismo.id}
                   neologismo={neologismo}
@@ -131,11 +152,18 @@ export default function Home() {
               ))}
             </div>
 
-            {filteredNeologismos.length === 0 && (
+            {data.length === 0 && (
               <div className="text-center py-16">
                 <p className="text-gray-500 text-sm">
                   Nenhum neologismo encontrado para os filtros selecionados.
                 </p>
+              </div>
+            )}
+
+            {/* Sentinela invisível: dispara loadMore quando entra na viewport ao rolar a página. */}
+            {hasMore && (
+              <div ref={sentinelRef} className="flex items-center justify-center py-10">
+                {loadingMore && <Loader2 className="w-6 h-6 text-purple-dark animate-spin" />}
               </div>
             )}
           </>

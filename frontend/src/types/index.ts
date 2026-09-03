@@ -41,6 +41,13 @@ export interface NeologismoCreate {
   tags: string[];
 }
 
+export interface PaginatedResponse<T> {
+  count: number;
+  next: string | null;
+  previous: string | null;
+  results: T[];
+}
+
 export interface LikeResponse {
   status: string;
   likes?: number;
