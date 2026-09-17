@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { Neologismo } from "@/types";
-import { Heart, ThumbsDown } from "lucide-react";
+import { Heart, ThumbsDown } from "lucide-react"; // Talvez tirar o ThumbsDown se não for usar, mas deixei por enquanto.
 
 interface NeologismCardProps {
   neologismo: Neologismo;
@@ -77,13 +77,13 @@ export default function NeologismCard({
               <Heart className="w-4 h-4 group-hover:fill-red-400" />
               <span className="text-xs font-medium">{neologismo.total_likes}</span>
             </button>
-            <button
+            {/*<button
               onClick={() => onDeslike(neologismo.id)}
               className="flex items-center gap-1.5 text-gray-400 hover:text-purple-primary transition-colors"
             >
               <ThumbsDown className="w-4 h-4" />
               <span className="text-xs font-medium">{neologismo.total_deslikes}</span>
-            </button>
+            </button>*/}
           </div>
         </div>
       </div>
