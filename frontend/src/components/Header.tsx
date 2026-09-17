@@ -22,7 +22,7 @@ export default function Header() {
   ];
 
   return (
-    <header className="bg-white border-b border-gray-200">
+    <header className="bg-purple-dark border-b border-gray-200">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           <Link href="/" className="flex items-center gap-2 shrink-0">
@@ -36,8 +36,8 @@ export default function Header() {
                 href={link.href}
                 className={`relative text-sm font-medium transition-colors ${
                   isActive(link.href)
-                    ? "text-purple-dark"
-                    : "text-gray-500 hover:text-purple-dark"
+                    ? "text-white"
+                    : "text-white hover:text-purple-light"
                 }`}
               >
                 {link.label}
@@ -66,13 +66,13 @@ export default function Header() {
               <>
                 <Link
                   href="/login"
-                  className="hidden sm:inline-flex items-center px-4 py-1.5 text-sm font-medium text-gray-700 border border-gray-300 rounded-full hover:bg-gray-50 transition-colors"
+                  className="hidden sm:inline-flex items-center px-4 py-1.5 text-sm font-medium text-white border border-gray-300 rounded-full hover:bg-gray-50 transition-colors"
                 >
                   Entrar
                 </Link>
                 <Link
                   href="/cadastro"
-                  className="hidden sm:inline-flex items-center px-4 py-1.5 text-sm font-medium text-white bg-purple-dark rounded-full hover:bg-purple-dark transition-colors"
+                  className="hidden sm:inline-flex items-center px-4 py-1.5 text-sm font-medium text-white border border-gray-300 rounded-full hover:bg-gray-50 transition-colors"
                 >
                   Cadastrar-se
                 </Link>

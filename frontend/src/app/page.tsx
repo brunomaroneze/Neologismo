@@ -70,10 +70,6 @@ export default function Home() {
             As palavras que ele cria também.
           </h1>
 
-          <p className="text-sm text-gray-500 mb-4 max-w-xl mx-auto">
-            Registre, explore e discuta os neologismos que moldam o português do nosso tempo.
-          </p>
-
           <div className="flex items-center justify-center gap-3">
             <Link
               href="/enviar"
