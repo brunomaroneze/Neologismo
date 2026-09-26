@@ -5,13 +5,11 @@ import { Heart, ThumbsDown } from "lucide-react"; // Talvez tirar o ThumbsDown s
 interface NeologismCardProps {
   neologismo: Neologismo;
   onLike: (id: number) => void;
-  onDeslike: (id: number) => void;
 }
 
 export default function NeologismCard({
   neologismo,
   onLike,
-  onDeslike,
 }: NeologismCardProps) {
   const formattedDate = new Date(neologismo.data_criacao).toLocaleDateString("pt-BR", {
     day: "2-digit",
@@ -77,13 +75,6 @@ export default function NeologismCard({
               <Heart className="w-4 h-4 group-hover:fill-red-400" />
               <span className="text-xs font-medium">{neologismo.total_likes}</span>
             </button>
-            {/*<button
-              onClick={() => onDeslike(neologismo.id)}
-              className="flex items-center gap-1.5 text-gray-400 hover:text-purple-primary transition-colors"
-            >
-              <ThumbsDown className="w-4 h-4" />
-              <span className="text-xs font-medium">{neologismo.total_deslikes}</span>
-            </button>*/}
           </div>
         </div>
       </div>

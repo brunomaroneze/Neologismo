@@ -27,8 +27,8 @@ export default function Home() {
     return () => clearTimeout(timeout);
   }, [searchQuery]);
 
-  const { data, loading, loadingMore, hasMore, error, refetch, loadMore, onLike, onDeslike } = // Tirei o botão de deslike, então não precisa mais do onDeslike, mas deixei por enquanto.
-    useNeologismos({
+  const { data, loading, loadingMore, hasMore, error, refetch, loadMore, onLike } =
+      useNeologismos({
       search: debouncedSearch || undefined,
       tag: activeCategory === "all" ? undefined : activeCategory,
     });
@@ -143,8 +143,7 @@ export default function Home() {
                   key={neologismo.id}
                   neologismo={neologismo}
                   onLike={onLike}
-                  onDeslike={onDeslike} {/* Tirei o botão de deslike, então não precisa mais do onDeslike, mas deixei por enquanto */}
-                />
+                  />
               ))}
             </div>
 

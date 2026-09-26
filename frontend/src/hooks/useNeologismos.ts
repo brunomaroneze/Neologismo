@@ -94,7 +94,6 @@ export function useNeologismos(options: UseNeologismosOptions = {}) {
     refetch: load,
     loadMore,
     onLike: handleLike,
-    onDeslike: handleDeslike,
   };
 }
 
