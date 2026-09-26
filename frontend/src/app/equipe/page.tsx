@@ -42,25 +42,76 @@ type Member = {
 
 const team: Member[] = [
   {
-    name: "João Victor",
-    role: "Desenvolvedor Full Stack",
+    name: "Prof. Ana Maria Ribeiro",
+    role: "Coordenadora",
+    bio: "Rock sempre. Samba às vezes. Sertanejo nunca.",
+  },
+  {
+    name: "Fernanda Assef",
+    role: "Graduanda em Letras",
+    bio: "Absolutamente viciada em trabalhar e jamais recusa um docinho.",
+  },
+  {
+    name: "Julia Magnavita",
+    role: "Graduanda em Letras",
+    bio: "A vida já me ensinou muita coisa, mas preferia ter continuado burra.",
+  },
+  {
+    name: "Matheus Lima",
+    role: "Graduado em Letras",
+    bio: "Fui tentar me encontrar e me perdi mais ainda.",
+  },
+  {
+    name: "Amanda Candido",
+    role: "Graduanda em Letras",
+    bio: "Vivendo para encontrar a linha entre café insuficiente e café demais.",
+  },
+  {
+    name: "Igor Varejão",
+    role: "Graduando em Ciência da Computação",
+    bio: "O terror dos sites de notícias.",
+  },
+  {
+    name: "Karina Marques",
+    role: "Graduanda em Letras",
+    bio: "Uma estudante de letras quase terminando o alfabeto.",
+  },
+  {
+    name: "Pyetra Werneck",
+    role: "Graduanda em Letras",
+    bio: "Mergulhada no café quente, me entrelaço entre as Letras, a vida fitness, a Moda e o sol poente.",
+  },
+  {
+    name: "Beatriz Latini - UFMG",
+    role: "Doutoranda em Letras",
+    bio: "Neolover. Bookstan. A recatada e do lar, só que não!",
+  },
+  {
+    name: "João Colombo",
+    role: "Graduando em Letras",
+    bio: "Aspirante a ex-carrossel.",
+  },
+  {
+    name: "Luis Eduardo",
+    role: "Graduando em Ciência da Computação",
+    bio: "",
+  },
+  {
+    name: "Rômulo Ferreira",
+    role: "Graduando em Letras",
+    bio: "Ama criar listas de reprodução no Spotify e pseudo crítico de cinema.",
+  },
+  {
+    name: "João Victor Ifran",
+    role: "Desenvolvedor full stack",
     bio: "Responsável pela arquitetura do projeto, integração entre frontend e API e pela experiência de uso da plataforma.",
     github: "#",
     linkedin: "#",
   },
   {
-    name: "Integrante 2",
-    role: "Pesquisa & Conteúdo",
-    bio: "Cuida da curadoria linguística, dos critérios de moderação e da qualidade do acervo de neologismos.",
-    github: "#",
-    linkedin: "#",
-  },
-  {
-    name: "Integrante 3",
-    role: "Design & Interface",
-    bio: "Define a identidade visual, o design das telas e a usabilidade do dicionário colaborativo.",
-    github: "#",
-    linkedin: "#",
+    name: "Bruno Maroneze - UFGD",
+    role: "professor",
+    bio: "",
   },
 ];
 
