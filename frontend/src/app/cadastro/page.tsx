@@ -1,138 +1,284 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useMemo, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import Header from "@/components/Header";
-import { register } from "@/lib/api";
-import { Loader2 } from "lucide-react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Check, Eye, EyeOff, Loader2, X } from "lucide-react";
+import { ApiError, cadastrar } from "@/lib/api";
 
-export default function CadastroPage() {
+/** Espelha os AUTH_PASSWORD_VALIDATORS do Django, para a pessoa saber o que
+ *  falta antes de o servidor recusar. */
+function avaliarSenha(senha: string, username: string) {
+  return [
+    { rotulo: "Pelo menos 8 caracteres", ok: senha.length >= 8 },
+    { rotulo: "Não pode ser só números", ok: !/^\d+$/.test(senha) },
+    {
+      rotulo: "Diferente do nome de usuário",
+      ok:
+        senha.length > 0 &&
+        username.trim().length > 0 &&
+        !senha.toLocaleLowerCase().includes(username.trim().toLocaleLowerCase()),
+    },
+  ];
+}
+
+function Formulario() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+
+  const destinoBruto = searchParams.get("next") || "/";
+  const destino =
+    destinoBruto.startsWith("/") && !destinoBruto.startsWith("//")
+      ? destinoBruto
+      : "/";
+
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [confirm, setConfirm] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [confirmacao, setConfirmacao] = useState("");
+  const [mostrarSenha, setMostrarSenha] = useState(false);
+  const [erro, setErro] = useState<string | null>(null);
+  const [errosCampo, setErrosCampo] = useState<Record<string, string>>({});
+  const [criando, setCriando] = useState(false);
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setError(null);
+  const requisitos = useMemo(
+    () => avaliarSenha(password, username),
+    [password, username]
+  );
+  const senhaOk = requisitos.every((r) => r.ok);
 
-    if (!username.trim() || !password) {
-      setError("Preencha usuário e senha.");
+  async function enviar(evento: React.FormEvent) {
+    evento.preventDefault();
+    setErro(null);
+    setErrosCampo({});
+
+    if (username.trim().length < 3) {
+      setErro("O nome de usuário precisa ter ao menos 3 caracteres.");
       return;
     }
-    if (password.length < 6) {
-      setError("A senha deve ter ao menos 6 caracteres.");
+    if (!senhaOk) {
+      setErro("A senha ainda não atende aos requisitos abaixo.");
       return;
     }
-    if (password !== confirm) {
-      setError("As senhas não coincidem.");
+    if (password !== confirmacao) {
+      setErro("As senhas não coincidem.");
       return;
     }
 
-    setLoading(true);
+    setCriando(true);
     try {
-      await register({ username: username.trim(), email: email.trim(), password });
-      router.push("/");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Falha no cadastro");
+      await cadastrar({
+        username: username.trim(),
+        email: email.trim(),
+        password,
+      });
+      router.push(destino);
+      router.refresh();
+    } catch (e) {
+      if (e instanceof ApiError) {
+        setErro(e.message);
+        const mapeados: Record<string, string> = {};
+        for (const [campo, mensagens] of Object.entries(e.campos)) {
+          mapeados[campo] = mensagens[0];
+        }
+        setErrosCampo(mapeados);
+      } else {
+        setErro("Falha ao criar a conta.");
+      }
     } finally {
-      setLoading(false);
+      setCriando(false);
     }
   }
 
   return (
-    <>
-      <Header />
-      <section className="bg-gradient-to-br from-white to-purple-light/20 min-h-[calc(100vh-4rem)] flex items-center justify-center px-4 py-16">
-        <div className="w-full max-w-md">
-          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-8">
-            <h1 className="text-2xl font-extrabold text-gray-900 mb-1">Criar conta</h1>
-            <p className="text-sm text-gray-500 mb-6">
-              Junte-se ao dicionário colaborativo.
-            </p>
+    <section className="flex min-h-[calc(100vh-4rem)] items-center justify-center bg-gradient-to-b from-marca-suave/40 to-fundo px-4 py-16">
+      <div className="w-full max-w-md">
+        <div className="cartao p-8">
+          <h1 className="font-display text-3xl font-black text-texto">
+            Criar conta
+          </h1>
+          <p className="mt-1.5 text-sm text-suave">
+            Junte-se ao dicionário colaborativo.
+          </p>
 
-            {error && (
-              <div className="mb-4 rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-600">
-                {error}
-              </div>
-            )}
+          {erro && (
+            <div
+              role="alert"
+              className="mt-5 rounded-xl border border-red-500/30 bg-red-50 px-4 py-3 text-sm text-red-700 dark:bg-red-950/40 dark:text-red-200"
+            >
+              {erro}
+            </div>
+          )}
 
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Usuário
-                </label>
+          <form onSubmit={enviar} noValidate className="mt-6 space-y-4">
+            <div>
+              <label
+                htmlFor="username"
+                className="mb-1.5 block text-sm font-medium text-texto"
+              >
+                Usuário
+              </label>
+              <input
+                id="username"
+                type="text"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                autoComplete="username"
+                autoFocus
+                aria-invalid={!!errosCampo.username}
+                className="campo"
+              />
+              {errosCampo.username && (
+                <p role="alert" className="mt-1.5 text-xs font-medium text-red-600 dark:text-red-400">
+                  {errosCampo.username}
+                </p>
+              )}
+            </div>
+
+            <div>
+              <label
+                htmlFor="email"
+                className="mb-1.5 block text-sm font-medium text-texto"
+              >
+                E-mail <span className="font-normal text-tenue">(opcional)</span>
+              </label>
+              <input
+                id="email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                autoComplete="email"
+                aria-invalid={!!errosCampo.email}
+                className="campo"
+              />
+              {errosCampo.email && (
+                <p role="alert" className="mt-1.5 text-xs font-medium text-red-600 dark:text-red-400">
+                  {errosCampo.email}
+                </p>
+              )}
+            </div>
+
+            <div>
+              <label
+                htmlFor="password"
+                className="mb-1.5 block text-sm font-medium text-texto"
+              >
+                Senha
+              </label>
+              <div className="relative">
                 <input
-                  type="text"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-primary focus:border-transparent"
-                  autoComplete="username"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  E-mail <span className="text-gray-400 font-normal">(opcional)</span>
-                </label>
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-primary focus:border-transparent"
-                  autoComplete="email"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Senha
-                </label>
-                <input
-                  type="password"
+                  id="password"
+                  type={mostrarSenha ? "text" : "password"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-primary focus:border-transparent"
                   autoComplete="new-password"
+                  aria-invalid={!!errosCampo.password}
+                  aria-describedby="requisitos-senha"
+                  className="campo !pr-11"
                 />
+                <button
+                  type="button"
+                  onClick={() => setMostrarSenha((v) => !v)}
+                  aria-label={mostrarSenha ? "Ocultar senha" : "Mostrar senha"}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg p-2 text-tenue transition-colors hover:text-texto"
+                >
+                  {mostrarSenha ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
+                </button>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Confirmar senha
-                </label>
-                <input
-                  type="password"
-                  value={confirm}
-                  onChange={(e) => setConfirm(e.target.value)}
-                  className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-primary focus:border-transparent"
-                  autoComplete="new-password"
-                />
-              </div>
+              {password.length > 0 && (
+                <ul id="requisitos-senha" className="mt-2.5 space-y-1">
+                  {requisitos.map((requisito) => (
+                    <li
+                      key={requisito.rotulo}
+                      className={`flex items-center gap-1.5 text-xs ${
+                        requisito.ok
+                          ? "text-emerald-600 dark:text-emerald-400"
+                          : "text-tenue"
+                      }`}
+                    >
+                      {requisito.ok ? (
+                        <Check className="h-3.5 w-3.5" aria-hidden="true" />
+                      ) : (
+                        <X className="h-3.5 w-3.5" aria-hidden="true" />
+                      )}
+                      {requisito.rotulo}
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {errosCampo.password && (
+                <p role="alert" className="mt-1.5 text-xs font-medium text-red-600 dark:text-red-400">
+                  {errosCampo.password}
+                </p>
+              )}
+            </div>
 
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full flex items-center justify-center gap-2 px-6 py-2.5 text-sm font-semibold text-white bg-purple-dark rounded-full hover:bg-purple-dark transition-colors disabled:opacity-60"
+            <div>
+              <label
+                htmlFor="confirmacao"
+                className="mb-1.5 block text-sm font-medium text-texto"
               >
-                {loading && <Loader2 className="w-4 h-4 animate-spin" />}
-                Cadastrar-se
-              </button>
-            </form>
+                Confirmar senha
+              </label>
+              <input
+                id="confirmacao"
+                type={mostrarSenha ? "text" : "password"}
+                value={confirmacao}
+                onChange={(e) => setConfirmacao(e.target.value)}
+                autoComplete="new-password"
+                className="campo"
+              />
+              {confirmacao.length > 0 && confirmacao !== password && (
+                <p className="mt-1.5 text-xs font-medium text-red-600 dark:text-red-400">
+                  As senhas não coincidem.
+                </p>
+              )}
+            </div>
 
-            <p className="text-sm text-gray-500 text-center mt-6">
-              Já tem conta?{" "}
-              <Link href="/login" className="font-semibold text-purple-dark hover:underline">
-                Entrar
-              </Link>
-            </p>
-          </div>
+            <button
+              type="submit"
+              disabled={criando}
+              className="flex w-full items-center justify-center gap-2 rounded-full bg-marca px-6 py-3 text-sm font-semibold text-marca-contraste transition-opacity hover:opacity-90 disabled:opacity-60"
+            >
+              {criando && (
+                <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+              )}
+              {criando ? "Criando…" : "Cadastrar"}
+            </button>
+          </form>
+
+          <p className="mt-6 text-center text-sm text-suave">
+            Já tem conta?{" "}
+            <Link
+              href={`/login${
+                destino !== "/" ? `?next=${encodeURIComponent(destino)}` : ""
+              }`}
+              className="font-semibold text-marca hover:underline"
+            >
+              Entrar
+            </Link>
+          </p>
         </div>
-      </section>
-    </>
+      </div>
+    </section>
+  );
+}
+
+export default function CadastroPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex items-center justify-center py-32">
+          <Loader2 className="h-8 w-8 animate-spin text-marca" aria-hidden="true" />
+        </div>
+      }
+    >
+      <Formulario />
+    </Suspense>
   );
 }

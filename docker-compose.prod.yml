@@ -1,15 +1,105 @@
+# Ambiente de PRODUÇÃO para uma VPS única.
+#
+#   docker compose -f docker-compose.prod.yml up -d --build
+#
+# O Caddy é o único serviço exposto à internet (80/443) e obtém o certificado
+# TLS sozinho via Let's Encrypt. Backend, frontend e banco ficam na rede
+# interna do Compose, sem portas publicadas no host.
+
 services:
   db:
-    ports: !reset []
+    image: postgres:17-alpine
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?defina POSTGRES_USER no .env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?defina POSTGRES_PASSWORD no .env}
+      POSTGRES_DB: ${POSTGRES_DB:?defina POSTGRES_DB no .env}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
 
   backend:
-    command: gunicorn config.wsgi:application --bind 0.0.0.0:8000
+    build:
+      context: ./backend
+      target: final
+    restart: always
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      SECRET_KEY: ${SECRET_KEY:?defina SECRET_KEY no .env}
+      DEBUG: "False"
+      # 127.0.0.1 e localhost são necessários para o healthcheck interno do
+      # container: sem eles o Django devolve 400 DisallowedHost e o serviço
+      # nunca fica healthy. Não expõem nada — só o Caddy tem portas no host.
+      ALLOWED_HOSTS: ${DOMINIO:?defina DOMINIO no .env},backend,127.0.0.1,localhost
+      CORS_ALLOWED_ORIGINS: https://${DOMINIO}
+      CSRF_TRUSTED_ORIGINS: https://${DOMINIO}
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      POSTGRES_HOST: db
+      POSTGRES_PORT: "5432"
+      # O Caddy já força HTTPS na borda; redirecionar de novo aqui só criaria
+      # um salto extra em requisições internas.
+      SECURE_SSL_REDIRECT: "False"
+      SECURE_HSTS_SECONDS: ${SECURE_HSTS_SECONDS:-3600}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    volumes:
+      - media_data:/app/media
+    command: >
+      gunicorn config.wsgi:application
+      --bind 0.0.0.0:8000
+      --workers ${GUNICORN_WORKERS:-3}
+      --timeout 60
+      --graceful-timeout 30
+      --access-logfile -
+      --error-logfile -
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/api/health/', timeout=5).status==200 else 1)\""]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
   frontend:
     build:
       context: ./frontend
-      dockerfile: Dockerfile.prod
+      target: final
       args:
-        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
-    command: npm run start
-    volumes: !reset []
+        # Embutidos no bundle em tempo de build — precisam vir como args.
+        NEXT_PUBLIC_API_URL: https://${DOMINIO}/api
+        NEXT_PUBLIC_SITE_URL: https://${DOMINIO}
+    restart: always
+    depends_on:
+      - backend
+
+  caddy:
+    image: caddy:2-alpine
+    restart: always
+    depends_on:
+      - backend
+      - frontend
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      DOMINIO: ${DOMINIO}
+      EMAIL_ACME: ${EMAIL_ACME:?defina EMAIL_ACME no .env}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+      # Os estáticos do Django são servidos pelo WhiteNoise, então o Caddy só
+      # precisa do diretório de uploads.
+      - media_data:/srv/media:ro
+
+volumes:
+  postgres_data:
+  media_data:
+  caddy_data:
+  caddy_config:

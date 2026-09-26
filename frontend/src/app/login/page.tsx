@@ -1,102 +1,158 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import Header from "@/components/Header";
-import { login } from "@/lib/api";
-import { Loader2 } from "lucide-react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Eye, EyeOff, Loader2 } from "lucide-react";
+import { ApiError, login } from "@/lib/api";
 
-export default function LoginPage() {
+function Formulario() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+
+  // `next` devolve a pessoa para onde ela estava quando o login foi exigido.
+  // Só aceitamos caminhos internos: uma URL absoluta aqui seria um open
+  // redirect para fora do site.
+  const destinoBruto = searchParams.get("next") || "/";
+  const destino = destinoBruto.startsWith("/") && !destinoBruto.startsWith("//")
+    ? destinoBruto
+    : "/";
+
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [mostrarSenha, setMostrarSenha] = useState(false);
+  const [erro, setErro] = useState<string | null>(null);
+  const [entrando, setEntrando] = useState(false);
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setError(null);
+  async function enviar(evento: React.FormEvent) {
+    evento.preventDefault();
+    setErro(null);
 
     if (!username.trim() || !password) {
-      setError("Preencha usuário e senha.");
+      setErro("Preencha usuário e senha.");
       return;
     }
 
-    setLoading(true);
+    setEntrando(true);
     try {
       await login({ username: username.trim(), password });
-      router.push("/");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Falha no login");
+      router.push(destino);
+      router.refresh();
+    } catch (e) {
+      setErro(e instanceof ApiError ? e.message : "Falha no login.");
     } finally {
-      setLoading(false);
+      setEntrando(false);
     }
   }
 
   return (
-    <>
-      <Header />
-      <section className="bg-gradient-to-br from-white to-purple-light/20 min-h-[calc(100vh-4rem)] flex items-center justify-center px-4 py-16">
-        <div className="w-full max-w-md">
-          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-8">
-            <h1 className="text-2xl font-extrabold text-gray-900 mb-1">Entrar</h1>
-            <p className="text-sm text-gray-500 mb-6">
-              Acesse para enviar e curtir neologismos.
-            </p>
+    <section className="flex min-h-[calc(100vh-4rem)] items-center justify-center bg-gradient-to-b from-marca-suave/40 to-fundo px-4 py-16">
+      <div className="w-full max-w-md">
+        <div className="cartao p-8">
+          <h1 className="font-display text-3xl font-black text-texto">Entrar</h1>
+          <p className="mt-1.5 text-sm text-suave">
+            Acesse para enviar e curtir neologismos.
+          </p>
 
-            {error && (
-              <div className="mb-4 rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-600">
-                {error}
-              </div>
-            )}
+          {erro && (
+            <div
+              role="alert"
+              className="mt-5 rounded-xl border border-red-500/30 bg-red-50 px-4 py-3 text-sm text-red-700 dark:bg-red-950/40 dark:text-red-200"
+            >
+              {erro}
+            </div>
+          )}
 
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Usuário
-                </label>
+          <form onSubmit={enviar} noValidate className="mt-6 space-y-4">
+            <div>
+              <label
+                htmlFor="username"
+                className="mb-1.5 block text-sm font-medium text-texto"
+              >
+                Usuário
+              </label>
+              <input
+                id="username"
+                type="text"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                autoComplete="username"
+                autoFocus
+                className="campo"
+              />
+            </div>
+
+            <div>
+              <label
+                htmlFor="password"
+                className="mb-1.5 block text-sm font-medium text-texto"
+              >
+                Senha
+              </label>
+              <div className="relative">
                 <input
-                  type="text"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-primary focus:border-transparent"
-                  autoComplete="username"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Senha
-                </label>
-                <input
-                  type="password"
+                  id="password"
+                  type={mostrarSenha ? "text" : "password"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-primary focus:border-transparent"
                   autoComplete="current-password"
+                  className="campo !pr-11"
                 />
+                <button
+                  type="button"
+                  onClick={() => setMostrarSenha((v) => !v)}
+                  aria-label={mostrarSenha ? "Ocultar senha" : "Mostrar senha"}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg p-2 text-tenue transition-colors hover:text-texto"
+                >
+                  {mostrarSenha ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
+                </button>
               </div>
+            </div>
 
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full flex items-center justify-center gap-2 px-6 py-2.5 text-sm font-semibold text-white bg-purple-dark rounded-full hover:bg-purple-dark transition-colors disabled:opacity-60"
-              >
-                {loading && <Loader2 className="w-4 h-4 animate-spin" />}
-                Entrar
-              </button>
-            </form>
+            <button
+              type="submit"
+              disabled={entrando}
+              className="flex w-full items-center justify-center gap-2 rounded-full bg-marca px-6 py-3 text-sm font-semibold text-marca-contraste transition-opacity hover:opacity-90 disabled:opacity-60"
+            >
+              {entrando && (
+                <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+              )}
+              {entrando ? "Entrando…" : "Entrar"}
+            </button>
+          </form>
 
-            <p className="text-sm text-gray-500 text-center mt-6">
-              Não tem conta?{" "}
-              <Link href="/cadastro" className="font-semibold text-purple-dark hover:underline">
-                Cadastre-se
-              </Link>
-            </p>
-          </div>
+          <p className="mt-6 text-center text-sm text-suave">
+            Não tem conta?{" "}
+            <Link
+              href={`/cadastro${
+                destino !== "/" ? `?next=${encodeURIComponent(destino)}` : ""
+              }`}
+              className="font-semibold text-marca hover:underline"
+            >
+              Cadastre-se
+            </Link>
+          </p>
         </div>
-      </section>
-    </>
+      </div>
+    </section>
+  );
+}
+
+export default function LoginPage() {
+  // useSearchParams exige um limite de Suspense para o build estático.
+  return (
+    <Suspense
+      fallback={
+        <div className="flex items-center justify-center py-32">
+          <Loader2 className="h-8 w-8 animate-spin text-marca" aria-hidden="true" />
+        </div>
+      }
+    >
+      <Formulario />
+    </Suspense>
   );
 }
