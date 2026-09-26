@@ -17,7 +17,7 @@ export default function Header() {
     { href: "/enviar", label: "Enviar Neologismo" },
     { href: "/sobre", label: "Sobre" },
     { href: "/equipe", label: "Equipe" },
-    { href: "/referencias", label: "Referências" },
+    { href: "/indicacoes-de-leitura", label: "Indicações de leitura" },
     ...(isAdmin ? [{ href: "/admin-painel", label: "Admin" }] : []),
   ];
 
