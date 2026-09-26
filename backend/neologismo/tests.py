@@ -1,4 +1,9 @@
+from smtplib import SMTPException
+from unittest.mock import patch
+
 from django.contrib.auth import get_user_model
+from django.core import mail
+from django.core.cache import cache
 from django.test import override_settings
 from rest_framework import status
 from rest_framework.test import APITestCase
@@ -25,6 +30,27 @@ SEM_THROTTLE = override_settings(
 )
 
 
+class SemThrottleMixin:
+    """Zera o cache de throttle antes de cada teste.
+
+    Duas armadilhas justificam este mixin:
+
+    1. O histórico do throttle vive no cache, que o Django NÃO limpa entre
+       métodos de teste. Sem isto, uma suíte que chama a mesma rota várias
+       vezes passa isolada e falha em conjunto, com 429.
+    2. `override_settings(REST_FRAMEWORK=...)` não desliga throttle nenhum:
+       o DRF liga `SimpleRateThrottle.THROTTLE_RATES` ao dicionário de
+       settings **no import**, então a troca do setting em teste não chega
+       nas views. Limpar o cache é o que de fato funciona.
+
+    Quem sobrescrever `setUp` numa subclasse precisa chamar `super().setUp()`.
+    """
+
+    def setUp(self):
+        cache.clear()
+        super().setUp()
+
+
 def criar_neologismo(autor, titulo='Teste', status_verbete=Neologismo.APROVADO, **extra):
     return Neologismo.objects.create(
         titulo=titulo,
@@ -38,7 +64,7 @@ def criar_neologismo(autor, titulo='Teste', status_verbete=Neologismo.APROVADO, 
 
 
 @SEM_THROTTLE
-class VisibilidadeTests(APITestCase):
+class VisibilidadeTests(SemThrottleMixin, APITestCase):
     @classmethod
     def setUpTestData(cls):
         cls.autor = Usuario.objects.create_user('autor', password='SenhaForte123')
@@ -103,7 +129,7 @@ class VisibilidadeTests(APITestCase):
 
 
 @SEM_THROTTLE
-class PermissaoDeEscritaTests(APITestCase):
+class PermissaoDeEscritaTests(SemThrottleMixin, APITestCase):
     @classmethod
     def setUpTestData(cls):
         cls.autor = Usuario.objects.create_user('autor', password='SenhaForte123')
@@ -170,13 +196,14 @@ class PermissaoDeEscritaTests(APITestCase):
 
 
 @SEM_THROTTLE
-class CurtidaTests(APITestCase):
+class CurtidaTests(SemThrottleMixin, APITestCase):
     @classmethod
     def setUpTestData(cls):
         cls.autor = Usuario.objects.create_user('autor', password='SenhaForte123')
         cls.leitor = Usuario.objects.create_user('leitor', password='SenhaForte123')
 
     def setUp(self):
+        super().setUp()
         self.verbete = criar_neologismo(self.autor, 'Curtível')
         self.url = f'/api/neologismos/{self.verbete.pk}/curtir/'
 
@@ -223,7 +250,7 @@ class CurtidaTests(APITestCase):
 
 
 @SEM_THROTTLE
-class ModeracaoTests(APITestCase):
+class ModeracaoTests(SemThrottleMixin, APITestCase):
     @classmethod
     def setUpTestData(cls):
         cls.autor = Usuario.objects.create_user('autor', password='SenhaForte123')
@@ -232,6 +259,7 @@ class ModeracaoTests(APITestCase):
         )
 
     def setUp(self):
+        super().setUp()
         self.verbete = criar_neologismo(self.autor, 'Fila', Neologismo.PENDENTE)
 
     def test_usuario_comum_nao_aprova(self):
@@ -289,7 +317,7 @@ class ModeracaoTests(APITestCase):
 
 
 @SEM_THROTTLE
-class BuscaEFiltroTests(APITestCase):
+class BuscaEFiltroTests(SemThrottleMixin, APITestCase):
     @classmethod
     def setUpTestData(cls):
         cls.autor = Usuario.objects.create_user('autor', password='SenhaForte123')
@@ -326,7 +354,7 @@ class BuscaEFiltroTests(APITestCase):
 
 
 @SEM_THROTTLE
-class MeusVerbetesTests(APITestCase):
+class MeusVerbetesTests(SemThrottleMixin, APITestCase):
     @classmethod
     def setUpTestData(cls):
         cls.autor = Usuario.objects.create_user('autor', password='SenhaForte123')
@@ -347,12 +375,13 @@ class MeusVerbetesTests(APITestCase):
 
 
 @SEM_THROTTLE
-class ValidacaoTests(APITestCase):
+class ValidacaoTests(SemThrottleMixin, APITestCase):
     @classmethod
     def setUpTestData(cls):
         cls.autor = Usuario.objects.create_user('autor', password='SenhaForte123')
 
     def setUp(self):
+        super().setUp()
         self.client.force_authenticate(self.autor)
 
     def _post(self, **campos):
@@ -391,3 +420,73 @@ class ValidacaoTests(APITestCase):
         ])
         self.assertEqual(resposta.status_code, status.HTTP_201_CREATED)
         self.assertEqual(len(resposta.data['contextos']), 1)
+
+
+@SEM_THROTTLE
+@override_settings(
+    EMAIL_BACKEND='django.core.mail.backends.locmem.EmailBackend',
+    SITE_URL='https://neoscopio.test',
+)
+class AvisoDeModeracaoTests(SemThrottleMixin, APITestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.autor = Usuario.objects.create_user(
+            'autor', email='autor@exemplo.com', password='SenhaForte123'
+        )
+        cls.sem_email = Usuario.objects.create_user(
+            'anonimo', password='SenhaForte123'
+        )
+        cls.staff = Usuario.objects.create_user(
+            'chefe', email='chefe@exemplo.com', password='SenhaForte123', is_staff=True
+        )
+
+    def setUp(self):
+        super().setUp()
+        mail.outbox = []
+        self.client.force_authenticate(self.staff)
+
+    def test_aprovar_avisa_o_autor_com_link(self):
+        verbete = criar_neologismo(self.autor, 'Aprovável', Neologismo.PENDENTE)
+        self.client.post(f'/api/neologismos/{verbete.pk}/aprovar/')
+
+        self.assertEqual(len(mail.outbox), 1)
+        mensagem = mail.outbox[0]
+        self.assertIn('autor@exemplo.com', mensagem.to)
+        self.assertIn(f'https://neoscopio.test/neologismo/{verbete.pk}', mensagem.body)
+
+    def test_rejeitar_avisa_o_autor_com_o_motivo(self):
+        verbete = criar_neologismo(self.autor, 'Rejeitável', Neologismo.PENDENTE)
+        self.client.post(
+            f'/api/neologismos/{verbete.pk}/rejeitar/',
+            {'motivo_rejeicao': 'Falta uma citação com fonte real.'},
+            format='json',
+        )
+
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertIn('Falta uma citação com fonte real.', mail.outbox[0].body)
+
+    def test_reativar_avisa_o_autor(self):
+        verbete = criar_neologismo(self.autor, 'Reativável', Neologismo.REJEITADO)
+        self.client.post(f'/api/neologismos/{verbete.pk}/reativar/')
+        self.assertEqual(len(mail.outbox), 1)
+
+    def test_autor_sem_email_nao_gera_envio(self):
+        verbete = criar_neologismo(self.sem_email, 'Sem contato', Neologismo.PENDENTE)
+        resposta = self.client.post(f'/api/neologismos/{verbete.pk}/aprovar/')
+
+        self.assertEqual(resposta.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(mail.outbox), 0)
+
+    def test_falha_no_email_nao_impede_a_moderacao(self):
+        """Regressão: SMTP fora do ar não pode travar a fila de moderação."""
+        verbete = criar_neologismo(self.autor, 'Resiliente', Neologismo.PENDENTE)
+
+        with patch(
+            'config.emails.EmailMultiAlternatives.send',
+            side_effect=SMTPException('servidor fora'),
+        ):
+            resposta = self.client.post(f'/api/neologismos/{verbete.pk}/aprovar/')
+
+        self.assertEqual(resposta.status_code, status.HTTP_200_OK)
+        verbete.refresh_from_db()
+        self.assertEqual(verbete.status, Neologismo.APROVADO)

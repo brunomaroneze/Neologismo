@@ -1,0 +1,39 @@
+{% extends "emails/base_email.html" %}
+
+{% block titulo %}Sobre o seu verbete{% endblock %}
+
+{% block conteudo %}
+  <p style="margin:0 0 16px;">Olá, {{ neologismo.autor.username }}.</p>
+
+  <p style="margin:0 0 16px;">
+    O verbete <strong>{{ neologismo.titulo|lower }}</strong> não foi publicado
+    desta vez. O motivo registrado pela equipe:
+  </p>
+
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 24px;">
+    <tr>
+      <td style="padding:16px; background-color:#faf9fb; border-left:3px solid #996699; border-radius:8px; color:#5b5870; font-size:14px; line-height:1.6;">
+        {{ neologismo.motivo_rejeicao|default:"Sem motivo registrado." }}
+      </td>
+    </tr>
+  </table>
+
+  <p style="margin:0 0 24px;">
+    Isso não é uma porta fechada: se der para ajustar a definição ou anexar
+    uma citação com fonte, vale enviar de novo.
+  </p>
+
+  <table role="presentation" cellpadding="0" cellspacing="0">
+    <tr>
+      <td style="background-color:#660066; border-radius:999px;">
+        <a href="{{ url_enviar }}" style="display:inline-block; padding:12px 28px; color:#ffffff; font-size:14px; font-weight:bold; text-decoration:none;">
+          Enviar outra palavra
+        </a>
+      </td>
+    </tr>
+  </table>
+
+  <p style="margin:24px 0 0; color:#8b879c; font-size:13px;">
+    Seus envios ficam em <a href="{{ url_meus_envios }}" style="color:#660066;">Minhas palavras</a>.
+  </p>
+{% endblock %}

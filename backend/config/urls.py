@@ -8,7 +8,14 @@ from rest_framework.routers import DefaultRouter
 
 from config.views import HealthView
 from neologismo.views import NeologismoViewSet
-from usuario.views import LoginView, LogoutView, MeView, RegistroView
+from usuario.views import (
+    LoginView,
+    LogoutView,
+    MeView,
+    RecuperarSenhaView,
+    RedefinirSenhaView,
+    RegistroView,
+)
 
 router = DefaultRouter()
 router.register(r'neologismos', NeologismoViewSet, basename='neologismo')
@@ -25,6 +32,16 @@ urlpatterns = [
     path('api/logout/', LogoutView.as_view(), name='api_logout'),
     path('api/cadastro/', RegistroView.as_view(), name='api_cadastro'),
     path('api/me/', MeView.as_view(), name='api_me'),
+    path(
+        'api/senha/recuperar/',
+        RecuperarSenhaView.as_view(),
+        name='api_recuperar_senha',
+    ),
+    path(
+        'api/senha/redefinir/',
+        RedefinirSenhaView.as_view(),
+        name='api_redefinir_senha',
+    ),
 
     # Documentação (OpenAPI + Swagger UI)
     path('api/schema/', SpectacularAPIView.as_view(), name='schema'),

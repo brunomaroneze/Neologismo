@@ -10,6 +10,8 @@ from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import IsAdminUser, IsAuthenticated
 from rest_framework.response import Response
 
+from config.emails import avisar_verbete_aprovado, avisar_verbete_rejeitado
+
 from .models import Neologismo
 from .permissions import DonoOuStaff
 from .serializers import (
@@ -247,12 +249,18 @@ class NeologismoViewSet(viewsets.ModelViewSet):
 
     # --- Moderação (somente staff) ---
 
-    def _registrar_moderacao(self, neologismo, request, **campos):
+    def _registrar_moderacao(self, neologismo, request, avisar=None, **campos):
         for campo, valor in campos.items():
             setattr(neologismo, campo, valor)
         neologismo.moderado_em = timezone.now()
         neologismo.moderado_por = request.user
         neologismo.save()
+
+        # O aviso ao autor é best-effort: `enviar_email` engole a exceção e
+        # loga, então o SMTP fora do ar não impede a moderação de acontecer.
+        if avisar is not None:
+            avisar(neologismo)
+
         serializer = self.get_serializer(neologismo)
         return Response(serializer.data)
 
@@ -262,6 +270,7 @@ class NeologismoViewSet(viewsets.ModelViewSet):
         neologismo = self.get_object()
         return self._registrar_moderacao(
             neologismo, request,
+            avisar=avisar_verbete_aprovado,
             status=Neologismo.APROVADO,
             motivo_rejeicao=None,
         )
@@ -279,6 +288,7 @@ class NeologismoViewSet(viewsets.ModelViewSet):
         neologismo = self.get_object()
         return self._registrar_moderacao(
             neologismo, request,
+            avisar=avisar_verbete_rejeitado,
             status=Neologismo.REJEITADO,
             motivo_rejeicao=entrada.validated_data['motivo_rejeicao'].strip(),
         )
@@ -290,6 +300,7 @@ class NeologismoViewSet(viewsets.ModelViewSet):
         neologismo = self.get_object()
         return self._registrar_moderacao(
             neologismo, request,
+            avisar=avisar_verbete_aprovado,
             status=Neologismo.APROVADO,
             motivo_rejeicao=None,
             reativado_em=timezone.now(),

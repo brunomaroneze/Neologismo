@@ -1,13 +1,20 @@
 from django.contrib.auth import authenticate, get_user_model
-from drf_spectacular.utils import extend_schema
+from django.contrib.auth.tokens import default_token_generator
+from django.utils.encoding import force_bytes
+from django.utils.http import urlsafe_base64_encode
+from drf_spectacular.utils import OpenApiResponse, extend_schema
 from rest_framework import generics, permissions, status
 from rest_framework.authtoken.models import Token
 from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 
+from config.emails import enviar_recuperacao_senha
+
 from .serializers import (
     LoginSerializer,
+    RecuperarSenhaSerializer,
+    RedefinirSenhaSerializer,
     RegistroSerializer,
     SessaoSerializer,
     UsuarioSerializer,
@@ -102,3 +109,64 @@ class LogoutView(APIView):
     def post(self, request):
         Token.objects.filter(user=request.user).delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class RecuperarSenhaView(generics.GenericAPIView):
+    """Dispara o e-mail com o link de redefinição.
+
+    Responde 200 mesmo quando o e-mail não existe na base. Confirmar quais
+    e-mails têm conta transformaria esta rota em um verificador de cadastro
+    para quem estiver varrendo uma lista de endereços.
+    """
+
+    serializer_class = RecuperarSenhaSerializer
+    permission_classes = [permissions.AllowAny]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'recuperar_senha'
+
+    @extend_schema(responses={200: OpenApiResponse(description='Pedido registrado.')})
+    def post(self, request):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        email = serializer.validated_data['email']
+
+        # Pode haver mais de uma conta com o mesmo e-mail em bases antigas,
+        # antes da checagem de unicidade no cadastro.
+        for usuario in Usuario.objects.filter(email__iexact=email, is_active=True):
+            enviar_recuperacao_senha(
+                usuario,
+                uid=urlsafe_base64_encode(force_bytes(usuario.pk)),
+                token=default_token_generator.make_token(usuario),
+            )
+
+        return Response({
+            'detail': 'Se existe uma conta com esse e-mail, o link de '
+                      'redefinição já está a caminho.'
+        })
+
+
+class RedefinirSenhaView(generics.GenericAPIView):
+    """Conclui a redefinição usando o uid e o token do link."""
+
+    serializer_class = RedefinirSenhaSerializer
+    permission_classes = [permissions.AllowAny]
+    throttle_classes = [ScopedRateThrottle]
+    # Escopo próprio, separado do pedido do link: quem pediu o e-mail algumas
+    # vezes precisa conseguir concluir a troca de senha.
+    throttle_scope = 'redefinir_senha'
+
+    @extend_schema(responses={200: SessaoSerializer})
+    def post(self, request):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        usuario = serializer.validated_data['usuario']
+        usuario.set_password(serializer.validated_data['password'])
+        usuario.save()
+
+        # Trocar a senha invalida os tokens antigos: se a conta foi acessada
+        # por outra pessoa, redefinir a senha precisa expulsá-la de fato.
+        Token.objects.filter(user=usuario).delete()
+        token = Token.objects.create(user=usuario)
+
+        return Response(dados_sessao(usuario, token))

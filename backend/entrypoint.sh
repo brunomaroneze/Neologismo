@@ -20,9 +20,14 @@ fi
 # com o schema defasado causa erros 500 difíceis de diagnosticar.
 python manage.py migrate --noinput
 
-# Coleta os estáticos do admin e do Swagger. Também não é mais silenciado:
-# se o collectstatic quebrar, o admin sobe sem CSS e ninguém percebe.
+# Tabela de cache usada pelo throttle do DRF. O comando é idempotente: se a
+# tabela já existe, ele avisa e segue. Sem ela, cada worker do gunicorn
+# contaria o rate limit por conta própria.
 if [ "${DEBUG:-False}" != "True" ]; then
+    python manage.py createcachetable
+
+    # Coleta os estáticos do admin e do Swagger. Não é silenciado: se o
+    # collectstatic quebrar, o admin sobe sem CSS e ninguém percebe.
     python manage.py collectstatic --noinput
 fi
 

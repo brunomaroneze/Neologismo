@@ -1,0 +1,21 @@
+Olá, {{ neologismo.autor.username }}.
+
+O verbete "{{ neologismo.titulo|lower }}" não foi publicado desta vez.
+O motivo registrado pela equipe:
+
+  {{ neologismo.motivo_rejeicao|default:"Sem motivo registrado." }}
+
+Isso não é uma porta fechada: se der para ajustar a definição ou anexar uma
+citação com fonte, vale enviar de novo.
+
+Enviar outra palavra:
+{{ url_enviar }}
+
+Seus envios ficam em Minhas palavras:
+{{ url_meus_envios }}
+
+--
+Neoscópio — dicionário colaborativo de neologismos
+{{ site_url }}
+Você recebeu este e-mail porque tem uma conta no Neoscópio.
+Este endereço não recebe respostas.

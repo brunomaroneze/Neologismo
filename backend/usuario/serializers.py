@@ -1,6 +1,8 @@
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
+from django.contrib.auth.tokens import default_token_generator
 from django.core.exceptions import ValidationError as DjangoValidationError
+from django.utils.http import urlsafe_base64_decode
 from rest_framework import serializers
 
 Usuario = get_user_model()
@@ -90,3 +92,49 @@ class SessaoSerializer(serializers.Serializer):
     username = serializers.CharField()
     email = serializers.EmailField(allow_blank=True)
     is_admin = serializers.BooleanField()
+
+
+class RecuperarSenhaSerializer(serializers.Serializer):
+    """Pedido de recuperação: recebe só o e-mail."""
+
+    email = serializers.EmailField()
+
+    def validate_email(self, value):
+        return value.strip().lower()
+
+
+class RedefinirSenhaSerializer(serializers.Serializer):
+    """Confirmação da redefinição, com o uid e o token vindos do link."""
+
+    uid = serializers.CharField()
+    token = serializers.CharField()
+    password = serializers.CharField(
+        write_only=True,
+        style={'input_type': 'password'},
+    )
+
+    def validate(self, dados):
+        # O uid é o pk do usuário em base64 (padrão do Django). Decodificamos
+        # aqui para validar a senha contra os atributos do usuário certo —
+        # UserAttributeSimilarityValidator precisa da instância.
+        try:
+            pk = urlsafe_base64_decode(dados['uid']).decode()
+            usuario = Usuario.objects.get(pk=pk)
+        except (TypeError, ValueError, OverflowError, Usuario.DoesNotExist):
+            raise serializers.ValidationError(
+                {'uid': 'Link inválido. Peça uma nova recuperação de senha.'}
+            )
+
+        if not default_token_generator.check_token(usuario, dados['token']):
+            raise serializers.ValidationError({
+                'token': 'Este link expirou ou já foi usado. '
+                         'Peça uma nova recuperação de senha.'
+            })
+
+        try:
+            validate_password(dados['password'], user=usuario)
+        except DjangoValidationError as erro:
+            raise serializers.ValidationError({'password': list(erro.messages)})
+
+        dados['usuario'] = usuario
+        return dados

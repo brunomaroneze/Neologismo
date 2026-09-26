@@ -311,3 +311,31 @@ export function getIsAdmin(): boolean {
     return false;
   }
 }
+
+// --- Recuperação de senha ---------------------------------------------------
+
+export function pedirRecuperacaoSenha(email: string): Promise<{ detail: string }> {
+  return requisitar("/senha/recuperar/", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email }),
+    fallback: "Falha ao pedir a recuperação de senha.",
+  });
+}
+
+export async function redefinirSenha(payload: {
+  uid: string;
+  token: string;
+  password: string;
+}): Promise<Sessao> {
+  // A API devolve uma sessão nova, então a pessoa já entra logada depois de
+  // redefinir — evita pedir a senha que ela acabou de digitar.
+  const sessao = await requisitar<Sessao>("/senha/redefinir/", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+    fallback: "Falha ao redefinir a senha.",
+  });
+  salvarSessao(sessao);
+  return sessao;
+}

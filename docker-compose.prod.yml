@@ -48,6 +48,20 @@ services:
       SECURE_SSL_REDIRECT: "False"
       SECURE_HSTS_SECONDS: ${SECURE_HSTS_SECONDS:-3600}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      # Base dos links que vão nos e-mails (recuperação de senha, moderação).
+      SITE_URL: https://${DOMINIO}
+      # E-mail: sem EMAIL_HOST o Django descarta os envios em silêncio em vez
+      # de travar cada request tentando um SMTP inexistente.
+      EMAIL_HOST: ${EMAIL_HOST:-}
+      EMAIL_PORT: ${EMAIL_PORT:-587}
+      EMAIL_HOST_USER: ${EMAIL_HOST_USER:-}
+      EMAIL_HOST_PASSWORD: ${EMAIL_HOST_PASSWORD:-}
+      EMAIL_USE_TLS: ${EMAIL_USE_TLS:-True}
+      DEFAULT_FROM_EMAIL: ${DEFAULT_FROM_EMAIL:-Neoscópio <nao-responda@${DOMINIO}>}
+      # Sentry: vazio desliga o SDK por completo.
+      SENTRY_DSN: ${SENTRY_DSN_BACKEND:-}
+      SENTRY_ENVIRONMENT: ${SENTRY_ENVIRONMENT:-production}
+      SENTRY_TRACES_SAMPLE_RATE: ${SENTRY_TRACES_SAMPLE_RATE:-0.0}
     volumes:
       - media_data:/app/media
     command: >
@@ -73,6 +87,12 @@ services:
         # Embutidos no bundle em tempo de build — precisam vir como args.
         NEXT_PUBLIC_API_URL: https://${DOMINIO}/api
         NEXT_PUBLIC_SITE_URL: https://${DOMINIO}
+        NEXT_PUBLIC_SENTRY_DSN: ${SENTRY_DSN_FRONTEND:-}
+        NEXT_PUBLIC_SENTRY_ENVIRONMENT: ${SENTRY_ENVIRONMENT:-production}
+        # Opcionais: presentes, sobem os sourcemaps para o Sentry no build.
+        SENTRY_ORG: ${SENTRY_ORG:-}
+        SENTRY_PROJECT: ${SENTRY_PROJECT:-}
+        SENTRY_AUTH_TOKEN: ${SENTRY_AUTH_TOKEN:-}
     restart: always
     depends_on:
       - backend

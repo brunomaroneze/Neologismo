@@ -1,3 +1,6 @@
+// No @sentry/nextjs 11 o withSentryConfig saiu do entrypoint principal e
+// vive no subpath "/config" — importar da raiz devolve undefined.
+import { withSentryConfig } from "@sentry/nextjs/config";
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
@@ -33,4 +36,24 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+/**
+ * O wrapper do Sentry é aplicado sempre, mas só faz algo com DSN definido.
+ * O upload de sourcemaps exige SENTRY_AUTH_TOKEN, SENTRY_ORG e SENTRY_PROJECT;
+ * sem eles o build segue normalmente e apenas não sobe os mapas — importante
+ * para o build não depender de segredos em quem faz fork do projeto.
+ */
+export default withSentryConfig(nextConfig, {
+  org: process.env.SENTRY_ORG,
+  project: process.env.SENTRY_PROJECT,
+  authToken: process.env.SENTRY_AUTH_TOKEN,
+
+  silent: !process.env.CI,
+
+  // Sourcemaps vão para o Sentry e são apagados do bundle público: sem isso o
+  // código-fonte original fica servido junto com o site.
+  sourcemaps: { deleteSourcemapsAfterUpload: true },
+
+  // Rota interna que faz proxy dos eventos, para que bloqueadores de anúncio
+  // não impeçam o relato de erros.
+  tunnelRoute: "/monitoring",
+});

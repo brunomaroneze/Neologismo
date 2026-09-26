@@ -83,12 +83,20 @@ function Formulario() {
             </div>
 
             <div>
-              <label
-                htmlFor="password"
-                className="mb-1.5 block text-sm font-medium text-texto"
-              >
-                Senha
-              </label>
+              <div className="mb-1.5 flex items-baseline justify-between gap-3">
+                <label
+                  htmlFor="password"
+                  className="block text-sm font-medium text-texto"
+                >
+                  Senha
+                </label>
+                <Link
+                  href="/recuperar-senha"
+                  className="text-xs font-medium text-marca hover:underline"
+                >
+                  Esqueci a senha
+                </Link>
+              </div>
               <div className="relative">
                 <input
                   id="password"

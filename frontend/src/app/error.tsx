@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import Link from "next/link";
+import * as Sentry from "@sentry/nextjs";
 
 export default function Erro({
   error,
@@ -11,9 +12,11 @@ export default function Erro({
   reset: () => void;
 }) {
   useEffect(() => {
-    // Em produção o texto do erro não aparece na tela; o console guarda o
-    // `digest`, que é o que permite achar o stack trace no log do servidor.
+    // Em produção o texto do erro não aparece na tela; o `digest` é o que
+    // permite achar o stack trace no log do servidor.
     console.error(error);
+    // Sem DSN configurado o SDK está inerte e esta chamada não faz nada.
+    Sentry.captureException(error);
   }, [error]);
 
   return (

@@ -115,7 +115,8 @@ ROOT_URLCONF = 'config.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        # Os templates de e-mail moram em backend/templates/emails/.
+        'DIRS': [BASE_DIR / 'templates'],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -201,6 +202,34 @@ MEDIA_URL = 'media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
 
+# --- Cache ------------------------------------------------------------------
+
+# O cache é onde o DRF guarda o histórico do throttle. Isso importa mais do
+# que parece: com o LocMemCache padrão, cada worker do gunicorn tem a sua
+# própria contagem, então um limite de "5/hora" na prática vira 5 por worker e
+# a proteção contra força bruta no login fica N vezes mais frouxa.
+#
+# A tabela no Postgres resolve sem subir outro serviço na VPS. O entrypoint
+# cria a tabela no start (`createcachetable` é idempotente). Se um dia houver
+# Redis, basta apontar CACHE_URL para ele.
+if DEBUG:
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+            'LOCATION': 'neoscopio-dev',
+        }
+    }
+else:
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.db.DatabaseCache',
+            'LOCATION': os.getenv('CACHE_TABLE', 'cache_neoscopio'),
+            'TIMEOUT': 300,
+            'OPTIONS': {'MAX_ENTRIES': 10000, 'CULL_FREQUENCY': 3},
+        }
+    }
+
+
 # --- Django REST Framework --------------------------------------------------
 
 REST_FRAMEWORK = {
@@ -232,6 +261,14 @@ REST_FRAMEWORK = {
         'cadastro': os.getenv('THROTTLE_CADASTRO', '10/hour'),
         'envio': os.getenv('THROTTLE_ENVIO', '30/hour'),
         'curtida': os.getenv('THROTTLE_CURTIDA', '120/min'),
+        # Pedir o link dispara e-mail: limite baixo, para a rota não ser
+        # usada para inundar a caixa de alguém.
+        'recuperar_senha': os.getenv('THROTTLE_RECUPERAR_SENHA', '5/hour'),
+        # Concluir a redefinição é outra ação: não envia e-mail e a pessoa já
+        # tem um token válido em mãos. Se compartilhasse o escopo de cima,
+        # quem pedisse alguns links ficaria sem conseguir trocar a senha.
+        # O limite continua existindo para dificultar força bruta no token.
+        'redefinir_senha': os.getenv('THROTTLE_REDEFINIR_SENHA', '20/hour'),
     },
 
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
@@ -326,3 +363,67 @@ LOGGING = {
         },
     },
 }
+
+
+# --- E-mail -----------------------------------------------------------------
+
+# Endereço público do frontend. Usado para montar os links que vão nos
+# e-mails (recuperação de senha, aviso de moderação) — sem ele o link sairia
+# apontando para localhost em produção.
+SITE_URL = os.getenv('SITE_URL', 'http://localhost:3000').rstrip('/')
+
+DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'Neoscópio <nao-responda@localhost>')
+SERVER_EMAIL = os.getenv('SERVER_EMAIL', DEFAULT_FROM_EMAIL)
+EMAIL_SUBJECT_PREFIX = ''
+
+EMAIL_HOST = os.getenv('EMAIL_HOST', '')
+
+if EMAIL_HOST:
+    EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+    EMAIL_PORT = env_int('EMAIL_PORT', 587)
+    EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', '')
+    EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', '')
+    EMAIL_USE_TLS = env_bool('EMAIL_USE_TLS', True)
+    EMAIL_USE_SSL = env_bool('EMAIL_USE_SSL', False)
+    EMAIL_TIMEOUT = env_int('EMAIL_TIMEOUT', 10)
+else:
+    # Sem EMAIL_HOST configurado o e-mail vai para o console (dev) ou é
+    # descartado (produção). Nunca deixamos o SMTP tentar um host inexistente:
+    # cada envio travaria a request até o timeout.
+    EMAIL_BACKEND = (
+        'django.core.mail.backends.console.EmailBackend'
+        if DEBUG
+        else 'django.core.mail.backends.dummy.EmailBackend'
+    )
+
+# Validade do link de redefinição de senha, em segundos (padrão: 2 horas).
+PASSWORD_RESET_TIMEOUT = env_int('PASSWORD_RESET_TIMEOUT', 60 * 60 * 2)
+
+
+# --- Sentry (monitoramento de erros) ----------------------------------------
+
+SENTRY_DSN = os.getenv('SENTRY_DSN', '')
+
+if SENTRY_DSN:
+    import sentry_sdk
+    from sentry_sdk.integrations.django import DjangoIntegration
+    from sentry_sdk.integrations.logging import LoggingIntegration
+
+    sentry_sdk.init(
+        dsn=SENTRY_DSN,
+        environment=os.getenv('SENTRY_ENVIRONMENT', 'production' if not DEBUG else 'development'),
+        release=os.getenv('SENTRY_RELEASE') or None,
+        integrations=[
+            DjangoIntegration(),
+            LoggingIntegration(level=None, event_level='ERROR'),
+        ],
+        # Amostragem de performance. 0.0 desliga o tracing e mantém só os
+        # erros, que é o suficiente para um projeto deste tamanho.
+        traces_sample_rate=float(os.getenv('SENTRY_TRACES_SAMPLE_RATE', '0.0')),
+        # PII fica de fora: os e-mails e nomes de usuário do banco não devem
+        # sair para um serviço terceiro sem necessidade.
+        send_default_pii=False,
+        # Não envia o corpo das requisições — um POST de cadastro levaria a
+        # senha em texto claro para o Sentry.
+        max_request_body_size='never',
+    )

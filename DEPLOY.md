@@ -108,7 +108,87 @@ docker compose -f docker-compose.prod.yml exec backend \
   python manage.py seed_fake_data
 ```
 
-## 5. Operação do dia a dia
+## 5. E-mail transacional
+
+O site usa e-mail para duas coisas: **recuperação de senha** e **aviso ao
+autor** quando o verbete dele é aprovado ou rejeitado.
+
+Sem `EMAIL_HOST` preenchido o site **não quebra** — o Django passa a descartar
+os envios em silêncio. O efeito prático é que ninguém consegue recuperar a
+senha e nenhum aviso de moderação chega. É um estado válido para homologação,
+não para produção.
+
+### Escolhendo um provedor
+
+Não use SMTP de Gmail pessoal: limite baixo e bloqueio quase garantido.
+Serviços transacionais têm plano gratuito suficiente para este projeto
+(Resend, Brevo, SendGrid, Amazon SES). Preencha no `.env`:
+
+```bash
+EMAIL_HOST=smtp.resend.com
+EMAIL_PORT=587
+EMAIL_HOST_USER=resend
+EMAIL_HOST_PASSWORD=<a chave da API>
+EMAIL_USE_TLS=True
+DEFAULT_FROM_EMAIL=Neoscópio <nao-responda@neoscopio.com.br>
+```
+
+### Autentique o domínio
+
+O `DEFAULT_FROM_EMAIL` precisa ser de um domínio que você autenticou no
+provedor, com os registros **SPF** e **DKIM** no DNS. Sem isso o e-mail sai,
+mas cai em spam — que é pior do que não enviar, porque parece funcionar.
+
+### Testando
+
+```bash
+# Dispara um e-mail de teste
+docker compose -f docker-compose.prod.yml exec backend python manage.py shell -c \
+  "from django.core.mail import send_mail; send_mail('Teste', 'Funcionou.', None, ['voce@exemplo.com'])"
+```
+
+Falhas de envio **nunca** derrubam a ação do usuário: elas vão para o log do
+container (e para o Sentry, se configurado). Para investigar:
+
+```bash
+docker compose -f docker-compose.prod.yml logs backend | grep -i "Falha ao enviar"
+```
+
+## 6. Monitoramento de erros (Sentry)
+
+Opcional, e desligado por padrão: sem DSN o SDK fica inerte e nada sai da
+aplicação.
+
+Crie dois projetos no Sentry — um Django e um Next.js — e preencha:
+
+```bash
+SENTRY_DSN_BACKEND=https://...    # privado, só o container vê
+SENTRY_DSN_FRONTEND=https://...   # vai para o bundle público (é o normal)
+SENTRY_ENVIRONMENT=production
+```
+
+O DSN do frontend ser público é o funcionamento esperado do Sentry no
+navegador: um DSN só permite enviar eventos, não ler nada.
+
+Para os stack traces apontarem para o seu código em vez do bundle minificado,
+adicione as três variáveis de sourcemap e **rebuilde o frontend**:
+
+```bash
+SENTRY_ORG=sua-org
+SENTRY_PROJECT=neoscopio-frontend
+SENTRY_AUTH_TOKEN=<token com permissão de release>
+
+docker compose -f docker-compose.prod.yml up -d --build frontend
+```
+
+Os sourcemaps são enviados ao Sentry e **apagados do bundle público** — sem
+isso, o código-fonte original ficaria servido junto com o site.
+
+O que fica de fora de propósito: `traces_sample_rate` é `0.0` (só erros, sem
+tracing), replay de sessão está desligado, e `send_default_pii` é `False` — os
+e-mails e nomes de usuário do banco não saem para um serviço terceiro.
+
+## 7. Operação do dia a dia
 
 ```bash
 # Atualizar para a última versão do código
@@ -131,7 +211,7 @@ docker compose -f docker-compose.prod.yml down
 > `down -v` **apaga o volume do Postgres junto**. Nunca use em produção sem
 > ter o backup em mãos.
 
-## 6. Backup do banco
+## 8. Backup do banco
 
 Sem isto, uma VPS perdida leva o dicionário inteiro.
 
@@ -155,7 +235,7 @@ Diário às 3h, via `crontab -e` do root:
 Copie os dumps para fora da VPS (S3, Backblaze, outra máquina) — backup que
 mora no mesmo disco não é backup.
 
-## 7. Nota sobre HSTS
+## 9. Nota sobre HSTS
 
 `SECURE_HSTS_SECONDS` manda o navegador **se recusar** a acessar o site por
 HTTP durante aquele período, e a diretiva fica memorizada no navegador de
@@ -164,7 +244,7 @@ cada visitante. Se o HTTPS quebrar depois, não há como desfazer rapidamente.
 Por isso o padrão aqui é `3600` (1 hora). Depois de alguns dias com o
 certificado renovando normalmente, suba para `31536000` (1 ano).
 
-## 8. Diagnóstico
+## 10. Diagnóstico
 
 | Sintoma | Causa provável |
 |---|---|
@@ -175,6 +255,8 @@ certificado renovando normalmente, suba para `31536000` (1 ano).
 | Erro de CORS no navegador | Idem: `CORS_ALLOWED_ORIGINS` é derivado de `DOMINIO` |
 | Frontend chamando `localhost:8000` | A imagem foi buildada sem o build-arg. Rebuild com `--build` |
 | Admin sem CSS | `collectstatic` falhou no start — veja `logs backend` |
+| Rate limit mais frouxo que o configurado | A tabela de cache não foi criada. Rode `exec backend python manage.py createcachetable` |
+| E-mail não chega | `EMAIL_HOST` vazio, ou domínio sem SPF/DKIM (caiu em spam) |
 
 ```bash
 # Ver a configuração final que o compose vai aplicar
@@ -188,13 +270,15 @@ docker compose -f docker-compose.prod.yml exec backend \
   python manage.py check --deploy
 ```
 
-## 9. O que ainda não está coberto
+## 11. O que ainda não está coberto
 
 Deixado de fora de propósito, para você decidir se precisa:
 
-- **E-mail transacional** (recuperação de senha, aviso de moderação): exige um
-  provedor SMTP e as variáveis `EMAIL_*` do Django.
-- **Monitoramento de erros** (Sentry ou equivalente): hoje os erros só vão
-  para o log do container.
 - **CDN** na frente do Caddy.
-- **Réplica do banco.** O backup do passo 6 é a rede de proteção atual.
+- **Réplica do banco.** O backup do passo 8 é a rede de proteção atual.
+- **Deploy automático.** O CI valida cada push (testes, lint, build das
+  imagens), mas não publica nada: subir para a VPS continua sendo
+  `git pull && docker compose -f docker-compose.prod.yml up -d --build`.
+- **Fila de tarefas.** Os e-mails são enviados na própria request. No volume
+  deste projeto isso é suficiente; se um dia o envio ficar lento, o caminho é
+  Celery ou django-q.

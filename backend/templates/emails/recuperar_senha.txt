@@ -1,0 +1,16 @@
+Olá, {{ usuario.username }}.
+
+Recebemos um pedido para redefinir a senha da sua conta. Abra o endereço
+abaixo para escolher uma nova:
+
+{{ url_redefinicao }}
+
+O link vale por {{ validade_horas }} hora{{ validade_horas|pluralize }} e só pode ser usado uma vez.
+
+Se não foi você que pediu, ignore este e-mail — sua senha atual continua
+valendo e nada foi alterado.
+
+--
+Neoscópio — dicionário colaborativo de neologismos
+{{ site_url }}
+Este endereço não recebe respostas.
