@@ -293,6 +293,18 @@ export default function AdminPainel() {
                   <span className="rounded-full bg-marca-suave px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-marca">
                     {verbete.classe_gramatical}
                   </span>
+                  {verbete.tipologia && (
+                    <>
+                      <span aria-hidden="true">·</span>
+                      <span>{verbete.tipologia}</span>
+                    </>
+                  )}
+                  {verbete.elaborado_por && (
+                    <>
+                      <span aria-hidden="true">·</span>
+                      <span>elaborado por {verbete.elaborado_por}</span>
+                    </>
+                  )}
                   <span aria-hidden="true">·</span>
                   <time dateTime={verbete.data_criacao}>
                     {new Date(verbete.data_criacao).toLocaleDateString("pt-BR")}

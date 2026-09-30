@@ -119,6 +119,15 @@ class VisibilidadeTests(SemThrottleMixin, APITestCase):
         resposta = self.client.get(f'/api/neologismos/{self.pendente.pk}/')
         self.assertEqual(resposta.status_code, status.HTTP_404_NOT_FOUND)
 
+    def test_campos_da_planilha_importada_estao_na_api(self):
+        """Os verbetes vindos do CSV trazem tipologia, elaborado_por e
+        data_registro. Se o serializer deixar de expor esses campos, os 139
+        verbetes importados perdem informação na interface sem nenhum erro."""
+        resposta = self.client.get('/api/neologismos/')
+        verbete = resposta.data['results'][0]
+        for campo in ('tipologia', 'elaborado_por', 'data_registro'):
+            self.assertIn(campo, verbete)
+
     def test_resposta_publica_nao_expoe_ids_de_quem_curtiu(self):
         resposta = self.client.get('/api/neologismos/')
         verbete = resposta.data['results'][0]

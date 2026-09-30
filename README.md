@@ -80,7 +80,7 @@ O CI (`.github/workflows/ci.yml`) roda tudo isso em cada push e PR. Para rodar
 localmente:
 
 ```bash
-# Backend — 66 testes (permissões, moderação, curtidas, validação, busca,
+# Backend — 69 testes (permissões, moderação, curtidas, validação, busca,
 # recuperação de senha, e-mails)
 cd backend && python manage.py test
 

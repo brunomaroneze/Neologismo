@@ -3,11 +3,13 @@
 import { use, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import {
+  Archive,
   ArrowLeft,
   CalendarDays,
   Clock3,
   ExternalLink,
   Link2,
+  PenLine,
   Quote,
   User,
 } from "lucide-react";
@@ -203,6 +205,11 @@ export default function NeologismoDetalhe({
           <span className="inline-flex items-center rounded-full bg-marca-suave px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-marca">
             {verbete.classe_gramatical}
           </span>
+          {verbete.tipologia && (
+            <span className="inline-flex items-center rounded-full border border-marca/30 px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-marca">
+              {verbete.tipologia}
+            </span>
+          )}
           {verbete.tags.map((tag) => (
             <Link
               key={tag}
@@ -236,6 +243,25 @@ export default function NeologismoDetalhe({
                 <time dateTime={verbete.data_criacao}>{criadoEm}</time>
               </dd>
             </div>
+            {verbete.elaborado_por && (
+              <div className="flex items-center gap-1.5">
+                <dt className="sr-only">Elaborado por</dt>
+                <PenLine className="h-3.5 w-3.5" aria-hidden="true" />
+                <dd>elaborado por {verbete.elaborado_por}</dd>
+              </div>
+            )}
+            {verbete.data_registro && (
+              <div className="flex items-center gap-1.5">
+                <dt className="sr-only">Registrado na fonte em</dt>
+                <Archive className="h-3.5 w-3.5" aria-hidden="true" />
+                <dd>
+                  registrado em{" "}
+                  <time dateTime={verbete.data_registro}>
+                    {new Date(verbete.data_registro).toLocaleDateString("pt-BR")}
+                  </time>
+                </dd>
+              </div>
+            )}
             {verbete.reativado_em && (
               <div className="flex items-center gap-1.5">
                 <dt className="sr-only">Reativado em</dt>
