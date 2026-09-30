@@ -1,10 +1,13 @@
+.venv/
 venv/
 __pycache__/
-*.pyc
-*.pyo
+*.py[cod]
 *.sqlite3
 .env
+.env.*
+staticfiles/
+media/
+.pytest_cache/
+.ruff_cache/
 .git/
 .gitignore
-*.md
-doc.txt

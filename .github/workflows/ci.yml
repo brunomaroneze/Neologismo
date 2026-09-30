@@ -1,0 +1,180 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+# Um push novo no mesmo branch cancela a execução anterior, em vez de manter
+# duas rodando em paralelo pelo mesmo resultado.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Backend (Django)
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        # A imagem precisa casar com a de produção: o ArrayField de tags e o
+        # filtro por tags são específicos do Postgres.
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: neoscopio
+          POSTGRES_PASSWORD: senha_ci
+          POSTGRES_DB: neoscopio_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U neoscopio"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DEBUG: 'True'
+      SECRET_KEY: chave-de-ci-sem-valor-em-producao
+      DATABASE_URL: postgres://neoscopio:senha_ci@localhost:5432/neoscopio_test
+      ALLOWED_HOSTS: localhost,127.0.0.1
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Instalar dependências
+        working-directory: backend
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Checagem do sistema
+        working-directory: backend
+        run: python manage.py check
+
+      - name: Migrações não têm alterações pendentes
+        working-directory: backend
+        # Pega o caso de alguém mudar models.py e esquecer de gerar a migração
+        # — o deploy quebraria só na hora do migrate em produção.
+        run: python manage.py makemigrations --check --dry-run
+
+      - name: Testes
+        working-directory: backend
+        run: python manage.py test --verbosity 2
+
+      - name: Checklist de produção
+        working-directory: backend
+        env:
+          DEBUG: 'False'
+          SECRET_KEY: ${{ github.sha }}-${{ github.run_id }}-chave-longa-o-suficiente-para-o-check-passar
+          ALLOWED_HOSTS: neoscopio.exemplo.com
+          CORS_ALLOWED_ORIGINS: https://neoscopio.exemplo.com
+          CSRF_TRUSTED_ORIGINS: https://neoscopio.exemplo.com
+        # W021 (HSTS preload) é aceito de propósito: preload é irreversível e
+        # a decisão está documentada no DEPLOY.md.
+        run: python manage.py check --deploy --fail-level ERROR
+
+      - name: Schema da API é válido
+        working-directory: backend
+        run: python manage.py spectacular --file /dev/null --validate
+
+  frontend:
+    name: Frontend (Next.js)
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Instalar dependências
+        working-directory: frontend
+        run: npm ci
+
+      - name: Tipos
+        working-directory: frontend
+        run: npx tsc --noEmit
+
+      - name: Lint
+        working-directory: frontend
+        run: npx eslint src --max-warnings 0
+
+      - name: Build
+        working-directory: frontend
+        env:
+          # Valor de fachada: o build só precisa de algo bem-formado, já que
+          # NEXT_PUBLIC_* é embutido no bundle em tempo de compilação.
+          NEXT_PUBLIC_API_URL: https://neoscopio.exemplo.com/api
+          NEXT_PUBLIC_SITE_URL: https://neoscopio.exemplo.com
+        run: npm run build
+
+  auditoria:
+    name: Auditoria de dependências
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: npm audit (falha em alta ou crítica)
+        working-directory: frontend
+        run: npm audit --audit-level=high
+
+  imagens:
+    name: Imagens Docker de produção
+    runs-on: ubuntu-latest
+    # Só roda se o código já passou: buildar imagem de um commit quebrado é
+    # gastar minuto de runner por nada.
+    needs: [backend, frontend]
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build da imagem do backend
+        uses: docker/build-push-action@v6
+        with:
+          context: ./backend
+          target: final
+          push: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build da imagem do frontend
+        uses: docker/build-push-action@v6
+        with:
+          context: ./frontend
+          target: final
+          push: false
+          build-args: |
+            NEXT_PUBLIC_API_URL=https://neoscopio.exemplo.com/api
+            NEXT_PUBLIC_SITE_URL=https://neoscopio.exemplo.com
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Compose de produção é válido
+        env:
+          DOMINIO: neoscopio.exemplo.com
+          EMAIL_ACME: ci@exemplo.com
+          SECRET_KEY: chave-de-ci
+          POSTGRES_USER: neoscopio
+          POSTGRES_PASSWORD: senha_ci
+          POSTGRES_DB: neoscopio
+        run: docker compose -f docker-compose.prod.yml config --quiet

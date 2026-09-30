@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import Header from "@/components/Header";
 import { BookMarked, ExternalLink } from "lucide-react";
 
 type Reference = {
@@ -62,7 +61,6 @@ const references: Reference[] = [
 export default function ReferenciasPage() {
   return (
     <>
-      <Header />
 
       {/* Hero */}
       <section className="bg-gradient-to-br from-white to-purple-light/20 py-14 px-4">
