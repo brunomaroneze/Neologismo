@@ -46,7 +46,7 @@ class RegistroSerializer(serializers.ModelSerializer):
         try:
             validate_password(value)
         except DjangoValidationError as erro:
-            raise serializers.ValidationError(list(erro.messages))
+            raise serializers.ValidationError(list(erro.messages)) from erro
         return value
 
     def create(self, validated_data):
@@ -120,10 +120,13 @@ class RedefinirSenhaSerializer(serializers.Serializer):
         try:
             pk = urlsafe_base64_decode(dados['uid']).decode()
             usuario = Usuario.objects.get(pk=pk)
-        except (TypeError, ValueError, OverflowError, Usuario.DoesNotExist):
+        except (TypeError, ValueError, OverflowError, Usuario.DoesNotExist) as erro:
+            # `from erro` preserva a causa no traceback: um uid corrompido e
+            # um usuário apagado chegam aqui pelo mesmo caminho, e no log a
+            # diferença importa.
             raise serializers.ValidationError(
                 {'uid': 'Link inválido. Peça uma nova recuperação de senha.'}
-            )
+            ) from erro
 
         if not default_token_generator.check_token(usuario, dados['token']):
             raise serializers.ValidationError({
@@ -134,7 +137,9 @@ class RedefinirSenhaSerializer(serializers.Serializer):
         try:
             validate_password(dados['password'], user=usuario)
         except DjangoValidationError as erro:
-            raise serializers.ValidationError({'password': list(erro.messages)})
+            raise serializers.ValidationError(
+                {'password': list(erro.messages)}
+            ) from erro
 
         dados['usuario'] = usuario
         return dados
