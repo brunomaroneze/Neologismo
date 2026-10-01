@@ -14,6 +14,11 @@ on:
     branches: [develop]
   pull_request:
     branches: [main, develop]
+  # Disparo manual pela aba Actions, em qualquer branch. Útil antes de abrir
+  # o PR: o push numa branch de feature, por si só, não roda o CI — é de
+  # propósito, para não gastar runner duas vezes no mesmo commit depois que
+  # o PR existe.
+  workflow_dispatch:
   workflow_call:
     inputs:
       pular_imagens:
