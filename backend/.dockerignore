@@ -11,3 +11,11 @@ media/
 .ruff_cache/
 .git/
 .gitignore
+
+# Ferramentas de CI e artefatos de cobertura: a imagem instala só
+# requirements.txt, então nada disso tem o que fazer no contexto de build.
+requirements-dev.txt
+pyproject.toml
+.coverage
+coverage-backend.xml
+htmlcov/

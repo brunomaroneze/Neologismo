@@ -1,0 +1,27 @@
+# Override de ENTREGA, usado junto do docker-compose.prod.yml:
+#
+#   docker compose -f docker-compose.prod.yml -f docker-compose.deploy.yml pull
+#   docker compose -f docker-compose.prod.yml -f docker-compose.deploy.yml up -d
+#
+# A diferença em relação a subir só o compose de produção é de onde vem a
+# imagem. Sem este arquivo, a VPS compila backend e frontend na hora do
+# deploy: gasta CPU e RAM da máquina que está servindo o site, demora, e o
+# que roda em produção nunca é exatamente o que a CI testou — é um build
+# novo, feito num ambiente diferente.
+#
+# Com ele, a VPS baixa a imagem que o cd.yml construiu e publicou no GHCR
+# depois de os testes passarem. O deploy vira um `pull` e um `up`.
+#
+# As duas variáveis são obrigatórias de propósito: um deploy sem tag definida
+# subiria silenciosamente a última imagem que estivesse no cache local.
+
+services:
+  backend:
+    image: "${IMAGEM_BACKEND:?defina IMAGEM_BACKEND, ex. ghcr.io/dono/repo-backend:sha-abc123}"
+    # `always` garante que o `up` use a imagem do registry e não recompile a
+    # partir do `build:` herdado do compose de produção.
+    pull_policy: always
+
+  frontend:
+    image: "${IMAGEM_FRONTEND:?defina IMAGEM_FRONTEND, ex. ghcr.io/dono/repo-frontend:sha-abc123}"
+    pull_policy: always

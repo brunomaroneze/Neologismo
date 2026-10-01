@@ -19,6 +19,10 @@ internet ──▶ Caddy :80/:443 ──┬──▶ backend:8000   (/api, /admi
   o IP da VPS. **Configure o DNS antes de subir**: o Caddy só consegue emitir
   o certificado se o domínio já resolver para esta máquina.
 - Portas 80 e 443 abertas no firewall.
+- O Postgres do Compose é a imagem oficial, onde o usuário da aplicação pode
+  instalar extensões — a busca sem acento depende da extensão `unaccent`, que
+  a migração `0008_unaccent` liga sozinha. Se você trocar por um Postgres
+  gerenciado, habilite `unaccent` no painel antes do primeiro `migrate`.
 
 ```bash
 # Docker + plugin do Compose
@@ -235,7 +239,127 @@ Diário às 3h, via `crontab -e` do root:
 Copie os dumps para fora da VPS (S3, Backblaze, outra máquina) — backup que
 mora no mesmo disco não é backup.
 
-## 9. Nota sobre HSTS
+## 9. Deploy automático pelo GitHub Actions
+
+As etapas acima são o deploy manual, e continuam valendo — é o caminho a usar
+na primeira subida e sempre que algo der errado. Esta seção é a automação de
+tudo isso: o workflow `.github/workflows/cd.yml`.
+
+### O que ele faz
+
+```
+push na main  ->  Qualidade  ->  Publicar imagens  ->  Deploy na VPS  ->  Verificação
+                  (ci.yml)       (GHCR)               (ssh)              (curl)
+```
+
+1. **Qualidade** — chama o `ci.yml` inteiro: lint, 82 testes do backend com
+   cobertura, tipos, lint e testes do frontend, build do Next, auditoria de
+   CVE e validação dos arquivos de Compose. Qualquer falha aqui para a
+   pipeline antes de ela tocar a VPS.
+2. **Publicar imagens** — constrói backend e frontend e publica no GitHub
+   Container Registry (`ghcr.io`), com a tag `sha-<commit>`.
+3. **Deploy na VPS** — entra por SSH, sincroniza a configuração com o commit,
+   baixa as imagens e sobe. As migrações rodam no entrypoint do backend, como
+   em qualquer start.
+4. **Verificação** — de fora, pela internet: `/api/health/` com banco
+   acessível, a Home respondendo 200 e o `sitemap.xml` com URLs.
+
+A diferença prática em relação ao `up -d --build` manual é que a VPS deixa de
+compilar: ela baixa a imagem que a CI já construiu e testou. Deploy mais
+rápido, sem consumir CPU da máquina que está servindo o site, e o que roda em
+produção é exatamente o artefato que passou nos testes.
+
+### Preparar a VPS
+
+Crie um usuário só para o deploy, com acesso ao Docker e nada além disso:
+
+```bash
+# Na VPS, como root
+adduser --disabled-password --gecos "" deploy
+usermod -aG docker deploy
+chown -R deploy:deploy /caminho/para/neoscopio
+```
+
+> Pertencer ao grupo `docker` equivale a ter root na máquina — é inerente ao
+> Docker, não uma falha desta configuração. O que o usuário separado dá é
+> rastreabilidade (dá para ver o que o deploy fez) e a possibilidade de
+> revogar só essa chave sem mexer na sua.
+
+Na **sua máquina**, gere o par de chaves do deploy:
+
+```bash
+ssh-keygen -t ed25519 -f ~/.ssh/neoscopio_deploy -C "deploy-neoscopio" -N ""
+
+# Instale a chave pública na VPS
+ssh-copy-id -i ~/.ssh/neoscopio_deploy.pub deploy@SEU_IP
+
+# Pegue a identidade do servidor (evita ataque de man-in-the-middle no CI)
+ssh-keyscan -p 22 SEU_IP
+```
+
+### Cadastrar no GitHub
+
+Em **Settings > Environments**, crie o environment `producao`. É nele que os
+segredos de produção ficam, e é onde se liga **Required reviewers** se você
+quiser que todo deploy espere uma aprovação sua.
+
+**Secrets** (Settings > Environments > producao > Secrets):
+
+| Secret | Valor |
+|---|---|
+| `SSH_HOST` | IP ou hostname da VPS |
+| `SSH_USER` | `deploy` |
+| `SSH_PRIVATE_KEY` | conteúdo de `~/.ssh/neoscopio_deploy` (a chave **privada**, inteira, com as linhas `BEGIN`/`END`) |
+| `SSH_HOST_KEY` | a saída do `ssh-keyscan` acima |
+| `SENTRY_DSN_FRONTEND` | opcional — DSN do projeto de frontend |
+| `SENTRY_AUTH_TOKEN` | opcional — para subir os sourcemaps |
+
+**Variables** (mesma tela, aba Variables — não são segredo, aparecem no log):
+
+| Variable | Valor |
+|---|---|
+| `DOMINIO` | `neoscopio.com.br` |
+| `CAMINHO_PROJETO` | caminho do repositório na VPS, ex. `/home/deploy/neoscopio` |
+| `SSH_PORT` | opcional, padrão `22` |
+| `SENTRY_ORG` / `SENTRY_PROJECT` | opcionais, junto do token acima |
+
+`DOMINIO` é variable e não secret porque ele é embutido no bundle do frontend
+em tempo de build: está no HTML de qualquer forma.
+
+Falta algum dos obrigatórios? O primeiro passo do job de deploy para e diz
+exatamente qual — ele não tenta conectar sem isso.
+
+### Como disparar
+
+- **Automático:** todo push na `main`.
+- **Versão marcada:** uma tag `v*` (ex. `v1.2.0`) também publica as imagens
+  como `1.2.0`, `1.2` e `latest`.
+- **À mão:** aba **Actions > Entrega > Run workflow**, escolhendo o branch ou
+  a tag. A opção *"Só publicar as imagens"* constrói sem mexer na VPS.
+
+### Rollback
+
+As imagens ficam no GHCR com a tag do commit, então voltar é subir a imagem
+anterior — não precisa esperar build nenhum:
+
+```bash
+# Na VPS, com o commit que funcionava
+export IMAGEM_BACKEND=ghcr.io/brunomaroneze/neologismo-backend:sha-<commit>
+export IMAGEM_FRONTEND=ghcr.io/brunomaroneze/neologismo-frontend:sha-<commit>
+
+docker compose -f docker-compose.prod.yml -f docker-compose.deploy.yml up -d
+```
+
+> **Atenção:** rollback de imagem não desfaz migração de banco. Se o commit
+> defeituoso aplicou uma migração destrutiva, o caminho é o backup do passo 8.
+
+### Primeira vez
+
+A automação não substitui a primeira subida: o `.env` de produção, o volume
+do Postgres e o certificado do Caddy precisam existir antes. Faça os passos
+1 a 4 à mão, confirme o site no ar, e só então use a pipeline.
+
+## 10. Nota sobre HSTS
 
 `SECURE_HSTS_SECONDS` manda o navegador **se recusar** a acessar o site por
 HTTP durante aquele período, e a diretiva fica memorizada no navegador de
@@ -244,7 +368,7 @@ cada visitante. Se o HTTPS quebrar depois, não há como desfazer rapidamente.
 Por isso o padrão aqui é `3600` (1 hora). Depois de alguns dias com o
 certificado renovando normalmente, suba para `31536000` (1 ano).
 
-## 10. Diagnóstico
+## 11. Diagnóstico
 
 | Sintoma | Causa provável |
 |---|---|
@@ -257,6 +381,10 @@ certificado renovando normalmente, suba para `31536000` (1 ano).
 | Admin sem CSS | `collectstatic` falhou no start — veja `logs backend` |
 | Rate limit mais frouxo que o configurado | A tabela de cache não foi criada. Rode `exec backend python manage.py createcachetable` |
 | E-mail não chega | `EMAIL_HOST` vazio, ou domínio sem SPF/DKIM (caiu em spam) |
+| Migração falha em `CREATE EXTENSION unaccent` | O usuário do Postgres não pode instalar extensões. Na imagem oficial ele pode; em Postgres gerenciado, habilite `unaccent` pelo painel antes do `migrate` |
+| Busca voltou a diferenciar acento | A migração `0008_unaccent` não rodou. Confirme com `exec backend python manage.py showmigrations neologismo` |
+| `sitemap.xml` vazio com o site no ar | O frontend não alcança o backend internamente. Confira `API_URL_INTERNA` no compose e `exec frontend wget -qO- http://backend:8000/api/health/` |
+| Filtros da Home desatualizados | Cache de facetas. É invalidado a cada escrita; para forçar, `exec backend python manage.py shell -c "from django.core.cache import cache; cache.clear()"` |
 
 ```bash
 # Ver a configuração final que o compose vai aplicar
@@ -270,15 +398,12 @@ docker compose -f docker-compose.prod.yml exec backend \
   python manage.py check --deploy
 ```
 
-## 11. O que ainda não está coberto
+## 12. O que ainda não está coberto
 
 Deixado de fora de propósito, para você decidir se precisa:
 
 - **CDN** na frente do Caddy.
 - **Réplica do banco.** O backup do passo 8 é a rede de proteção atual.
-- **Deploy automático.** O CI valida cada push (testes, lint, build das
-  imagens), mas não publica nada: subir para a VPS continua sendo
-  `git pull && docker compose -f docker-compose.prod.yml up -d --build`.
 - **Fila de tarefas.** Os e-mails são enviados na própria request. No volume
   deste projeto isso é suficiente; se um dia o envio ficar lento, o caminho é
   Celery ou django-q.
