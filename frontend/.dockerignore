@@ -9,3 +9,7 @@ npm-debug.log*
 .git/
 .gitignore
 README.md
+
+# Artefatos de teste: não entram no build da imagem.
+coverage/
+tsconfig.tsbuildinfo

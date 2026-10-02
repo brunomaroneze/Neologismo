@@ -1,6 +1,8 @@
 # Neoscópio
 
 [![CI](../../actions/workflows/ci.yml/badge.svg)](../../actions/workflows/ci.yml)
+[![Entrega](../../actions/workflows/cd.yml/badge.svg)](../../actions/workflows/cd.yml)
+[![CodeQL](../../actions/workflows/codeql.yml/badge.svg)](../../actions/workflows/codeql.yml)
 
 Dicionário colaborativo dos neologismos do português brasileiro. Qualquer
 pessoa cadastrada envia uma palavra; a equipe modera; o que é aprovado entra
@@ -76,29 +78,61 @@ NEXT_PUBLIC_API_URL=http://localhost:8000/api npm run dev
 
 ## Testes e verificações
 
-O CI (`.github/workflows/ci.yml`) roda tudo isso em cada push e PR. Para rodar
-localmente:
-
 ```bash
-# Backend — 69 testes (permissões, moderação, curtidas, validação, busca,
-# recuperação de senha, e-mails)
-cd backend && python manage.py test
+# Backend — 82 testes (permissões, moderação, curtidas, validação, busca sem
+# acento, cache de facetas, recuperação de senha, e-mails)
+cd backend
+pip install -r requirements.txt -r requirements-dev.txt
 
-# Nenhuma migração pendente e checklist de produção
+ruff check .                                  # lint
+coverage run manage.py test && coverage report # testes + piso de 80%
 python manage.py makemigrations --check --dry-run
 python manage.py check --deploy
 
-# Frontend
+# Frontend — 27 testes (tradução de erro HTTP, sessão, query string, sitemap)
 cd frontend
-npx tsc --noEmit
-npx eslint src --max-warnings 0
+npm run lint
+npm run typecheck
+npm run test
 npm run build
-npm audit --audit-level=high
 ```
 
-O CI também builda as duas imagens Docker de produção e valida o
-`docker-compose.prod.yml`, para que um erro de Dockerfile apareça no PR e não
-no deploy.
+## Pipeline
+
+Duas workflows, encadeadas:
+
+**`ci.yml` — qualidade.** Roda em todo PR e em push na `develop`:
+
+| Job | O que verifica |
+|---|---|
+| Backend | ruff, `manage.py check`, migrações pendentes, testes com cobertura mínima, checklist de produção do Django, validade do schema OpenAPI |
+| Frontend | tipos, ESLint, testes com cobertura, build do Next |
+| Auditoria | `npm audit` e `pip-audit` — falha em CVE conhecida |
+| Compose | os três arquivos de Compose são válidos |
+| Imagens | as duas imagens Docker de produção compilam |
+
+**`cd.yml` — entrega.** Roda em push na `main`, em tag `v*` ou à mão:
+
+```
+Qualidade  ->  Publicar imagens  ->  Deploy na VPS  ->  Verificação
+(ci.yml)       (ghcr.io, tag        (ssh, pull +        (health, home
+                sha-<commit>)        up -d)              e sitemap)
+```
+
+A primeira etapa é o `ci.yml` inteiro, chamado como workflow reutilizável:
+não existe caminho de deploy que pule os testes. O deploy só acontece com os
+secrets cadastrados no environment `producao`; sem eles o job para com a
+mensagem do que falta, antes de tentar conectar. O passo a passo da
+configuração está na seção 9 do [DEPLOY.md](DEPLOY.md).
+
+O que ainda falta de teste: os hooks de React (`useAuth`, `useNeologismos`)
+entram no relatório de cobertura em 0%. Testá-los pede
+`@testing-library/react`; a cobertura de frontend fica em `src/lib`, onde
+está a tradução de erro da API e o controle de sessão.
+
+Completam a pipeline o **CodeQL** (análise estática de segurança em PR e
+semanalmente) e o **Dependabot** (atualização agrupada de pip, npm, actions e
+imagens Docker, com o CI validando cada PR).
 
 ## Estrutura
 
@@ -110,11 +144,13 @@ backend/
   usuario/        usuário customizado, cadastro, login, logout, senha
 frontend/
   instrumentation*.ts  inicialização do Sentry (cliente e servidor)
+  vitest.config.ts     configuração dos testes
   src/
-    app/          rotas (App Router)
+    app/          rotas (App Router), sitemap.ts e robots.ts
     components/   Header, Footer, cards, toast, botão de curtir
     hooks/        useAuth, useNeologismos
-    lib/api.ts    cliente da API e sessão
+    lib/api.ts         cliente da API e sessão (usado no navegador)
+    lib/api-servidor.ts leituras públicas feitas no servidor (sitemap, OG tags)
     types/        contratos compartilhados com a API
 ```
 
@@ -143,11 +179,36 @@ Listagens aceitam `?search=`, `?tag=`, `?classe=`,
 `?ordering=recentes|antigos|populares|alfabetica`, `?page=` e `?page_size=`, e
 respondem paginado:
 
+`?search=` **ignora acento e caixa** (via extensão `unaccent` do Postgres) e
+procura no título, na definição, no exemplo de uso e nas tags: `?search=voce`
+encontra "Vocezinho". `?tag=` aceita a tag sem acento — `?tag=internetes`
+casa com `Internetês`.
+
+
 ```json
 { "count": 42, "page": 1, "total_pages": 2, "next": "...", "previous": null, "results": [] }
 ```
 
 Autenticação por token no header: `Authorization: Token <chave>`.
+
+## Descoberta e compartilhamento
+
+Um dicionário público só serve se as pessoas acharem os verbetes. Três coisas
+cobrem isso:
+
+- **`/sitemap.xml`** lista todos os verbetes aprovados, com a data da última
+  alteração de cada um. É gerado a partir da API, então um verbete aprovado
+  hoje entra no sitemap sem rebuild.
+- **`/robots.txt`** libera o acervo e mantém fora do índice as rotas que só
+  levariam a uma tela de login (painel, envio, conta).
+- **Cada verbete tem seus próprios metadados** (`title`, `description`, OG e
+  Twitter cards), montados no servidor em
+  `src/app/neologismo/[id]/layout.tsx`. Um link colado no WhatsApp mostra a
+  palavra e a definição, não o título genérico do site.
+
+As duas primeiras rotas dependem de o Next alcançar o Django pela rede
+interna (`API_URL_INTERNA`). A pipeline de entrega confere o sitemap depois de
+cada deploy, porque é o tipo de coisa que quebra em silêncio.
 
 ## E-mail e monitoramento
 

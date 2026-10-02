@@ -1,0 +1,19 @@
+# Revisores padrão. O GitHub pede revisão de quem está listado aqui sempre
+# que um PR toca os arquivos correspondentes.
+#
+# Para a regra virar obrigatória, é preciso ligar "Require review from Code
+# Owners" na proteção do branch main (Settings > Branches).
+
+# Qualquer arquivo, se nenhuma regra mais específica casar.
+*                       @brunomaroneze
+
+# Infraestrutura e pipeline: um erro aqui derruba o site ou vaza segredo.
+/.github/               @brunomaroneze
+/docker-compose*.yml    @brunomaroneze
+/Caddyfile              @brunomaroneze
+/DEPLOY.md              @brunomaroneze
+/backend/Dockerfile     @brunomaroneze
+/frontend/Dockerfile    @brunomaroneze
+
+# Configuração do Django: é onde moram segurança, CORS e throttle.
+/backend/config/settings.py  @brunomaroneze

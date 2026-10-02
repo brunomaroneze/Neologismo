@@ -94,6 +94,13 @@ services:
         SENTRY_PROJECT: ${SENTRY_PROJECT:-}
         SENTRY_AUTH_TOKEN: ${SENTRY_AUTH_TOKEN:-}
     restart: always
+    environment:
+      # Endereço usado só pelo Next no servidor (sitemap.xml e as OG tags de
+      # cada verbete). Diferente de NEXT_PUBLIC_API_URL, é lido em runtime e
+      # fala direto com o backend pela rede do Compose — o container não
+      # precisa sair para a internet e voltar pelo Caddy só para montar o
+      # preview de um link.
+      API_URL_INTERNA: http://backend:8000/api
     depends_on:
       - backend
 

@@ -1,0 +1,63 @@
+# Configuração das ferramentas de desenvolvimento do backend.
+#
+# O projeto não é empacotado (roda via manage.py / gunicorn), então aqui não
+# há [project]: o arquivo existe apenas para o ruff e o coverage.
+
+[tool.ruff]
+target-version = "py313"
+line-length = 100
+extend-exclude = ["migrations"]
+
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle: erros
+    "W",    # pycodestyle: avisos
+    "F",    # pyflakes: import não usado, variável não usada, nome inexistente
+    "I",    # isort: ordem dos imports
+    "B",    # bugbear: armadilhas comuns
+    "C4",   # comprehensions desnecessárias
+    "DJ",   # regras específicas de Django
+    "UP",   # sintaxe que já pode ser modernizada
+]
+ignore = [
+    # O projeto usa `blank=True, null=True` de propósito em campos de data da
+    # moderação: é preciso distinguir "nunca moderado" de "moderado".
+    "DJ001",
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Os testes montam querystrings e mensagens longas; quebrar linha ali só
+# piora a leitura da asserção.
+"*/tests.py" = ["E501"]
+# As migrações são geradas: não passam pelo nosso padrão de estilo.
+"*/migrations/*" = ["E501", "I001"]
+# Os comandos de seed são, na prática, arquivos de dados: as definições dos
+# verbetes de demonstração são frases inteiras. Quebrá-las em várias linhas
+# para caber em 100 colunas só esconderia o conteúdo.
+"*/management/commands/seed_*.py" = ["E501"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["config", "neologismo", "usuario"]
+
+[tool.coverage.run]
+source = ["config", "neologismo", "usuario"]
+omit = [
+    "*/migrations/*",
+    "*/tests.py",
+    "manage.py",
+    "config/wsgi.py",
+    "config/asgi.py",
+    # Comandos de seed: existem para popular o ambiente local, e testá-los
+    # seria testar o Faker.
+    "*/management/commands/seed_*.py",
+]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = true
+# Piso, não meta: serve para a cobertura não cair sem ninguém perceber.
+fail_under = 80
+exclude_also = [
+    "if TYPE_CHECKING:",
+    "raise NotImplementedError",
+]

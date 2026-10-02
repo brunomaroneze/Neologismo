@@ -6,6 +6,11 @@ __pycache__/
 *.sqlite3
 backend/staticfiles/
 backend/media/
+# Artefatos de cobertura (gerados pelo CI e localmente).
+backend/.coverage
+backend/coverage-backend.xml
+backend/htmlcov/
+backend/.ruff_cache/
 
 # --- Node / Next ---
 frontend/node_modules/
@@ -13,6 +18,7 @@ frontend/.next/
 frontend/out/
 frontend/build/
 frontend/dist/
+frontend/coverage/
 .npm/
 
 # --- Ambiente (NUNCA versionar) ---
