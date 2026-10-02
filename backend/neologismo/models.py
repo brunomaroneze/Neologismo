@@ -129,21 +129,17 @@ class Neologismo(models.Model):
             models.Index(fields=['status', '-data_criacao'], name='neo_status_data_idx'),
         ]
 
-    @property
-    def total_likes(self):
-        return self.likes.count()
-
-    @property
-    def total_deslikes(self):
-        return self.deslikes.count()
+    def __str__(self):
+        return self.titulo
 
     def save(self, *args, **kwargs):
         if not self.slug and self.titulo:
             self.slug = slugify(self.titulo)[:70]
         super().save(*args, **kwargs)
 
-    def __str__(self):
-        return self.titulo
+    @property
+    def total_likes(self):
+        return self.likes.count()
 
 
 class Contexto(models.Model):

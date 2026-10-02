@@ -1,0 +1,374 @@
+name: Entrega
+
+# Pipeline completa: qualidade -> imagens -> deploy -> verificação.
+#
+# As quatro etapas estão num único arquivo, encadeadas por `needs`, para que a
+# ordem seja visível e não exista atalho: o job de deploy depende do de
+# imagens, que depende do CI inteiro. Um teste vermelho interrompe tudo antes
+# de qualquer coisa chegar perto da VPS.
+#
+# O que é preciso configurar antes do primeiro uso está em DEPLOY.md, na seção
+# "Deploy automático pelo GitHub Actions". Sem os secrets cadastrados, o job
+# de deploy falha com uma mensagem explícita em vez de tentar conectar.
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  # Permite subir um commit específico à mão (rollback, ou deploy fora do
+  # fluxo normal) pela aba Actions.
+  workflow_dispatch:
+    inputs:
+      pular_deploy:
+        description: 'Só publicar as imagens, sem mexer na VPS'
+        type: boolean
+        default: false
+
+# Dois deploys simultâneos na mesma VPS se atropelam no `docker compose up`.
+# Aqui, diferente do CI, o que está rodando NÃO é cancelado: interromper um
+# deploy no meio deixa o ambiente em estado indefinido.
+concurrency:
+  group: entrega-producao
+  cancel-in-progress: false
+
+# Permissão mínima por padrão; cada job pede só o que usa.
+permissions:
+  contents: read
+
+jobs:
+  # --- Etapa 1: os mesmos portões do CI ------------------------------------
+  qualidade:
+    name: Qualidade
+    uses: ./.github/workflows/ci.yml
+    with:
+      # O job `imagens` do CI constrói as imagens sem publicar, só para
+      # provar que o Dockerfile está de pé. Aqui isso é redundante: a etapa
+      # seguinte constrói e publica de verdade.
+      pular_imagens: true
+
+  # --- Etapa 2: construir e publicar as imagens ----------------------------
+  imagens:
+    name: Publicar imagens
+    runs-on: ubuntu-latest
+    needs: qualidade
+
+    permissions:
+      contents: read
+      # Só este job escreve no GitHub Container Registry.
+      packages: write
+
+    outputs:
+      backend: ${{ steps.referencias.outputs.backend }}
+      frontend: ${{ steps.referencias.outputs.frontend }}
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Entrar no GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          # Token do próprio workflow: não há secret para cadastrar.
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Definir nomes das imagens
+        id: nomes
+        # O GHCR só aceita caminho em minúsculas, e `github.repository` vem
+        # com a caixa original do dono e do repositório.
+        run: |
+          repo=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
+          echo "backend=ghcr.io/${repo}-backend" >> "$GITHUB_OUTPUT"
+          echo "frontend=ghcr.io/${repo}-frontend" >> "$GITHUB_OUTPUT"
+
+      - name: Metadados da imagem do backend
+        id: meta_backend
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ steps.nomes.outputs.backend }}
+          # `sha` entra sempre: é a tag que identifica exatamente o que subiu
+          # e a que se volta num rollback. `latest` só em tag de versão, para
+          # não apontar para um commit de main ainda não anunciado.
+          tags: |
+            type=ref,event=branch
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=sha,format=long
+            type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/v') }}
+
+      - name: Metadados da imagem do frontend
+        id: meta_frontend
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ steps.nomes.outputs.frontend }}
+          tags: |
+            type=ref,event=branch
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=sha,format=long
+            type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/v') }}
+
+      - name: Backend
+        uses: docker/build-push-action@v6
+        with:
+          context: ./backend
+          target: final
+          push: true
+          tags: ${{ steps.meta_backend.outputs.tags }}
+          labels: ${{ steps.meta_backend.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Frontend
+        uses: docker/build-push-action@v6
+        with:
+          context: ./frontend
+          target: final
+          push: true
+          tags: ${{ steps.meta_frontend.outputs.tags }}
+          labels: ${{ steps.meta_frontend.outputs.labels }}
+          # O endereço público entra no bundle no momento do build, não em
+          # runtime: a imagem é específica do domínio. Por isso DOMINIO é uma
+          # *variable* do repositório, e não um secret — ele aparece no HTML
+          # de qualquer forma.
+          build-args: |
+            NEXT_PUBLIC_API_URL=https://${{ vars.DOMINIO }}/api
+            NEXT_PUBLIC_SITE_URL=https://${{ vars.DOMINIO }}
+            NEXT_PUBLIC_SENTRY_DSN=${{ secrets.SENTRY_DSN_FRONTEND }}
+            NEXT_PUBLIC_SENTRY_ENVIRONMENT=production
+            SENTRY_ORG=${{ vars.SENTRY_ORG }}
+            SENTRY_PROJECT=${{ vars.SENTRY_PROJECT }}
+            SENTRY_AUTH_TOKEN=${{ secrets.SENTRY_AUTH_TOKEN }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Referências exatas para o deploy
+        id: referencias
+        # O deploy aponta para a tag `sha-<commit>`, nunca para `main` ou
+        # `latest`: é o que torna o deploy reprodutível e o rollback trivial.
+        run: |
+          echo "backend=${{ steps.nomes.outputs.backend }}:sha-${{ github.sha }}" >> "$GITHUB_OUTPUT"
+          echo "frontend=${{ steps.nomes.outputs.frontend }}:sha-${{ github.sha }}" >> "$GITHUB_OUTPUT"
+
+      - name: Resumo
+        run: |
+          {
+            echo "### Imagens publicadas"
+            echo
+            echo '```'
+            echo "${{ steps.referencias.outputs.backend }}"
+            echo "${{ steps.referencias.outputs.frontend }}"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  # --- Etapa 3: aplicar na VPS --------------------------------------------
+  deploy:
+    name: Deploy na VPS
+    runs-on: ubuntu-latest
+    needs: imagens
+    if: ${{ inputs.pular_deploy != true }}
+
+    permissions:
+      contents: read
+      # A VPS usa o token do run apenas para baixar as imagens.
+      packages: read
+
+    # O Environment é o que dá controle sobre isso no GitHub: nele ficam os
+    # secrets de produção e, se configurada, a exigência de aprovação manual
+    # antes de o job rodar (Settings > Environments > producao).
+    environment:
+      name: producao
+      url: https://${{ vars.DOMINIO }}
+
+    steps:
+      - name: Conferir configuração antes de conectar
+        env:
+          HOST: ${{ secrets.SSH_HOST }}
+          USUARIO: ${{ secrets.SSH_USER }}
+          CHAVE: ${{ secrets.SSH_PRIVATE_KEY }}
+          CAMINHO: ${{ vars.CAMINHO_PROJETO }}
+          DOMINIO: ${{ vars.DOMINIO }}
+        # Falhar aqui, com o nome do que está faltando, é muito melhor que
+        # falhar no meio de um `ssh` com "permission denied".
+        run: |
+          faltando=""
+          [ -n "$HOST" ]     || faltando="$faltando SSH_HOST(secret)"
+          [ -n "$USUARIO" ]  || faltando="$faltando SSH_USER(secret)"
+          [ -n "$CHAVE" ]    || faltando="$faltando SSH_PRIVATE_KEY(secret)"
+          [ -n "$CAMINHO" ]  || faltando="$faltando CAMINHO_PROJETO(variable)"
+          [ -n "$DOMINIO" ]  || faltando="$faltando DOMINIO(variable)"
+          if [ -n "$faltando" ]; then
+            echo "::error::Falta configurar no environment 'producao':$faltando"
+            echo "Veja a seção 'Deploy automático' do DEPLOY.md."
+            exit 1
+          fi
+
+      - name: Preparar chave e known_hosts
+        env:
+          CHAVE: ${{ secrets.SSH_PRIVATE_KEY }}
+          HOST: ${{ secrets.SSH_HOST }}
+          PORTA: ${{ vars.SSH_PORT || '22' }}
+          HOST_KEY: ${{ secrets.SSH_HOST_KEY }}
+        run: |
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "$CHAVE" > ~/.ssh/id_deploy
+          chmod 600 ~/.ssh/id_deploy
+
+          if [ -n "$HOST_KEY" ]; then
+            # Caminho correto: a chave pública do servidor vem de um secret,
+            # cadastrada a partir de `ssh-keyscan` rodado por você.
+            printf '%s\n' "$HOST_KEY" > ~/.ssh/known_hosts
+          else
+            # Sem SSH_HOST_KEY não há como verificar a identidade do servidor
+            # na primeira conexão. Seguimos, porque isso tornaria o deploy
+            # impossível de estrear, mas o aviso fica registrado no log.
+            echo "::warning::SSH_HOST_KEY não cadastrado — a identidade da VPS não será verificada. Rode 'ssh-keyscan -p $PORTA <host>' e salve a saída nesse secret."
+            ssh-keyscan -p "$PORTA" "$HOST" >> ~/.ssh/known_hosts 2>/dev/null
+          fi
+          chmod 600 ~/.ssh/known_hosts
+
+      - name: Atualizar os containers
+        env:
+          HOST: ${{ secrets.SSH_HOST }}
+          USUARIO: ${{ secrets.SSH_USER }}
+          PORTA: ${{ vars.SSH_PORT || '22' }}
+          CAMINHO: ${{ vars.CAMINHO_PROJETO }}
+          COMMIT: ${{ github.sha }}
+          IMAGEM_BACKEND: ${{ needs.imagens.outputs.backend }}
+          IMAGEM_FRONTEND: ${{ needs.imagens.outputs.frontend }}
+          GHCR_USER: ${{ github.actor }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        # O script é montado aqui e vai inteiro pela ENTRADA PADRÃO do ssh,
+        # em vez de como argumento do comando remoto. A diferença é o token
+        # do GHCR: passado como argumento, ele apareceria no `ps` da VPS
+        # durante todo o deploy, visível para qualquer outro usuário da
+        # máquina. Pela entrada padrão, ele só existe dentro do bash.
+        #
+        # Outros pontos que não são óbvios:
+        #
+        # - `set -euo pipefail`: sem isso, um `pull` que falha seguiria para
+        #   o `up` e subiria a imagem antiga achando que deu tudo certo.
+        # - `git reset`: o compose, o Caddyfile e o override vivem no
+        #   repositório. O código da aplicação vem na imagem; o que o reset
+        #   sincroniza é a configuração.
+        # - as migrações rodam no entrypoint da imagem do backend, a cada
+        #   start. Não há passo separado aqui.
+        # - `docker image prune`: sem limpeza, cada deploy deixa a imagem
+        #   anterior no disco e a VPS enche em alguns meses.
+        run: |
+          {
+            # %q escapa cada valor para o shell remoto.
+            printf 'export CAMINHO=%q\n'         "$CAMINHO"
+            printf 'export COMMIT=%q\n'          "$COMMIT"
+            printf 'export IMAGEM_BACKEND=%q\n'  "$IMAGEM_BACKEND"
+            printf 'export IMAGEM_FRONTEND=%q\n' "$IMAGEM_FRONTEND"
+            printf 'export GHCR_USER=%q\n'       "$GHCR_USER"
+            printf 'export GHCR_TOKEN=%q\n'      "$GHCR_TOKEN"
+
+            cat <<'REMOTO'
+          set -euo pipefail
+
+          cd "$CAMINHO"
+
+          echo "--> Autenticando no GHCR"
+          printf '%s' "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USER" --password-stdin
+
+          echo "--> Sincronizando a configuração ($COMMIT)"
+          # --tags porque um deploy disparado por tag aponta para um commit
+          # que o fetch de branches pode não trazer.
+          git fetch --quiet --tags origin
+          git reset --hard --quiet "$COMMIT"
+
+          compose() {
+            docker compose \
+              -f docker-compose.prod.yml \
+              -f docker-compose.deploy.yml \
+              "$@"
+          }
+
+          echo "--> Baixando as imagens"
+          compose pull backend frontend
+
+          echo "--> Subindo"
+          compose up -d --remove-orphans
+
+          echo "--> Aguardando o backend ficar saudável"
+          for tentativa in $(seq 1 30); do
+            estado=$(docker inspect --format '{{.State.Health.Status}}' \
+                     "$(compose ps -q backend)" 2>/dev/null || echo desconhecido)
+            [ "$estado" = "healthy" ] && break
+            if [ "$tentativa" -eq 30 ]; then
+              echo "Backend não ficou saudável. Últimas linhas do log:" >&2
+              compose logs --tail 50 backend >&2
+              exit 1
+            fi
+            sleep 5
+          done
+
+          echo "--> Limpando imagens órfãs"
+          docker image prune -f >/dev/null
+
+          echo "--> Estado final"
+          compose ps
+
+          # Remove a credencial do ~/.docker/config.json da VPS: o token é do
+          # run do workflow e não deve ficar guardado na máquina.
+          docker logout ghcr.io >/dev/null
+          REMOTO
+          } | ssh -i ~/.ssh/id_deploy -p "$PORTA" \
+                  -o BatchMode=yes \
+                  -o ConnectTimeout=20 \
+                  "$USUARIO@$HOST" 'bash -s'
+
+      - name: Descartar a chave
+        if: always()
+        run: rm -f ~/.ssh/id_deploy
+
+  # --- Etapa 4: confirmar que o site respondeu de fora ---------------------
+  verificacao:
+    name: Verificação pós-deploy
+    runs-on: ubuntu-latest
+    needs: deploy
+
+    steps:
+      - name: A API está saudável
+        env:
+          DOMINIO: ${{ vars.DOMINIO }}
+        # Vista de fora, pela internet: passa por DNS, Caddy, TLS e Django.
+        # É a única checagem que prova que o deploy serviu para alguma coisa.
+        run: |
+          for tentativa in $(seq 1 10); do
+            corpo=$(curl -fsS --max-time 15 "https://$DOMINIO/api/health/" || true)
+            echo "$corpo" | grep -q '"banco":[[:space:]]*true' && {
+              echo "API respondendo e com banco: $corpo"
+              exit 0
+            }
+            echo "Tentativa $tentativa: ainda não. Resposta: ${corpo:-<vazia>}"
+            sleep 10
+          done
+          echo "::error::A API não respondeu saudável após o deploy."
+          exit 1
+
+      - name: O site está no ar
+        env:
+          DOMINIO: ${{ vars.DOMINIO }}
+        run: |
+          codigo=$(curl -s -o /dev/null -w '%{http_code}' --max-time 15 "https://$DOMINIO/")
+          echo "GET / -> $codigo"
+          [ "$codigo" = "200" ] || { echo "::error::A Home respondeu $codigo."; exit 1; }
+
+      - name: O sitemap está sendo gerado
+        env:
+          DOMINIO: ${{ vars.DOMINIO }}
+        # O sitemap depende do Next alcançar o Django pela rede interna
+        # (API_URL_INTERNA). Se essa ligação quebrar, o site continua de pé e
+        # só o SEO para de funcionar — o tipo de falha que passa meses sem
+        # ninguém notar. Daí verificar aqui.
+        run: |
+          sitemap=$(curl -fsS --max-time 20 "https://$DOMINIO/sitemap.xml")
+          urls=$(echo "$sitemap" | grep -c '<loc>' || true)
+          echo "URLs no sitemap: $urls"
+          [ "$urls" -gt 0 ] || { echo "::error::Sitemap vazio."; exit 1; }

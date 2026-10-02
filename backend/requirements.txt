@@ -2,8 +2,8 @@ asgiref==3.11.1
 attrs==25.4.0
 dj-database-url==3.1.2
 django-cors-headers==4.9.0
-Django==6.0.3
-djangorestframework==3.16.1
+Django==6.0.8
+djangorestframework==3.18.1
 drf-spectacular==0.29.0
 Faker==40.8.0
 gunicorn==23.0.0
@@ -17,6 +17,6 @@ PyYAML==6.0.3
 referencing==0.37.0
 rpds-py==0.30.0
 sentry-sdk[django]==2.45.0
-sqlparse==0.5.5
+sqlparse==0.6.0
 uritemplate==4.2.0
 whitenoise==6.11.0

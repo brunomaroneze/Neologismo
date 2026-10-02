@@ -6,7 +6,6 @@ import type {
   Neologismo,
   NeologismoCreate,
   Paginado,
-  Perfil,
   RegistroPayload,
   ResumoModeracao,
   Sessao,
@@ -245,13 +244,6 @@ export async function cadastrar(payload: RegistroPayload): Promise<Sessao> {
   });
   salvarSessao(sessao);
   return sessao;
-}
-
-export function buscarPerfil(): Promise<Perfil> {
-  return requisitar("/me/", {
-    headers: cabecalhos(),
-    fallback: "Falha ao carregar o perfil.",
-  });
 }
 
 export async function logout(): Promise<void> {

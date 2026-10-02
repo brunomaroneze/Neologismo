@@ -52,14 +52,20 @@ class SemThrottleMixin:
 
 
 def criar_neologismo(autor, titulo='Teste', status_verbete=Neologismo.APROVADO, **extra):
+    # Os textos são defaults, não valores fixos: `extra` pode sobrescrever a
+    # definição ou a classe gramatical quando o teste precisa de um conteúdo
+    # específico para pesquisar.
+    campos = {
+        'definicao': 'Uma definição suficientemente longa para passar.',
+        'contexto_uso': 'Exemplo de uso.',
+        'classe_gramatical': 'Substantivo',
+    }
+    campos.update(extra)
     return Neologismo.objects.create(
         titulo=titulo,
-        definicao='Uma definição suficientemente longa para passar.',
-        contexto_uso='Exemplo de uso.',
-        classe_gramatical='Substantivo',
         autor=autor,
         status=status_verbete,
-        **extra,
+        **campos,
     )
 
 
@@ -360,6 +366,112 @@ class BuscaEFiltroTests(SemThrottleMixin, APITestCase):
         tags = {t['nome']: t['total'] for t in resposta.data['tags']}
         self.assertEqual(tags['Anglicismo'], 2)
         self.assertEqual(tags['Internetês'], 1)
+
+
+@SEM_THROTTLE
+class BuscaSemAcentoTests(SemThrottleMixin, APITestCase):
+    """A busca tem que ignorar acento e caixa.
+
+    Um dicionário de neologismos do português é consultado por quem está
+    digitando rápido, muitas vezes sem acento e no celular. Antes do
+    `unaccent`, procurar "voce" não trazia "Vocezinho" e procurar "gIRIA"
+    não trazia nada pela tag "Gíria".
+    """
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.autor = Usuario.objects.create_user('autor', password='SenhaForte123')
+        criar_neologismo(cls.autor, 'Vocezinho', tags=['Internetês'])
+        criar_neologismo(cls.autor, 'Tankar', tags=['Gíria', 'Anglicismo'])
+        criar_neologismo(
+            cls.autor, 'Reuniãozinha',
+            definicao='Reunião curta marcada só para constar na agenda.',
+            classe_gramatical='Substantivo feminino',
+        )
+
+    def _titulos(self, querystring):
+        resposta = self.client.get(f'/api/neologismos/?{querystring}')
+        self.assertEqual(resposta.status_code, status.HTTP_200_OK)
+        return sorted(n['titulo'] for n in resposta.data['results'])
+
+    def test_busca_sem_acento_encontra_titulo_acentuado(self):
+        self.assertEqual(self._titulos('search=reuniaozinha'), ['Reuniãozinha'])
+
+    def test_busca_com_acento_encontra_titulo_acentuado(self):
+        self.assertEqual(self._titulos('search=reuniãozinha'), ['Reuniãozinha'])
+
+    def test_busca_ignora_caixa(self):
+        self.assertEqual(self._titulos('search=VOCEZINHO'), ['Vocezinho'])
+
+    def test_busca_sem_acento_encontra_pela_definicao(self):
+        self.assertEqual(self._titulos('search=agenda'), ['Reuniãozinha'])
+
+    def test_busca_sem_acento_encontra_pela_tag(self):
+        self.assertEqual(self._titulos('search=giria'), ['Tankar'])
+
+    def test_filtro_por_classe_ignora_acento(self):
+        self.assertEqual(self._titulos('classe=feminino'), ['Reuniãozinha'])
+
+    def test_tag_sem_acento_casa_com_a_tag_gravada(self):
+        # Link copiado à mão, sem o acento de "Internetês".
+        self.assertEqual(self._titulos('tag=internetes'), ['Vocezinho'])
+
+    def test_tag_inexistente_nao_traz_nada(self):
+        self.assertEqual(self._titulos('tag=nao-existe'), [])
+
+
+@SEM_THROTTLE
+class FacetasEmCacheTests(SemThrottleMixin, APITestCase):
+    """O índice de filtros é cacheado, mas não pode ficar desatualizado."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.autor = Usuario.objects.create_user('autor', password='SenhaForte123')
+        cls.admin = Usuario.objects.create_user(
+            'chefe', password='SenhaForte123', is_admin=True, is_staff=True
+        )
+
+    def _tags(self):
+        resposta = self.client.get('/api/neologismos/facetas/')
+        self.assertEqual(resposta.status_code, status.HTTP_200_OK)
+        return {t['nome']: t['total'] for t in resposta.data['tags']}
+
+    def test_segunda_chamada_nao_consulta_o_banco(self):
+        criar_neologismo(self.autor, 'Biscoitar', tags=['Internetês'])
+
+        self.client.get('/api/neologismos/facetas/')
+        # A primeira chamada já gravou a chave; a segunda tem que sair do
+        # cache, sem varrer os aprovados de novo.
+        with self.assertNumQueries(0):
+            self.client.get('/api/neologismos/facetas/')
+
+    def test_novo_verbete_aprovado_invalida_o_cache(self):
+        criar_neologismo(self.autor, 'Biscoitar', tags=['Internetês'])
+        self.assertEqual(self._tags(), {'Internetês': 1})
+
+        criar_neologismo(self.autor, 'Tankar', tags=['Internetês', 'Gíria'])
+        self.assertEqual(self._tags(), {'Internetês': 2, 'Gíria': 1})
+
+    def test_moderacao_invalida_o_cache(self):
+        pendente = criar_neologismo(
+            self.autor, 'Rolezinho',
+            status_verbete=Neologismo.PENDENTE, tags=['Gíria'],
+        )
+        # Pendente não entra nas facetas.
+        self.assertEqual(self._tags(), {})
+
+        self.client.force_authenticate(user=self.admin)
+        self.client.post(f'/api/neologismos/{pendente.pk}/aprovar/')
+        self.client.force_authenticate(user=None)
+
+        self.assertEqual(self._tags(), {'Gíria': 1})
+
+    def test_exclusao_invalida_o_cache(self):
+        verbete = criar_neologismo(self.autor, 'Biscoitar', tags=['Internetês'])
+        self.assertEqual(self._tags(), {'Internetês': 1})
+
+        verbete.delete()
+        self.assertEqual(self._tags(), {})
 
 
 @SEM_THROTTLE

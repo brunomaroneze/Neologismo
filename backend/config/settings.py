@@ -230,6 +230,12 @@ else:
     }
 
 
+# Tempo de vida do índice de tags/classes usado pelos filtros da Home. O
+# cache é invalidado por sinal a cada escrita em Neologismo, então o TTL só
+# serve de rede de segurança (ex.: alteração feita direto no banco).
+FACETAS_CACHE_TTL = env_int('FACETAS_CACHE_TTL', 300)
+
+
 # --- Django REST Framework --------------------------------------------------
 
 REST_FRAMEWORK = {

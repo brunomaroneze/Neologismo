@@ -1,6 +1,7 @@
 from django.contrib.auth import get_user_model
 from django.db import transaction
-from django.db.models import Count, Exists, OuterRef, Q
+from django.db.models import Count, Exists, OuterRef, Q, TextField
+from django.db.models.functions import Cast
 from django.utils import timezone
 from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework import status as http_status
@@ -12,6 +13,7 @@ from rest_framework.response import Response
 
 from config.emails import avisar_verbete_aprovado, avisar_verbete_rejeitado
 
+from . import facetas as indice_facetas
 from .models import Neologismo
 from .permissions import DonoOuStaff
 from .serializers import (
@@ -109,20 +111,27 @@ class NeologismoViewSet(viewsets.ModelViewSet):
 
         busca = (params.get('search') or '').strip()
         if busca:
-            qs = qs.filter(
-                Q(titulo__icontains=busca)
-                | Q(definicao__icontains=busca)
-                | Q(contexto_uso__icontains=busca)
-                | Q(tags__icontains=busca)
+            # `unaccent` resolve o acento e `icontains` a caixa: quem digita
+            # "voce" acha "você" e quem digita "GÍRIA" acha "gíria". As tags
+            # são um ArrayField, que o Postgres não aceita em lookup de texto
+            # — o cast para text transforma ["Internetês", "Gíria"] numa
+            # string pesquisável pelo mesmo caminho.
+            qs = qs.annotate(tags_texto=Cast('tags', TextField())).filter(
+                Q(titulo__unaccent__icontains=busca)
+                | Q(definicao__unaccent__icontains=busca)
+                | Q(contexto_uso__unaccent__icontains=busca)
+                | Q(tags_texto__unaccent__icontains=busca)
             )
 
         tag = (params.get('tag') or '').strip()
         if tag and tag.lower() != 'all':
-            qs = qs.filter(tags__contains=[tag])
+            # A tag precisa casar com o valor gravado; `canonizar_tag` aceita
+            # a versão sem acento que aparece em links copiados à mão.
+            qs = qs.filter(tags__contains=[indice_facetas.canonizar_tag(tag)])
 
         classe = (params.get('classe') or '').strip()
         if classe:
-            qs = qs.filter(classe_gramatical__icontains=classe)
+            qs = qs.filter(classe_gramatical__unaccent__icontains=classe)
 
         ordering = ORDENACOES.get(params.get('ordering', ''), None)
         if ordering:
@@ -142,40 +151,28 @@ class NeologismoViewSet(viewsets.ModelViewSet):
     )
     @action(detail=False, methods=['get'], permission_classes=[])
     def facetas(self, request):
-        aprovados = Neologismo.objects.filter(status=Neologismo.APROVADO)
-
-        contagem_tags = {}
-        for tags in aprovados.values_list('tags', flat=True):
-            for tag in tags or []:
-                contagem_tags[tag] = contagem_tags.get(tag, 0) + 1
-
-        classes = (
-            aprovados
-            .values('classe_gramatical')
-            .annotate(total=Count('id'))
-            .order_by('-total')
-        )
-
-        return Response({
-            'total': aprovados.count(),
-            'tags': [
-                {'nome': nome, 'total': total}
-                for nome, total in sorted(
-                    contagem_tags.items(), key=lambda item: (-item[1], item[0])
-                )
-            ],
-            'classes': [
-                {'nome': c['classe_gramatical'], 'total': c['total']}
-                for c in classes
-                if c['classe_gramatical']
-            ],
-        })
+        # Vem do cache: contar as tags exige varrer todos os aprovados em
+        # Python (ver neologismo/facetas.py). O sinal de post_save derruba a
+        # chave, então publicar ou moderar um verbete aparece no filtro na
+        # requisição seguinte, sem esperar o TTL.
+        return Response(indice_facetas.obter())
 
     @extend_schema(
         parameters=[
-            OpenApiParameter('search', str, description='Busca por título, definição, exemplo ou tag.'),
-            OpenApiParameter('tag', str, description='Filtra por uma tag exata.'),
-            OpenApiParameter('classe', str, description='Filtra por classe gramatical.'),
+            OpenApiParameter(
+                'search', str,
+                description='Busca por título, definição, exemplo ou tag. '
+                            'Ignora acento e caixa.',
+            ),
+            OpenApiParameter(
+                'tag', str,
+                description='Filtra por uma tag. Aceita a tag sem acento: '
+                            '"internetes" casa com "Internetês".',
+            ),
+            OpenApiParameter(
+                'classe', str,
+                description='Filtra por classe gramatical. Ignora acento e caixa.',
+            ),
             OpenApiParameter(
                 'ordering', str,
                 description='recentes | antigos | populares | alfabetica',

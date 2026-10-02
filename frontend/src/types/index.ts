@@ -117,14 +117,3 @@ export interface Sessao {
   email: string;
   is_admin: boolean;
 }
-
-export interface Perfil {
-  id: number;
-  username: string;
-  email: string;
-  is_admin: boolean;
-  is_staff: boolean;
-  date_joined: string;
-  total_enviados: number;
-  total_aprovados: number;
-}
