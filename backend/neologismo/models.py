@@ -141,10 +141,6 @@ class Neologismo(models.Model):
     def total_likes(self):
         return self.likes.count()
 
-    @property
-    def total_deslikes(self):
-        return self.deslikes.count()
-
 
 class Contexto(models.Model):
     """Citação estruturada de uso de um neologismo (vários por verbete).

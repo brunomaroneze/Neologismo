@@ -1,8 +1,5 @@
 from rest_framework import permissions
 
-# Métodos que não alteram nada e portanto são liberados para leitura pública.
-METODOS_SEGUROS = permissions.SAFE_METHODS
-
 
 class DonoOuStaff(permissions.BasePermission):
     """Escrita só para o autor do verbete ou para a equipe.
@@ -21,7 +18,7 @@ class DonoOuStaff(permissions.BasePermission):
     message = 'Você só pode alterar verbetes seus que ainda não foram aprovados.'
 
     def has_object_permission(self, request, view, obj):
-        if request.method in METODOS_SEGUROS:
+        if request.method in permissions.SAFE_METHODS:
             return True
 
         if request.user.is_staff:

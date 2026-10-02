@@ -5,7 +5,7 @@
  * inicializa e nenhuma requisição sai do navegador. Isso mantém o projeto
  * rodando em desenvolvimento e em quem faz fork sem precisar de conta.
  */
-export const dsn = process.env.NEXT_PUBLIC_SENTRY_DSN;
+const dsn = process.env.NEXT_PUBLIC_SENTRY_DSN;
 
 export const opcoesComuns = {
   dsn,
