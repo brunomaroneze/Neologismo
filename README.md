@@ -4,9 +4,9 @@
 [![Entrega](../../actions/workflows/cd.yml/badge.svg)](../../actions/workflows/cd.yml)
 [![CodeQL](../../actions/workflows/codeql.yml/badge.svg)](../../actions/workflows/codeql.yml)
 
-Dicionário colaborativo dos neologismos do português brasileiro. Qualquer
+Banco de neologismos do português brasileiro. Qualquer
 pessoa cadastrada envia uma palavra; a equipe modera; o que é aprovado entra
-no dicionário público e pode ser curtido.
+no banco público e pode ser curtido.
 
 **Stack:** Django 6 + DRF (API) · Next.js 16 + Tailwind 4 (web) · PostgreSQL 17
 · Docker Compose.

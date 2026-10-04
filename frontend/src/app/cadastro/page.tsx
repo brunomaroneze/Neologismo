@@ -98,7 +98,7 @@ function Formulario() {
             Criar conta
           </h1>
           <p className="mt-1.5 text-sm text-suave">
-            Junte-se ao dicionário colaborativo.
+            Junte-se ao banco de neologismos colaborativo.
           </p>
 
           {erro && (

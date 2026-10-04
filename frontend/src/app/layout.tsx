@@ -25,7 +25,7 @@ const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: {
-    default: "Neoscópio — Dicionário Colaborativo de Neologismos",
+    default: "Neoscópio — Banco de Neologismos",
     template: "%s · Neoscópio",
   },
   description:
@@ -43,13 +43,13 @@ export const metadata: Metadata = {
     locale: "pt_BR",
     url: siteUrl,
     siteName: "Neoscópio",
-    title: "Neoscópio — Dicionário Colaborativo de Neologismos",
+    title: "Neoscópio — Banco de Neologismos",
     description:
       "Registre, explore e discuta os neologismos que moldam o português do nosso tempo.",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Neoscópio — Dicionário Colaborativo de Neologismos",
+    title: "Neoscópio — Banco de Neologismos",
     description:
       "Registre, explore e discuta os neologismos que moldam o português do nosso tempo.",
   },

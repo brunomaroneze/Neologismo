@@ -73,7 +73,7 @@ export default function Home() {
       <section className="border-b border-borda bg-gradient-to-b from-marca-suave/50 to-fundo px-4 py-14">
         <div className="mx-auto max-w-3xl text-center">
           <span className="inline-block rounded-full border border-marca/30 px-4 py-1.5 text-xs font-bold uppercase tracking-wider text-marca">
-            Dicionário Colaborativo
+            Banco de neologismos
           </span>
 
           <h1 className="mt-4 font-display text-4xl font-black leading-[1.1] text-texto sm:text-5xl">

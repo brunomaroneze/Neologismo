@@ -1,7 +1,7 @@
 Olá, {{ neologismo.autor.username }}.
 
 O verbete "{{ neologismo.titulo|lower }}" passou pela moderação e já está no
-dicionário público.
+banco público.
 
 Ver o verbete:
 {{ url_verbete }}
@@ -9,7 +9,7 @@ Ver o verbete:
 Obrigado por ajudar a registrar o português que se fala de verdade.
 
 --
-Neoscópio — dicionário colaborativo de neologismos
+Neoscópio — banco de neologismos
 {{ site_url }}
 Você recebeu este e-mail porque tem uma conta no Neoscópio.
 Este endereço não recebe respostas.

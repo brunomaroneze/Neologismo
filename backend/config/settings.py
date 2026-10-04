@@ -282,7 +282,7 @@ REST_FRAMEWORK = {
 
 SPECTACULAR_SETTINGS = {
     'TITLE': 'API do Neoscópio',
-    'DESCRIPTION': 'Dicionário colaborativo de neologismos do português brasileiro.',
+    'DESCRIPTION': 'Banco de neologismos do português brasileiro.',
     'VERSION': '2.0.0',
     'SERVE_INCLUDE_SCHEMA': False,
     'COMPONENT_SPLIT_REQUEST': True,

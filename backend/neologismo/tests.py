@@ -372,7 +372,7 @@ class BuscaEFiltroTests(SemThrottleMixin, APITestCase):
 class BuscaSemAcentoTests(SemThrottleMixin, APITestCase):
     """A busca tem que ignorar acento e caixa.
 
-    Um dicionário de neologismos do português é consultado por quem está
+    Um banco de neologismos do português é consultado por quem está
     digitando rápido, muitas vezes sem acento e no celular. Antes do
     `unaccent`, procurar "voce" não trazia "Vocezinho" e procurar "gIRIA"
     não trazia nada pela tag "Gíria".

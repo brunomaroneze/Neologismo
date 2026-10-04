@@ -11,14 +11,14 @@ export default function NaoEncontrado() {
       </h1>
       <p className="mt-3 text-sm leading-relaxed text-suave">
         O endereço pode ter mudado, ou a palavra que você procura ainda não foi
-        registrada no dicionário.
+        registrada no banco.
       </p>
       <div className="mt-8 flex flex-col gap-3 sm:flex-row">
         <Link
           href="/"
           className="rounded-full bg-marca px-6 py-2.5 text-sm font-semibold text-marca-contraste transition-opacity hover:opacity-90"
         >
-          Ir para o dicionário
+          Ir para o banco
         </Link>
         <Link
           href="/enviar"

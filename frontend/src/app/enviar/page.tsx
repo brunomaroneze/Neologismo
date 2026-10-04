@@ -221,7 +221,7 @@ export default function EnviarPage() {
           Neologismo enviado!
         </h1>
         <p className="mt-3 text-sm leading-relaxed text-suave">
-          Ele entra na fila de moderação e aparece no dicionário assim que for
+          Ele entra na fila de moderação e aparece no banco assim que for
           aprovado. Você acompanha o andamento em Minhas palavras.
         </p>
         <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">

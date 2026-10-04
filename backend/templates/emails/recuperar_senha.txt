@@ -11,6 +11,6 @@ Se não foi você que pediu, ignore este e-mail — sua senha atual continua
 valendo e nada foi alterado.
 
 --
-Neoscópio — dicionário colaborativo de neologismos
+Neoscópio — banco de neologismos
 {{ site_url }}
 Este endereço não recebe respostas.

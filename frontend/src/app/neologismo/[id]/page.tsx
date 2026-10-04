@@ -153,7 +153,7 @@ export default function NeologismoDetalhe({
             href="/"
             className="w-full rounded-full bg-marca px-6 py-2.5 text-sm font-semibold text-marca-contraste transition-opacity hover:opacity-90 sm:w-auto"
           >
-            Voltar ao dicionário
+            Voltar ao banco
           </Link>
           {!naoEncontrado && (
             <button
@@ -351,7 +351,7 @@ export default function NeologismoDetalhe({
           Conhece uma palavra que ainda não está aqui?
         </p>
         <p className="mx-auto mt-2 max-w-md text-sm text-suave">
-          O dicionário cresce com quem usa a língua todo dia.
+          O banco de neologismos cresce com quem usa a língua todo dia.
         </p>
         <Link
           href="/enviar"

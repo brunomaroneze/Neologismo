@@ -26,7 +26,7 @@ export default function Footer() {
           <div className="lg:col-span-2">
             <p className="font-display text-lg font-bold text-texto">Neoscópio</p>
             <p className="mt-2 max-w-sm text-sm leading-relaxed text-suave">
-              Dicionário colaborativo dos neologismos que moldam o português
+              Banco dos neologismos que moldam o português
               brasileiro do nosso tempo. Cada verbete passa por moderação antes
               de ser publicado.
             </p>

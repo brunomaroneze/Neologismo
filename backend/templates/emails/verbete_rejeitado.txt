@@ -15,7 +15,7 @@ Seus envios ficam em Minhas palavras:
 {{ url_meus_envios }}
 
 --
-Neoscópio — dicionário colaborativo de neologismos
+Neoscópio — banco de neologismos
 {{ site_url }}
 Você recebeu este e-mail porque tem uma conta no Neoscópio.
 Este endereço não recebe respostas.

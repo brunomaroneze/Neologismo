@@ -135,7 +135,7 @@ export default function AdminPainel() {
     try {
       await reativarNeologismo(verbete.id);
       moverDaAba(verbete.id, verbete.status, "aprovado");
-      avisar(`"${verbete.titulo}" voltou para o dicionário.`, "sucesso");
+      avisar(`"${verbete.titulo}" voltou para o banco.`, "sucesso");
     } catch (e) {
       avisar(e instanceof ApiError ? e.message : "Falha ao reativar.", "erro");
     } finally {
