@@ -15,7 +15,7 @@ psycopg==3.3.6
 python-dotenv==1.2.4
 PyYAML==6.0.3
 referencing==0.37.0
-rpds-py==0.30.0
+rpds-py==2026.9.1
 sentry-sdk[django]==2.72.0
 sqlparse==0.6.0
 uritemplate==4.2.0
