@@ -15,6 +15,8 @@ const API_URL = (
   process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api"
 ).replace(/\/$/, "");
 
+const TIMEOUT_MS = 15000;
+
 const CHAVE_TOKEN = "auth_token";
 const CHAVE_USERNAME = "auth_username";
 const CHAVE_IS_ADMIN = "auth_is_admin";
@@ -109,8 +111,17 @@ async function requisitar<T>(
     res = await fetch(`${API_URL}${caminho}`, {
       ...opcoes,
       cache: "no-store",
+      // Sem limite, um backend que aceita a conexão e nunca responde (ou uma
+      // porta filtrada no firewall) deixa a tela carregando para sempre.
+      signal: opcoes.signal ?? AbortSignal.timeout(TIMEOUT_MS),
     });
-  } catch {
+  } catch (erro) {
+    if (erro instanceof DOMException && erro.name === "TimeoutError") {
+      throw new ApiError(
+        "O servidor demorou demais para responder. Tente novamente.",
+        0
+      );
+    }
     // Falha de rede: o fetch rejeita antes de existir um status.
     throw new ApiError(
       "Não conseguimos falar com o servidor. Verifique sua conexão.",
@@ -291,7 +302,7 @@ export function getUsername(): string | null {
   try {
     return localStorage.getItem(CHAVE_USERNAME);
   } catch {
-    return null;
+    return null; 
   }
 }
 

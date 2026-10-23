@@ -398,7 +398,26 @@ docker compose -f docker-compose.prod.yml exec backend \
   python manage.py check --deploy
 ```
 
-## 12. O que ainda não está coberto
+## 12. VPS que já tem nginx (em vez do Caddy)
+
+Se a VPS já roda um nginx atendendo outros sites nas portas 80/443, o Caddy
+não pode subir. Use o override `docker-compose.nginx.yml`, que desliga o Caddy
+e publica backend e frontend só em `127.0.0.1`:
+
+```bash
+docker compose -f docker-compose.prod.yml -f docker-compose.nginx.yml up -d --build
+```
+
+- O `.env` continua precisando de `EMAIL_ACME` preenchido (qualquer e-mail):
+  o compose de produção valida a variável mesmo com o Caddy desligado.
+- No nginx, use o modelo `deploy/nginx-neoscopio.conf`: `/api`, `/admin` e
+  `/static` vão para `127.0.0.1:8000`, o resto para `127.0.0.1:3000`.
+- **Não rode o `docker-compose.yml` de desenvolvimento em produção.** Com
+  `npm run dev` atrás de um domínio, o Next 16 bloqueia os recursos de dev
+  (`/_next/hmr`) para origens fora de `allowedDevOrigins`, a página nunca é
+  hidratada e os cards ficam carregando para sempre — sem nenhuma chamada à API.
+
+## 13. O que ainda não está coberto
 
 Deixado de fora de propósito, para você decidir se precisa:
 
