@@ -811,3 +811,4 @@ textarea.entrada { min-height: 7rem; resize: vertical; line-height: 1.5; }
 
 .painel-conta__caixa .botoes { margin-top: 1.5rem; }
 .painel-conta__caixa .lead + .botoes { margin-top: 0; }
+.fundo-veu + .chamada { margin-top: 0; }
