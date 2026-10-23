@@ -2,16 +2,19 @@
 {% load verbetes %}
 
 {% block conteudo %}
-<section class="abertura">
-  <div class="conteiner">
-    <div class="abertura__corpo">
-      <span class="rotulo">Banco de neologismos</span>
-      <h1 class="titulo-1">O brasileiro precisa ser estudado.<br><em>As palavras que ele cria também.</em></h1>
-      <p class="lead">Registre, explore e discuta os neologismos que moldam o português do nosso tempo.</p>
+<section class="destaque">
+  <div class="conteiner destaque__grade">
+    <div class="destaque__texto">
+      <span class="rotulo rotulo--claro">Banco de neologismos</span>
+      <h1 class="destaque__titulo">O brasileiro precisa ser estudado.<br><em>As palavras que ele cria também.</em></h1>
+      <p class="destaque__lead">Registre, explore e discuta os neologismos que moldam o português do nosso tempo.</p>
       <div class="botoes">
-        <a class="botao" href="{% url 'web:enviar' %}">Enviar uma palavra</a>
-        <a class="botao botao--secundario" href="{% url 'web:sobre' %}">Como funciona</a>
+        <a class="botao botao--claro" href="{% url 'web:enviar' %}">Enviar uma palavra</a>
+        <a class="botao botao--contorno-claro" href="{% url 'web:sobre' %}">Como funciona</a>
       </div>
+    </div>
+    <div class="destaque__arte">
+      {% include 'web/_ilustracao.html' %}
     </div>
   </div>
 </section>

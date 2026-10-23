@@ -16,6 +16,7 @@ from django.contrib.auth import login as entrar
 from django.contrib.auth import logout as sair
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.tokens import default_token_generator
+from django.contrib.staticfiles import finders
 from django.core.paginator import Paginator
 from django.db import transaction
 from django.db.models import Count, Q
@@ -24,6 +25,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.encoding import force_bytes
+from django.utils.text import slugify
 from django.utils.http import url_has_allowed_host_and_scheme, urlsafe_base64_decode, urlsafe_base64_encode
 from django.views.decorators.http import require_GET, require_POST
 from rest_framework.authtoken.models import Token
@@ -480,9 +482,32 @@ def sobre(request):
     })
 
 
+def _membro(dados):
+    """Acrescenta a foto (se o arquivo existir) e as iniciais de reserva.
+
+    As fotos ficam em web/static/web/equipe/<nome-em-slug>.jpg|png|webp.
+    Quem ainda não tem foto aparece com as iniciais.
+    """
+    nome = dados['nome'].split(' - ')[0].replace('Prof. ', '')
+    slug = slugify(nome)
+    foto = next(
+        (
+            f'web/equipe/{slug}.{extensao}'
+            for extensao in ('jpg', 'jpeg', 'png', 'webp')
+            if finders.find(f'web/equipe/{slug}.{extensao}')
+        ),
+        None,
+    )
+    partes = nome.split()
+    iniciais = (partes[0][0] + (partes[-1][0] if len(partes) > 1 else '')).upper()
+    return {**dados, 'foto': foto, 'iniciais': iniciais}
+
+
 @require_GET
 def equipe(request):
-    return render(request, 'web/equipe.html', {'equipe': conteudo.EQUIPE})
+    return render(request, 'web/equipe.html', {
+        'equipe': [_membro(m) for m in conteudo.EQUIPE],
+    })
 
 
 @require_GET

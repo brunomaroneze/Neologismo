@@ -17,6 +17,13 @@
   <a class="pular" href="#conteudo">Ir para o conteúdo</a>
 
   {% with nome=request.resolver_match.url_name %}
+  <div class="instituicao">
+    <div class="conteiner instituicao__linha">
+      <span>Universidade Federal do Espírito Santo</span>
+      <span>Pró-Reitoria de Extensão · Laboratório de Neologismos</span>
+    </div>
+  </div>
+
   <header class="barra">
     <div class="conteiner barra__linha">
       <a class="marca" href="{% url 'web:inicio' %}" aria-label="Neoscópio — página inicial">
@@ -91,7 +98,7 @@
     </div>
     <div class="rodape__base">
       <div class="conteiner">
-        <p>© {% now "Y" %} Neoscópio — projeto de iniciação científica.</p>
+        <p>© {% now "Y" %} Neoscópio — projeto de iniciação científica. Universidade Federal do Espírito Santo · Av. Fernando Ferrari, 514 – Goiabeiras, Vitória – ES, 29075-910.</p>
         <p>Feito com pesquisa, código aberto e muita palavra nova.</p>
       </div>
     </div>
