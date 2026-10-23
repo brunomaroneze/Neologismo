@@ -1,0 +1,15 @@
+{% extends 'web/base.html' %}
+{% block titulo %}Página não encontrada — Neoscópio{% endblock %}
+{% block conteudo %}
+<div class="fundo-veu"><div class="conteiner painel-conta">
+  <div class="painel-conta__caixa">
+    <span class="rotulo">Página não encontrada</span>
+    <h1 class="titulo-1">Essa página não existe</h1>
+    <p class="lead">O endereço pode ter mudado, ou a palavra que você procura ainda não foi registrada no banco.</p>
+    <div class="botoes">
+      <a class="botao" href="{% url 'web:inicio' %}">Ir para o banco</a>
+      <a class="botao botao--secundario" href="{% url 'web:enviar' %}">Enviar um neologismo</a>
+    </div>
+  </div>
+</div></div>
+{% endblock %}

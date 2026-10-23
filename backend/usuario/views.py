@@ -1,3 +1,4 @@
+from allauth.account.models import EmailAddress
 from django.contrib.auth import authenticate, get_user_model
 from django.contrib.auth.tokens import default_token_generator
 from django.utils.encoding import force_bytes
@@ -23,6 +24,19 @@ from .serializers import (
 Usuario = get_user_model()
 
 
+def endereco_principal(user):
+    """EmailAddress do allauth para o e-mail da conta, criado se faltar."""
+    endereco, _ = EmailAddress.objects.get_or_create(
+        user=user, email__iexact=user.email,
+        defaults={'email': user.email, 'primary': True},
+    )
+    return endereco
+
+
+def email_confirmado(user):
+    return EmailAddress.objects.filter(user=user, verified=True).exists()
+
+
 def dados_sessao(user, token):
     return {
         'token': token.key,
@@ -34,21 +48,30 @@ def dados_sessao(user, token):
 
 
 class RegistroView(generics.CreateAPIView):
-    """Cria um Usuario e já devolve o token de autenticação."""
+    """Cria um Usuario e envia o e-mail de confirmação.
+
+    Não devolve token: como no site, a conta só entra depois de confirmar o
+    e-mail. Sem isso a API seria um atalho para contornar a confirmação.
+    """
 
     serializer_class = RegistroSerializer
     permission_classes = [permissions.AllowAny]
     throttle_classes = [ScopedRateThrottle]
     throttle_scope = 'cadastro'
 
-    @extend_schema(responses={201: SessaoSerializer})
+    @extend_schema(responses={201: OpenApiResponse(description='Conta criada; falta confirmar o e-mail.')})
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
-        token, _ = Token.objects.get_or_create(user=user)
+        endereco_principal(user).send_confirmation(request, signup=True)
         return Response(
-            dados_sessao(user, token),
+            {
+                'detail': 'Conta criada. Enviamos um link de confirmação '
+                          'para o seu e-mail; confirme-o para entrar.',
+                'username': user.username,
+                'email': user.email,
+            },
             status=status.HTTP_201_CREATED,
         )
 
@@ -79,6 +102,14 @@ class LoginView(generics.GenericAPIView):
         if not user.is_active:
             return Response(
                 {'detail': 'Esta conta está desativada.'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        if not email_confirmado(user):
+            if user.email:
+                endereco_principal(user).send_confirmation(request)
+            return Response(
+                {'detail': 'Confirme seu e-mail antes de entrar. Reenviamos '
+                           'o link de confirmação.'},
                 status=status.HTTP_403_FORBIDDEN,
             )
 
@@ -163,6 +194,13 @@ class RedefinirSenhaView(generics.GenericAPIView):
         usuario = serializer.validated_data['usuario']
         usuario.set_password(serializer.validated_data['password'])
         usuario.save()
+        # O link chegou pelo e-mail da conta: abrir e usar o link prova que a
+        # pessoa controla esse endereço, o mesmo que a confirmação provaria.
+        if usuario.email:
+            endereco = endereco_principal(usuario)
+            if not endereco.verified:
+                endereco.verified = True
+                endereco.save(update_fields=['verified'])
 
         # Trocar a senha invalida os tokens antigos: se a conta foi acessada
         # por outra pessoa, redefinir a senha precisa expulsá-la de fato.

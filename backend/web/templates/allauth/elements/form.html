@@ -1,0 +1,5 @@
+{% load allauth %}
+<form class="formulario-conta" method="{{ attrs.method }}" {% if attrs.action %}action="{{ attrs.action }}"{% endif %} novalidate>
+  {% slot body %}{% endslot %}
+  {% if slots.actions %}<div class="formulario-conta__acoes">{% slot actions %}{% endslot %}</div>{% endif %}
+</form>

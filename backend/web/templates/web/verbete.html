@@ -1,0 +1,93 @@
+{% extends 'web/base.html' %}
+{% load verbetes %}
+
+{% block titulo %}{{ verbete.titulo }} — Neoscópio{% endblock %}
+{% block descricao %}{{ verbete.definicao|truncatechars:160 }}{% endblock %}
+{% block meta %}
+  <link rel="canonical" href="{{ endereco }}">
+  <meta property="og:type" content="article">
+  <meta property="og:site_name" content="Neoscópio">
+  <meta property="og:title" content="{{ verbete.titulo }} — Neoscópio">
+  <meta property="og:description" content="{{ verbete.definicao|truncatechars:200 }}">
+  <meta property="og:url" content="{{ endereco }}">
+  <meta name="twitter:card" content="summary">
+  {% if verbete.status != 'aprovado' %}<meta name="robots" content="noindex">{% endif %}
+{% endblock %}
+
+{% block conteudo %}
+<div class="conteiner">
+  <article class="verbete">
+    <a class="voltar" href="{% url 'web:inicio' %}">← Voltar ao dicionário</a>
+
+    {% if verbete.status == 'pendente' %}
+      <div class="estado"><p><strong>Em moderação.</strong> Só você e a equipe conseguem ver este verbete até que ele seja aprovado.</p></div>
+    {% elif verbete.status == 'rejeitado' %}
+      <div class="estado estado--rejeitado"><p><strong>Rejeitado.</strong> {{ verbete.motivo_rejeicao|default:"Sem motivo registrado." }}</p></div>
+    {% endif %}
+
+    <header>
+      <div class="verbete__marcas">
+        <span class="card__classe">{{ verbete.classe_gramatical }}</span>
+        {% if verbete.tipologia %}<span class="verbete__tipologia">{{ verbete.tipologia }}</span>{% endif %}
+        {% if verbete.tags %}
+          <ul class="etiquetas etiquetas--links">
+            {% for tag in verbete.tags %}<li><a href="{% url 'web:inicio' %}?tag={{ tag|urlencode }}#explorar">{{ tag }}</a></li>{% endfor %}
+          </ul>
+        {% endif %}
+      </div>
+
+      <h1 class="verbete__titulo">{{ verbete.titulo|lower }}</h1>
+      <p class="verbete__definicao">{{ verbete.definicao }}</p>
+
+      <dl class="ficha">
+        <div><dt>Autor</dt><dd>{{ verbete.autor.username }}</dd></div>
+        <div><dt>Publicado em</dt><dd><time datetime="{{ verbete.data_criacao|date:'c' }}">{{ verbete.data_criacao|data_curta }}</time></dd></div>
+        {% if verbete.elaborado_por %}<div><dt>Elaborado por</dt><dd>elaborado por {{ verbete.elaborado_por }}</dd></div>{% endif %}
+        {% if verbete.data_registro %}<div><dt>Registrado na fonte em</dt><dd>registrado em <time datetime="{{ verbete.data_registro|date:'c' }}">{{ verbete.data_registro|date:"d/m/Y" }}</time></dd></div>{% endif %}
+        {% if verbete.reativado_em %}<div><dt>Reativado em</dt><dd>reativado em {{ verbete.reativado_em|date:"d/m/Y" }}</dd></div>{% endif %}
+      </dl>
+
+      <div class="verbete__acoes">
+        <button class="botao botao--discreto botao--pequeno" type="button" data-copiar-link="{{ endereco }}" data-copiado="Link copiado!" data-falha="Não foi possível copiar o link.">Copiar link</button>
+        {% include 'web/_curtir.html' with grande=True %}
+      </div>
+    </header>
+
+    {% if verbete.contexto_uso %}
+      <section class="verbete__secao" aria-labelledby="exemplo">
+        <h2 id="exemplo">Exemplo de uso</h2>
+        <blockquote class="citacao"><p>&ldquo;{{ verbete.contexto_uso }}&rdquo;</p></blockquote>
+      </section>
+    {% endif %}
+
+    {% with citacoes=verbete.contextos.all %}
+    {% if citacoes %}
+      <section class="verbete__secao" aria-labelledby="citacoes">
+        <h2 id="citacoes">{% if citacoes|length == 1 %}Citação registrada{% else %}{{ citacoes|length }} citações registradas{% endif %}</h2>
+        <ul class="citacoes">
+          {% for contexto in citacoes %}
+            <li>
+              <p>{{ contexto.citacao }}</p>
+              {% if contexto.fonte or contexto.link %}
+                <footer>
+                  {% if contexto.fonte %}<cite>{{ contexto.fonte }}</cite>{% endif %}
+                  {% if contexto.link %}<a href="{{ contexto.link }}" target="_blank" rel="noopener noreferrer nofollow">Ver fonte</a>{% endif %}
+                </footer>
+              {% endif %}
+            </li>
+          {% endfor %}
+        </ul>
+      </section>
+    {% endif %}
+    {% endwith %}
+  </article>
+</div>
+
+<section class="chamada">
+  <div class="conteiner chamada__corpo">
+    <h2 class="titulo-2">Conhece uma palavra que ainda não está aqui?</h2>
+    <p>O banco de neologismos cresce com quem usa a língua todo dia.</p>
+    <a class="botao" href="{% url 'web:enviar' %}">Enviar um neologismo</a>
+  </div>
+</section>
+{% endblock %}

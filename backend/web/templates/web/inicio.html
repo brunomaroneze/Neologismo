@@ -1,0 +1,85 @@
+{% extends 'web/base.html' %}
+{% load verbetes %}
+
+{% block conteudo %}
+<section class="destaque">
+  <div class="conteiner destaque__grade">
+    <div class="destaque__texto">
+      <span class="rotulo rotulo--claro">Banco de neologismos</span>
+      <h1 class="destaque__titulo">O brasileiro precisa ser estudado.<br><em>As palavras que ele cria também.</em></h1>
+      <p class="destaque__lead">Registre, explore e discuta os neologismos que moldam o português do nosso tempo.</p>
+      <div class="botoes">
+        <a class="botao botao--claro" href="{% url 'web:enviar' %}">Enviar uma palavra</a>
+        <a class="botao botao--contorno-claro" href="{% url 'web:sobre' %}">Como funciona</a>
+      </div>
+    </div>
+    <div class="destaque__arte">
+      {% include 'web/_ilustracao.html' %}
+    </div>
+  </div>
+</section>
+
+<section class="conteiner explorar" id="explorar" aria-label="Explorar">
+  <form class="busca" role="search" method="get" action="{% url 'web:inicio' %}#explorar">
+    <label class="busca__rotulo" for="busca">Buscar neologismos</label>
+    <div class="busca__linha">
+      <input class="busca__campo" id="busca" type="search" name="q" value="{{ busca }}" placeholder="Buscar por palavra, definição ou tag…" autocomplete="off">
+      {% if tag %}<input type="hidden" name="tag" value="{{ tag }}">{% endif %}
+      {% if ordem != 'recentes' %}<input type="hidden" name="ordem" value="{{ ordem }}">{% endif %}
+      <button class="botao" type="submit">Buscar</button>
+    </div>
+  </form>
+
+  <ul class="filtros" aria-label="Filtrar por tag">
+    <li><a class="filtro" href="{% consulta tag='' %}#explorar" aria-pressed="{% if not tag %}true{% else %}false{% endif %}">Todos</a></li>
+    {% for faceta in tags %}
+      <li><a class="filtro" href="{% consulta tag=faceta.nome %}#explorar" aria-pressed="{% if tag == faceta.nome %}true{% else %}false{% endif %}">{{ faceta.nome }} <span class="filtro__total">{{ faceta.total }}</span></a></li>
+    {% endfor %}
+  </ul>
+
+  <div class="resultados">
+    <p class="resultados__total" aria-live="polite">
+      <strong>{{ pagina.paginator.count }}</strong> {% if pagina.paginator.count == 1 %}verbete{% else %}verbetes{% endif %}{% if tem_filtro %} para os filtros atuais{% endif %}
+    </p>
+    <div class="resultados__acoes">
+      {% if tem_filtro %}<a href="{% url 'web:inicio' %}#explorar">Limpar filtros</a>{% endif %}
+      <form method="get" action="{% url 'web:inicio' %}#explorar" data-autoenvio>
+        {% if busca %}<input type="hidden" name="q" value="{{ busca }}">{% endif %}
+        {% if tag %}<input type="hidden" name="tag" value="{{ tag }}">{% endif %}
+        <label for="ordenacao">Ordenar por</label>
+        <select class="seletor" id="ordenacao" name="ordem">
+          {% for chave, rotulo in ordens.items %}<option value="{{ chave }}" {% if chave == ordem %}selected{% endif %}>{{ rotulo }}</option>{% endfor %}
+        </select>
+        <noscript><button class="botao botao--discreto botao--pequeno" type="submit">Ordenar</button></noscript>
+      </form>
+    </div>
+  </div>
+
+  {% if pagina.object_list %}
+    <ul class="grade" data-grade>
+      {% include 'web/_cards.html' %}
+    </ul>
+    {% if pagina.has_next %}
+      <div class="mais">
+        <a class="botao botao--discreto" href="{% consulta pagina=pagina.next_page_number %}#explorar" data-carregar-mais>
+          <span class="mini-frasco" aria-hidden="true">{% include 'web/_frasco.html' with id='mais' %}</span>
+          <span>Carregar mais</span>
+        </a>
+        <button class="botao botao--secundario" type="button" data-ver-menos hidden>Ver menos</button>
+      </div>
+    {% endif %}
+  {% else %}
+    <div class="vazio">
+      <p class="vazio__titulo">Nenhum verbete encontrado</p>
+      <p>{% if tem_filtro %}Tente outra palavra ou remova os filtros.{% else %}A base ainda está vazia. Que tal enviar a primeira palavra?{% endif %}</p>
+      <div class="botoes">
+        {% if tem_filtro %}
+          <a class="botao botao--secundario" href="{% url 'web:inicio' %}#explorar">Limpar filtros</a>
+        {% else %}
+          <a class="botao" href="{% url 'web:enviar' %}">Enviar um neologismo</a>
+        {% endif %}
+      </div>
+    </div>
+  {% endif %}
+</section>
+{% endblock %}

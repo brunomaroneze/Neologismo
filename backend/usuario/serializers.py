@@ -18,8 +18,9 @@ class RegistroSerializer(serializers.ModelSerializer):
         model = Usuario
         fields = ['id', 'username', 'email', 'password', 'is_admin']
         read_only_fields = ['is_admin']
+        # O e-mail é obrigatório: é por ele que a conta é confirmada.
         extra_kwargs = {
-            'email': {'required': False, 'allow_blank': True},
+            'email': {'required': True, 'allow_blank': False},
         }
 
     def validate_username(self, value):

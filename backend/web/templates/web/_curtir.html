@@ -1,0 +1,22 @@
+{# Botão de curtir. Funciona sem JavaScript (envia o formulário); com ele, neoscopio.js atualiza sem recarregar. #}
+{% with total=verbete.likes_count|default:0 %}
+{% if user.is_authenticated %}
+  <form class="curtir{% if grande %} curtir--grande{% endif %}" method="post" action="{% url 'web:curtir' verbete.pk %}" data-curtir>
+    {% csrf_token %}
+    <input type="hidden" name="next" value="{{ request.get_full_path }}">
+    <button class="curtir__botao" type="submit" aria-pressed="{% if verbete.curtido_por_mim %}true{% else %}false{% endif %}"
+            aria-label="{% if verbete.curtido_por_mim %}Remover curtida de {{ verbete.titulo }}{% else %}Curtir {{ verbete.titulo }}{% endif %}. {{ total }} curtidas."
+            data-rotulo-curtir="Curtir {{ verbete.titulo }}" data-rotulo-descurtir="Remover curtida de {{ verbete.titulo }}">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 20.5s-7.5-4.6-9.2-9.3C1.6 7.8 3.9 4.5 7.3 4.5c2 0 3.6 1.1 4.7 2.7 1.1-1.6 2.7-2.7 4.7-2.7 3.4 0 5.7 3.3 4.5 6.7-1.7 4.7-9.2 9.3-9.2 9.3Z"/></svg>
+      <span data-curtir-total>{{ total }}</span>
+    </button>
+  </form>
+{% else %}
+  <span class="curtir{% if grande %} curtir--grande{% endif %}">
+    <a class="curtir__botao" href="{% url 'account_login' %}?next={{ request.get_full_path|urlencode }}" title="Entre na sua conta para curtir verbetes." aria-label="Curtir {{ verbete.titulo }}. {{ total }} curtidas.">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 20.5s-7.5-4.6-9.2-9.3C1.6 7.8 3.9 4.5 7.3 4.5c2 0 3.6 1.1 4.7 2.7 1.1-1.6 2.7-2.7 4.7-2.7 3.4 0 5.7 3.3 4.5 6.7-1.7 4.7-9.2 9.3-9.2 9.3Z"/></svg>
+      <span>{{ total }}</span>
+    </a>
+  </span>
+{% endif %}
+{% endwith %}

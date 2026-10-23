@@ -1,0 +1,37 @@
+{% extends 'web/base.html' %}
+
+{% block titulo %}Indicações de leitura — Neoscópio{% endblock %}
+
+{% block conteudo %}
+<section class="abertura">
+  <div class="conteiner">
+    <div class="abertura__corpo">
+      <span class="rotulo">Fontes do projeto</span>
+      <h1 class="titulo-1">Referências bibliográficas</h1>
+      <p class="lead">Obras, dicionários e materiais que embasam o trabalho de registro e curadoria dos neologismos no Neoscópio. As referências seguem o padrão ABNT.</p>
+    </div>
+  </div>
+</section>
+
+<div class="conteiner secao">
+  <ul class="referencias">
+    {% for ref in referencias %}
+      <li>
+        {{ ref.autoria }} <i>{{ ref.titulo }}</i> {{ ref.publicacao }}
+        {% if ref.url %}<br><a href="{{ ref.url }}" target="_blank" rel="noopener noreferrer">Acessar fonte</a>{% endif %}
+      </li>
+    {% endfor %}
+  </ul>
+</div>
+
+<section class="chamada">
+  <div class="conteiner chamada__corpo">
+    <h2 class="titulo-2">Conhece outra fonte relevante?</h2>
+    <p>O acervo de referências também cresce com a comunidade. Contribua com novas palavras e ajude a mapear o português do nosso tempo.</p>
+    <div class="botoes">
+      <a class="botao" href="{% url 'web:enviar' %}">Enviar uma palavra</a>
+      <a class="botao botao--secundario" href="{% url 'web:sobre' %}">Sobre o projeto</a>
+    </div>
+  </div>
+</section>
+{% endblock %}

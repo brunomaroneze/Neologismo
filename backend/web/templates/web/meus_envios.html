@@ -1,0 +1,51 @@
+{% extends 'web/base.html' %}
+{% load verbetes %}
+
+{% block titulo %}Minhas palavras — Neoscópio{% endblock %}
+{% block meta %}<meta name="robots" content="noindex">{% endblock %}
+
+{% block conteudo %}
+<div class="conteiner secao">
+  <span class="rotulo">Sua conta</span>
+  <h1 class="titulo-1">Minhas palavras</h1>
+  <p class="lead">Acompanhe o que você enviou e em que pé está a moderação.</p>
+
+  <nav class="abas" aria-label="Filtrar por status">
+    {% for valor, rotulo in abas %}
+      <a href="{% consulta status=valor %}" {% if status == valor %}aria-current="page"{% endif %}>{{ rotulo }}</a>
+    {% endfor %}
+  </nav>
+
+  {% if pagina.object_list %}
+    <ul class="lista">
+      {% for verbete in pagina.object_list %}
+        <li class="item">
+          <div class="item__topo">
+            <h2 class="item__titulo"><a href="{% url 'web:verbete' verbete.pk %}">{{ verbete.titulo|lower }}</a></h2>
+            <span class="situacao situacao--{{ verbete.status }}">{% for chave, rotulo in status_rotulo.items %}{% if chave == verbete.status %}{{ rotulo }}{% endif %}{% endfor %}</span>
+          </div>
+          <p class="item__meta">{{ verbete.classe_gramatical }} · {{ verbete.data_criacao|data_curta }}</p>
+          <p class="item__definicao">{{ verbete.definicao }}</p>
+          {% if verbete.status == 'rejeitado' and verbete.motivo_rejeicao %}
+            <div class="motivo"><strong>Motivo da rejeição</strong>{{ verbete.motivo_rejeicao }}</div>
+          {% elif verbete.status == 'pendente' %}
+            <p class="nota">Aguardando revisão da equipe.</p>
+          {% endif %}
+        </li>
+      {% endfor %}
+    </ul>
+    {% include 'web/_paginacao.html' %}
+  {% else %}
+    <div class="vazio">
+      {% if status %}
+        <p class="vazio__titulo">Nada por aqui</p>
+        <p>Nenhum envio seu está nesse status.</p>
+      {% else %}
+        <p class="vazio__titulo">Você ainda não enviou nenhuma palavra</p>
+        <p>Conhece uma palavra nova que ninguém registrou? Comece por ela.</p>
+        <div class="botoes"><a class="botao" href="{% url 'web:enviar' %}">Enviar um neologismo</a></div>
+      {% endif %}
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

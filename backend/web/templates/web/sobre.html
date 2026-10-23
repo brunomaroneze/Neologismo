@@ -1,0 +1,53 @@
+{% extends 'web/base.html' %}
+
+{% block titulo %}Sobre o projeto — Neoscópio{% endblock %}
+
+{% block conteudo %}
+<section class="abertura">
+  <div class="conteiner">
+    <div class="abertura__corpo">
+      <span class="rotulo">Sobre o projeto</span>
+      <h1 class="titulo-1">O que é um neologismo?</h1>
+      <p class="lead">Neologismo é toda palavra, expressão ou sentido novo que surge e passa a circular em uma língua. São as palavras que a sociedade inventa para nomear o que ainda não tinha nome — ou para dizer de um jeito novo o que já existia.</p>
+    </div>
+  </div>
+</section>
+
+<div class="conteiner">
+  <section class="secao prosa">
+    <p>A língua portuguesa está em constante transformação. A cada dia, nas redes sociais, nas conversas de rua, na música e na cultura digital, surgem palavras novas que descrevem comportamentos, sentimentos e fenômenos do nosso tempo. Termos como <span class="destaque-palavra">«biscoitar»</span>, <span class="destaque-palavra">«cringe»</span> ou <span class="destaque-palavra">«crush»</span> são exemplos de neologismos que entraram no vocabulário cotidiano sem pedir licença aos dicionários tradicionais.</p>
+    <p>O problema é que essas criações linguísticas costumam nascer e circular de forma dispersa, sem nenhum registro organizado. Muitas desaparecem antes mesmo de serem documentadas; outras se consolidam, mas ninguém sabe ao certo de onde vieram ou o que realmente significam.</p>
+  </section>
+
+  <section class="secao" aria-labelledby="proposta">
+    <h2 class="titulo-2" id="proposta">A proposta do Neoscópio</h2>
+    <p class="lead">O <strong>Neoscópio</strong> é um banco de dados dedicado a registrar, explorar e discutir os neologismos que moldam o português do nosso tempo. A ideia é simples: dar um lugar para as palavras que o brasileiro cria todos os dias.</p>
+    <ul class="blocos">
+      {% for passo in passos %}
+        <li class="bloco"><h3>{{ passo.titulo }}</h3><p>{{ passo.texto }}</p></li>
+      {% endfor %}
+    </ul>
+  </section>
+
+  <section class="secao" aria-labelledby="importancia">
+    <h2 class="titulo-2" id="importancia">Por que isso importa</h2>
+    <p class="lead">Documentar neologismos é documentar a própria evolução cultural. As palavras que criamos contam a história de quem somos.</p>
+    <ul class="blocos">
+      {% for objetivo in objetivos %}
+        <li class="bloco"><h3>{{ objetivo.titulo }}</h3><p>{{ objetivo.texto }}</p></li>
+      {% endfor %}
+    </ul>
+  </section>
+</div>
+
+<section class="chamada">
+  <div class="conteiner chamada__corpo">
+    <h2 class="titulo-2">Faça parte deste registro</h2>
+    <p>Conhece uma palavra nova que ainda não está aqui? Contribua e ajude a mapear o português do nosso tempo.</p>
+    <div class="botoes">
+      <a class="botao" href="{% url 'web:enviar' %}">Enviar uma palavra</a>
+      <a class="botao botao--secundario" href="{% url 'web:inicio' %}">Explorar neologismos</a>
+    </div>
+  </div>
+</section>
+{% endblock %}

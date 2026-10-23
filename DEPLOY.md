@@ -114,19 +114,39 @@ docker compose -f docker-compose.prod.yml exec backend \
 
 ## 5. E-mail transacional
 
-O site usa e-mail para duas coisas: **recuperação de senha** e **aviso ao
-autor** quando o verbete dele é aprovado ou rejeitado.
+O site usa e-mail para **confirmar a conta no cadastro** (obrigatório),
+**recuperação de senha** e **aviso ao autor** quando o verbete dele é aprovado
+ou rejeitado.
 
-Sem `EMAIL_HOST` preenchido o site **não quebra** — o Django passa a descartar
-os envios em silêncio. O efeito prático é que ninguém consegue recuperar a
-senha e nenhum aviso de moderação chega. É um estado válido para homologação,
-não para produção.
+Sem `EMAIL_HOST` preenchido o Django descarta os envios em silêncio. Como a
+confirmação de e-mail é obrigatória, **ninguém consegue concluir o cadastro**
+nesse estado. Enquanto o e-mail não estiver configurado, um administrador pode
+confirmar contas à mão em **Painel → Usuários → Confirmar e-mail**.
 
-### Escolhendo um provedor
+### Gmail com senha de app (configuração atual)
 
-Não use SMTP de Gmail pessoal: limite baixo e bloqueio quase garantido.
-Serviços transacionais têm plano gratuito suficiente para este projeto
-(Resend, Brevo, SendGrid, Amazon SES). Preencha no `.env`:
+1. Na conta Google que vai enviar, ative a **verificação em duas etapas**.
+2. Em <https://myaccount.google.com/apppasswords>, crie uma senha de app
+   chamada "Neoscópio" e copie as 16 letras (sem os espaços).
+3. No `.env` da VPS:
+
+```bash
+EMAIL_HOST=smtp.gmail.com
+EMAIL_PORT=587
+EMAIL_USE_TLS=True
+EMAIL_HOST_USER=sua.conta@gmail.com
+EMAIL_HOST_PASSWORD=abcdefghijklmnop
+DEFAULT_FROM_EMAIL=Neoscópio <sua.conta@gmail.com>
+```
+
+Limites do Gmail: cerca de 500 e-mails por dia, e o remetente precisa ser o
+próprio endereço do Gmail. Se o volume crescer, ou para enviar como
+`@neoscopio.com.br`, troque por um serviço transacional (abaixo).
+
+### Serviço transacional (alternativa)
+
+Resend, Brevo, SendGrid e Amazon SES têm plano gratuito suficiente para este
+projeto e permitem remetente no domínio do site. Preencha no `.env`:
 
 ```bash
 EMAIL_HOST=smtp.resend.com
@@ -157,6 +177,37 @@ container (e para o Sentry, se configurado). Para investigar:
 ```bash
 docker compose -f docker-compose.prod.yml logs backend | grep -i "Falha ao enviar"
 ```
+
+## 5.1. Login com Google e Facebook
+
+Os botões "Continuar com Google" e "Continuar com Facebook" só aparecem quando
+as credenciais do provedor estão no `.env`. Depois de preencher, recrie o
+backend (`... up -d backend`).
+
+**Google** — <https://console.cloud.google.com/apis/credentials>
+
+1. Crie um projeto, configure a **tela de consentimento OAuth** (tipo
+   "Externo", nome "Neoscópio", e-mail de suporte, domínio do site) e publique.
+2. *Criar credenciais → ID do cliente OAuth → Aplicativo da Web*.
+3. **URI de redirecionamento autorizado:**
+   `https://SEU-DOMINIO/conta/google/login/callback/`
+4. Copie para o `.env`: `GOOGLE_CLIENT_ID` e `GOOGLE_CLIENT_SECRET`.
+
+**Facebook** — <https://developers.facebook.com/apps>
+
+1. *Criar app → Autenticar e solicitar dados dos usuários com o Login do
+   Facebook*.
+2. Em *Login do Facebook → Configurações*, **URI de redirecionamento do OAuth
+   válido:** `https://SEU-DOMINIO/conta/facebook/login/callback/`
+3. Em *Configurações do app → Básico*, preencha a URL da política de
+   privacidade e coloque o app em modo **Ao vivo**.
+4. Copie para o `.env`: `FACEBOOK_APP_ID` (ID do app) e `FACEBOOK_APP_SECRET`
+   (chave secreta).
+
+O Google entrega e-mails já verificados, então quem entra pelo Google não
+precisa confirmar nada. O Facebook não garante isso: o site pede a confirmação
+pelo próprio e-mail. Uma conta social com o mesmo e-mail de uma conta existente
+entra nessa conta, em vez de criar outra.
 
 ## 6. Monitoramento de erros (Sentry)
 

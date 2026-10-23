@@ -1,0 +1,114 @@
+{% load static %}<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block titulo %}Neoscópio — Banco de Neologismos{% endblock %}</title>
+  <meta name="description" content="{% block descricao %}Registre, explore e discuta os neologismos que moldam o português do nosso tempo.{% endblock %}">
+  {% block meta %}{% endblock %}
+  <link rel="icon" href="{% static 'web/frasco.svg' %}" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="{% static 'web/frasco.svg' %}">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400..700;1,6..72,400..600&family=Source+Sans+3:wght@400;600;700&display=swap">
+  <link rel="stylesheet" href="{% static 'web/neoscopio.css' %}">
+  <script src="{% static 'web/neoscopio.js' %}" defer></script>
+</head>
+<body>
+  <a class="pular" href="#conteudo">Ir para o conteúdo</a>
+
+  {# Aparece quando uma página demora a abrir (ver neoscopio.js). #}
+  <div class="carregando" data-carregando hidden>
+    {% include 'web/_frasco.html' with id='pagina' %}
+    <p class="carregando__texto" role="status">Carregando…</p>
+  </div>
+
+  {% with nome=request.resolver_match.url_name %}
+  <div class="instituicao">
+    <div class="conteiner instituicao__linha">
+      <span>Universidade Federal do Espírito Santo · Universidade Federal da Grande Dourados</span>
+      <span>Pró-Reitoria de Extensão · Laboratório de Neologismos</span>
+    </div>
+  </div>
+
+  <header class="barra">
+    <div class="conteiner barra__linha">
+      <a class="marca" href="{% url 'web:inicio' %}" aria-label="Neoscópio — página inicial">
+        <img src="{% static 'web/logo.png' %}" alt="Neoscópio" width="1440" height="340">
+      </a>
+
+      <button class="menu-botao" type="button" aria-expanded="false" aria-controls="navegacao" data-menu data-rotulo-abrir="Abrir menu" data-rotulo-fechar="Fechar menu">Abrir menu</button>
+
+      <div class="navegacao" id="navegacao">
+        <nav aria-label="Navegação principal">
+          <ul class="navegacao__links">
+            <li><a href="{% url 'web:inicio' %}" {% if nome == 'inicio' %}aria-current="page"{% endif %}>Explorar</a></li>
+            <li><a href="{% url 'web:enviar' %}" {% if nome == 'enviar' %}aria-current="page"{% endif %}>Enviar</a></li>
+            <li><a href="{% url 'web:sobre' %}" {% if nome == 'sobre' %}aria-current="page"{% endif %}>Sobre</a></li>
+            <li><a href="{% url 'web:equipe' %}" {% if nome == 'equipe' %}aria-current="page"{% endif %}>Equipe</a></li>
+            <li><a href="{% url 'web:referencias' %}" {% if nome == 'referencias' %}aria-current="page"{% endif %}>Indicações de leitura</a></li>
+            {% if user.is_authenticated %}<li><a href="{% url 'web:meus_envios' %}" {% if nome == 'meus_envios' %}aria-current="page"{% endif %}>Minhas palavras</a></li>{% endif %}
+            {% if user.is_staff %}<li><a href="{% url 'web:moderacao' %}" {% if 'admin-painel' in request.path %}aria-current="page"{% endif %}>Painel</a></li>{% endif %}
+          </ul>
+        </nav>
+
+        <div class="sessao">
+          {% if user.is_authenticated %}
+            <a class="sessao__ola" href="{% url 'account_email' %}" title="Minha conta">Olá, <strong>{{ user.username }}</strong></a>
+            <form method="post" action="{% url 'account_logout' %}">
+              {% csrf_token %}
+              <button class="botao-barra" type="submit">Sair</button>
+            </form>
+          {% else %}
+            <a class="botao-barra" href="{% url 'account_login' %}">Entrar</a>
+            <a class="botao-barra botao-barra--cheio" href="{% url 'account_signup' %}">Cadastrar-se</a>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </header>
+  {% endwith %}
+
+  {% if messages %}
+    <div class="conteiner avisos" role="status">
+      {% for mensagem in messages %}
+        <p class="aviso aviso--{{ mensagem.tags }}">{{ mensagem }}</p>
+      {% endfor %}
+    </div>
+  {% endif %}
+
+  <main id="conteudo">
+    {% block conteudo %}{% endblock %}
+  </main>
+
+  <footer class="rodape">
+    <div class="conteiner rodape__grade">
+      <div>
+        <p class="rodape__nome">Neoscópio</p>
+        <p>Banco dos neologismos que moldam o português brasileiro do nosso tempo. Cada verbete passa por moderação antes de ser publicado.</p>
+      </div>
+      <nav aria-label="Explorar">
+        <h2>Explorar</h2>
+        <ul>
+          <li><a href="{% url 'web:inicio' %}">Todos os verbetes</a></li>
+          <li><a href="{% url 'web:enviar' %}">Enviar um neologismo</a></li>
+        </ul>
+      </nav>
+      <nav aria-label="O projeto">
+        <h2>O projeto</h2>
+        <ul>
+          <li><a href="{% url 'web:sobre' %}">Sobre</a></li>
+          <li><a href="{% url 'web:equipe' %}">Equipe</a></li>
+          <li><a href="{% url 'web:referencias' %}">Indicações de leitura</a></li>
+        </ul>
+      </nav>
+    </div>
+    <div class="rodape__base">
+      <div class="conteiner">
+        <p>© {% now "Y" %} Neoscópio — projeto de iniciação científica. Universidade Federal do Espírito Santo (UFES) · Av. Fernando Ferrari, 514 – Goiabeiras, Vitória – ES, 29075-910. Universidade Federal da Grande Dourados (UFGD) · Dourados – MS.</p>
+        <p>Feito com pesquisa, código aberto e muita palavra nova.</p>
+      </div>
+    </div>
+  </footer>
+</body>
+</html>

@@ -1,0 +1,1 @@
+{% load allauth %}<span class="situacao{% if "success" in attrs.tags %} situacao--aprovado{% elif "warning" in attrs.tags %} situacao--pendente{% else %} situacao--rejeitado{% endif %}" {% if attrs.title %}title="{{ attrs.title }}"{% endif %}>{% slot %}{% endslot %}</span>

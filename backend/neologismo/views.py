@@ -1,8 +1,5 @@
-from django.contrib.auth import get_user_model
 from django.db import transaction
-from django.db.models import Count, Exists, OuterRef, Q, TextField
-from django.db.models.functions import Cast
-from django.utils import timezone
+from django.db.models import Count, Q
 from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework import status as http_status
 from rest_framework import viewsets
@@ -11,9 +8,9 @@ from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import IsAdminUser, IsAuthenticated
 from rest_framework.response import Response
 
-from config.emails import avisar_verbete_aprovado, avisar_verbete_rejeitado
-
+from . import consultas
 from . import facetas as indice_facetas
+from . import moderacao
 from .models import Neologismo
 from .permissions import DonoOuStaff
 from .serializers import (
@@ -22,14 +19,6 @@ from .serializers import (
     NeologismoSerializer,
     RejeicaoSerializer,
 )
-
-ORDENACOES = {
-    'recentes': ['-data_criacao'],
-    'antigos': ['data_criacao'],
-    'populares': ['-likes_count', '-data_criacao'],
-    'alfabetica': ['titulo'],
-}
-
 
 class NeologismoViewSet(viewsets.ModelViewSet):
     queryset = Neologismo.objects.all()
@@ -54,37 +43,8 @@ class NeologismoViewSet(viewsets.ModelViewSet):
     # --- Queryset ---
 
     def _base_queryset(self):
-        """Queryset com as anotações que o serializer consome.
-
-        As contagens vêm anotadas em vez de `obj.likes.count()` para não
-        disparar uma query por card renderizado na Home.
-        """
-        usuario = self.request.user
-
-        qs = (
-            Neologismo.objects
-            .select_related('autor', 'moderado_por')
-            .prefetch_related('contextos')
-            .annotate(
-                likes_count=Count('likes', distinct=True),
-                deslikes_count=Count('deslikes', distinct=True),
-            )
-            # Ordem explícita: sem ela a paginação pode repetir ou pular itens
-            # entre páginas, e o DRF emite UnorderedObjectListWarning.
-            .order_by('-data_criacao', '-id')
-        )
-
-        if usuario.is_authenticated:
-            qs = qs.annotate(
-                curtido_por_mim=Exists(
-                    get_user_model().objects.filter(
-                        pk=usuario.pk,
-                        neologismos_curtidos=OuterRef('pk'),
-                    )
-                )
-            )
-
-        return qs
+        """Queryset com as anotações que o serializer consome."""
+        return consultas.anotados(self.request.user)
 
     def get_queryset(self):
         qs = self._base_queryset()
@@ -109,33 +69,14 @@ class NeologismoViewSet(viewsets.ModelViewSet):
             # ?status=pendente para ler a fila de moderação inteira.
             qs = qs.filter(status=Neologismo.APROVADO)
 
-        busca = (params.get('search') or '').strip()
-        if busca:
-            # `unaccent` resolve o acento e `icontains` a caixa: quem digita
-            # "voce" acha "você" e quem digita "GÍRIA" acha "gíria". As tags
-            # são um ArrayField, que o Postgres não aceita em lookup de texto
-            # — o cast para text transforma ["Internetês", "Gíria"] numa
-            # string pesquisável pelo mesmo caminho.
-            qs = qs.annotate(tags_texto=Cast('tags', TextField())).filter(
-                Q(titulo__unaccent__icontains=busca)
-                | Q(definicao__unaccent__icontains=busca)
-                | Q(contexto_uso__unaccent__icontains=busca)
-                | Q(tags_texto__unaccent__icontains=busca)
-            )
-
-        tag = (params.get('tag') or '').strip()
-        if tag and tag.lower() != 'all':
-            # A tag precisa casar com o valor gravado; `canonizar_tag` aceita
-            # a versão sem acento que aparece em links copiados à mão.
-            qs = qs.filter(tags__contains=[indice_facetas.canonizar_tag(tag)])
-
-        classe = (params.get('classe') or '').strip()
-        if classe:
-            qs = qs.filter(classe_gramatical__unaccent__icontains=classe)
-
-        ordering = ORDENACOES.get(params.get('ordering', ''), None)
-        if ordering:
-            qs = qs.order_by(*ordering)
+        qs = consultas.filtrar(
+            qs,
+            busca=params.get('search'),
+            tag=params.get('tag'),
+            classe=params.get('classe'),
+            letra=params.get('letra'),
+            ordem=params.get('ordering'),
+        )
 
         return qs
 
@@ -246,31 +187,14 @@ class NeologismoViewSet(viewsets.ModelViewSet):
 
     # --- Moderação (somente staff) ---
 
-    def _registrar_moderacao(self, neologismo, request, avisar=None, **campos):
-        for campo, valor in campos.items():
-            setattr(neologismo, campo, valor)
-        neologismo.moderado_em = timezone.now()
-        neologismo.moderado_por = request.user
-        neologismo.save()
-
-        # O aviso ao autor é best-effort: `enviar_email` engole a exceção e
-        # loga, então o SMTP fora do ar não impede a moderação de acontecer.
-        if avisar is not None:
-            avisar(neologismo)
-
-        serializer = self.get_serializer(neologismo)
-        return Response(serializer.data)
+    def _responder(self, neologismo):
+        return Response(self.get_serializer(neologismo).data)
 
     @extend_schema(request=None, responses={200: NeologismoModeracaoSerializer})
     @action(detail=True, methods=['post'], permission_classes=[IsAdminUser])
     def aprovar(self, request, pk=None):
-        neologismo = self.get_object()
-        return self._registrar_moderacao(
-            neologismo, request,
-            avisar=avisar_verbete_aprovado,
-            status=Neologismo.APROVADO,
-            motivo_rejeicao=None,
-        )
+        neologismo = moderacao.aprovar(self.get_object(), request.user)
+        return self._responder(neologismo)
 
     @extend_schema(
         request=RejeicaoSerializer,
@@ -282,26 +206,18 @@ class NeologismoViewSet(viewsets.ModelViewSet):
         if not entrada.is_valid():
             raise ValidationError(entrada.errors)
 
-        neologismo = self.get_object()
-        return self._registrar_moderacao(
-            neologismo, request,
-            avisar=avisar_verbete_rejeitado,
-            status=Neologismo.REJEITADO,
-            motivo_rejeicao=entrada.validated_data['motivo_rejeicao'].strip(),
+        neologismo = moderacao.rejeitar(
+            self.get_object(), request.user,
+            entrada.validated_data['motivo_rejeicao'],
         )
+        return self._responder(neologismo)
 
     @extend_schema(request=None, responses={200: NeologismoModeracaoSerializer})
     @action(detail=True, methods=['post'], permission_classes=[IsAdminUser])
     def reativar(self, request, pk=None):
         """Volta um verbete rejeitado para aprovado."""
-        neologismo = self.get_object()
-        return self._registrar_moderacao(
-            neologismo, request,
-            avisar=avisar_verbete_aprovado,
-            status=Neologismo.APROVADO,
-            motivo_rejeicao=None,
-            reativado_em=timezone.now(),
-        )
+        neologismo = moderacao.reativar(self.get_object(), request.user)
+        return self._responder(neologismo)
 
     @extend_schema(
         request=None,
