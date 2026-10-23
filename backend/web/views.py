@@ -47,6 +47,8 @@ from .limites import excedeu
 Usuario = get_user_model()
 
 POR_PAGINA = 20
+# Na página inicial os cards ficam em 3 colunas: 12 dá 4 linhas cheias.
+POR_PAGINA_INICIO = 12
 BACKEND_AUTH = 'django.contrib.auth.backends.ModelBackend'
 
 ROTULOS_ORDEM = {
@@ -133,7 +135,7 @@ def inicio(request):
         tag=tag,
         ordem=ordem,
     )
-    pagina = Paginator(qs, POR_PAGINA).get_page(params.get('pagina'))
+    pagina = Paginator(qs, POR_PAGINA_INICIO).get_page(params.get('pagina'))
 
     contexto = {
         'pagina': pagina,

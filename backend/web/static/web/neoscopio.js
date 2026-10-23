@@ -67,10 +67,17 @@
     select.addEventListener("change", function () { select.form.submit(); });
   });
 
-  // --- Carregar mais -------------------------------------------------------------
+  // --- Carregar mais / Ver menos -----------------------------------------------
+  // "Carregar mais" acrescenta a próxima página de cards; "Ver menos" recolhe
+  // tudo de volta à primeira página. Sem JavaScript, "Carregar mais" é só um
+  // link para a página seguinte.
   var carregarMais = document.querySelector("[data-carregar-mais]");
+  var verMenos = document.querySelector("[data-ver-menos]");
   var grade = document.querySelector("[data-grade]");
   if (carregarMais && grade) {
+    var cardsIniciais = grade.children.length;
+    var proximaInicial = carregarMais.getAttribute("href");
+
     carregarMais.addEventListener("click", function (evento) {
       evento.preventDefault();
       var url = new URL(carregarMais.href, location.href);
@@ -90,18 +97,30 @@
           if (proxima) proxima.remove();
           var primeiroNovo = molde.content.querySelector("li");
           grade.appendChild(molde.content);
+          carregarMais.removeAttribute("aria-busy");
           if (proxima) {
             carregarMais.href = proxima.getAttribute("data-proxima") + "#explorar";
-            carregarMais.removeAttribute("aria-busy");
           } else {
-            carregarMais.parentElement.remove();
+            carregarMais.hidden = true;
           }
+          if (verMenos) verMenos.hidden = false;
           // Leva o foco ao primeiro card novo para quem navega pelo teclado.
           var link = primeiroNovo && primeiroNovo.querySelector(".card__titulo a");
           if (link) link.focus({ preventScroll: true });
         })
         .catch(function () { location.href = carregarMais.href; });
     });
+
+    if (verMenos) {
+      verMenos.addEventListener("click", function () {
+        while (grade.children.length > cardsIniciais) grade.lastElementChild.remove();
+        carregarMais.href = proximaInicial;
+        carregarMais.hidden = false;
+        verMenos.hidden = true;
+        document.getElementById("explorar").scrollIntoView({ behavior: "smooth", block: "start" });
+        carregarMais.focus({ preventScroll: true });
+      });
+    }
   }
 
   // --- Copiar link do verbete -----------------------------------------------------

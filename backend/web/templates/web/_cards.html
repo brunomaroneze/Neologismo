@@ -4,5 +4,5 @@
   {% include 'web/_card.html' %}
 {% endfor %}
 {% if pagina.has_next %}
-  <template data-proxima="{% consulta pagina=pagina.next_page_number %}"></template>
+  <template data-proxima="{% consulta pagina=pagina.next_page_number parcial="" %}"></template>
 {% endif %}

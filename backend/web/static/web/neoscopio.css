@@ -461,7 +461,8 @@ a:hover { text-decoration-thickness: 2px; }
 .curtir__botao[aria-pressed="true"] svg { fill: var(--ameixa); }
 .curtir--grande .curtir__botao { font-size: 1rem; border: 1px solid var(--filete-forte); padding: 0.45rem 0.85rem; }
 
-.mais { display: flex; justify-content: center; margin-top: 2.5rem; }
+.mais { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.75rem; margin-top: 2.5rem; }
+.mais [hidden] { display: none; }
 
 .vazio {
   text-align: center;
@@ -472,6 +473,25 @@ a:hover { text-decoration-thickness: 2px; }
 .vazio__titulo { font-family: var(--serifa); font-size: 1.4rem; margin: 0 0 0.4rem; }
 .vazio p { margin: 0 0 1.25rem; color: var(--tinta-2); }
 .vazio .botoes { justify-content: center; }
+
+/* --- Paginação (Minhas palavras e Moderação) ----------------------------------- */
+
+.paginacao { display: flex; flex-direction: column; align-items: center; gap: 0.6rem; margin-top: 2.75rem; }
+.paginacao__lista { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 0.35rem; list-style: none; margin: 0; padding: 0; }
+.paginacao__numero, .paginacao__seta, .paginacao__reticencias {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 2.5rem; height: 2.5rem; padding: 0 0.6rem;
+  border-radius: 999px;
+  font-weight: 600; font-variant-numeric: tabular-nums;
+  text-decoration: none;
+}
+a.paginacao__numero, a.paginacao__seta { color: var(--tinta-2); border: 1px solid var(--filete); background: var(--papel); }
+a.paginacao__numero:hover, a.paginacao__seta:hover { border-color: var(--malva); color: var(--ameixa); background: var(--veu); }
+.paginacao__numero[aria-current="page"] { background: var(--ameixa); color: var(--papel); border: 1px solid var(--ameixa); }
+span.paginacao__seta { color: var(--filete-forte); border: 1px solid transparent; }
+.paginacao__seta { font-size: 1.15rem; }
+.paginacao__reticencias { min-width: 1.5rem; padding: 0; color: var(--tinta-3); }
+.paginacao__posicao { margin: 0; font-size: 0.85rem; color: var(--tinta-3); }
 
 /* --- Página do verbete ------------------------------------------------------ */
 

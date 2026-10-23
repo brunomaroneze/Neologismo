@@ -60,6 +60,16 @@ def data_curta(valor):
     return formatar_data(valor, r'd \d\e b. \d\e Y').lower()
 
 
+@register.simple_tag
+def paginas(pagina):
+    """Números para a paginação: 1 … 4 5 [6] 7 8 … 12.
+
+    Sempre mostra a primeira e a última página e duas vizinhas de cada lado
+    da atual; o resto vira reticências (Paginator.ELLIPSIS).
+    """
+    return list(pagina.paginator.get_elided_page_range(pagina.number, on_each_side=2, on_ends=1))
+
+
 @register.simple_tag(takes_context=True)
 def consulta(context, **alteracoes):
     """Querystring atual com as alterações pedidas.

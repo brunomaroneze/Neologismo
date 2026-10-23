@@ -50,15 +50,44 @@ class ConsultaTests(BaseWeb):
         self.assertContains(resposta, 'você-mesmo')
         self.assertNotContains(resposta, '>outro<')
 
-    def test_filtro_por_tag_e_carregar_mais_parcial(self):
+    def test_filtro_por_tag_aceita_sem_acento(self):
         criar_verbete(self.autor, 'Comtag', tags=['Gíria'])
         criar_verbete(self.autor, 'Semtag', tags=['Outra'])
 
-        resposta = self.client.get(reverse('web:inicio'), {'tag': 'giria', 'parcial': '1'})
+        resposta = self.client.get(reverse('web:inicio'), {'tag': 'giria'})
 
         self.assertContains(resposta, 'comtag')
         self.assertNotContains(resposta, 'semtag')
+
+    def test_inicio_mostra_12_e_carregar_mais(self):
+        for i in range(30):
+            criar_verbete(self.autor, f'Palavra{i:02d}')
+
+        resposta = self.client.get(reverse('web:inicio'))
+
+        self.assertEqual(len(resposta.context['pagina'].object_list), 12)
+        self.assertContains(resposta, 'href="?pagina=2#explorar" data-carregar-mais')
+        self.assertContains(resposta, 'data-ver-menos hidden')
+
+    def test_carregar_mais_parcial_traz_so_os_cards(self):
+        for i in range(30):
+            criar_verbete(self.autor, f'Palavra{i:02d}', tags=['Gíria'])
+
+        resposta = self.client.get(reverse('web:inicio'), {'tag': 'Gíria', 'pagina': 2, 'parcial': '1'})
+
         self.assertNotContains(resposta, '<html')
+        self.assertEqual(resposta.content.decode().count('class="card"'), 12)
+        self.assertContains(resposta, 'data-proxima="?tag=G%C3%ADria&amp;pagina=3"')
+
+    def test_paginacao_numerada_em_minhas_palavras(self):
+        for i in range(25):
+            criar_verbete(self.autor, f'Meu{i:02d}', Neologismo.PENDENTE)
+        self.client.login(username='autora', password=SENHA)
+
+        resposta = self.client.get(reverse('web:meus_envios'))
+
+        self.assertContains(resposta, 'Página 1 de 2')
+        self.assertContains(resposta, 'aria-label="Próxima página"')
 
     def test_pagina_do_verbete_tem_citacoes_e_previa_de_link(self):
         verbete = criar_verbete(self.autor, 'Cringe')
