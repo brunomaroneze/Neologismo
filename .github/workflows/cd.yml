@@ -13,7 +13,8 @@ name: Entrega
 
 on:
   push:
-    branches: [main]
+    # `develop` publica no ambiente de teste (teste.neoscopio.com.br).
+    branches: [main, develop]
     tags: ['v*']
   # Permite subir um commit específico à mão (rollback, ou deploy fora do
   # fluxo normal) pela aba Actions.
@@ -239,6 +240,9 @@ jobs:
           COMMIT: ${{ github.sha }}
           IMAGEM_BACKEND: ${{ needs.imagens.outputs.backend }}
           IMAGEM_FRONTEND: ${{ needs.imagens.outputs.frontend }}
+          # Compose extra, ex. `docker-compose.nginx.yml` numa VPS que já tem
+          # nginx na frente em vez do Caddy (DEPLOY.md, seção 12).
+          COMPOSE_EXTRA: ${{ vars.COMPOSE_EXTRA }}
           GHCR_USER: ${{ github.actor }}
           GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         # O script é montado aqui e vai inteiro pela ENTRADA PADRÃO do ssh,
@@ -265,6 +269,7 @@ jobs:
             printf 'export COMMIT=%q\n'          "$COMMIT"
             printf 'export IMAGEM_BACKEND=%q\n'  "$IMAGEM_BACKEND"
             printf 'export IMAGEM_FRONTEND=%q\n' "$IMAGEM_FRONTEND"
+            printf 'export COMPOSE_EXTRA=%q\n'   "$COMPOSE_EXTRA"
             printf 'export GHCR_USER=%q\n'       "$GHCR_USER"
             printf 'export GHCR_TOKEN=%q\n'      "$GHCR_TOKEN"
 
@@ -286,6 +291,7 @@ jobs:
             docker compose \
               -f docker-compose.prod.yml \
               -f docker-compose.deploy.yml \
+              ${COMPOSE_EXTRA:+-f "$COMPOSE_EXTRA"} \
               "$@"
           }
 

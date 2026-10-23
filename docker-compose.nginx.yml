@@ -1,0 +1,24 @@
+# Override de PRODUÇÃO para uma VPS que já tem nginx na frente (com o
+# certificado do Certbot), usado junto do docker-compose.prod.yml:
+#
+#   docker compose -f docker-compose.prod.yml -f docker-compose.nginx.yml up -d --build
+#
+# O Caddy do compose de produção disputaria as portas 80/443 com o nginx, então
+# ele fica desligado (só sobe com --profile caddy). Backend e frontend são
+# publicados apenas em 127.0.0.1: o nginx alcança, a internet não. O banco
+# continua sem porta publicada.
+#
+# O nginx precisa mandar /api, /admin e /static para 127.0.0.1:8000 e o resto
+# para 127.0.0.1:3000 — modelo em deploy/nginx-neoscopio.conf.
+
+services:
+  backend:
+    ports:
+      - "127.0.0.1:${BACKEND_PORT:-8000}:8000"
+
+  frontend:
+    ports:
+      - "127.0.0.1:${FRONTEND_PORT:-3000}:3000"
+
+  caddy:
+    profiles: ["caddy"]

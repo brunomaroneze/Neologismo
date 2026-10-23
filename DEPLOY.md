@@ -248,7 +248,7 @@ tudo isso: o workflow `.github/workflows/cd.yml`.
 ### O que ele faz
 
 ```
-push na main  ->  Qualidade  ->  Publicar imagens  ->  Deploy na VPS  ->  Verificação
+push na main/develop  ->  Qualidade  ->  Publicar imagens  ->  Deploy na VPS  ->  Verificação
                   (ci.yml)       (GHCR)               (ssh)              (curl)
 ```
 
@@ -321,6 +321,7 @@ quiser que todo deploy espere uma aprovação sua.
 | `DOMINIO` | `neoscopio.com.br` |
 | `CAMINHO_PROJETO` | caminho do repositório na VPS, ex. `/home/deploy/neoscopio` |
 | `SSH_PORT` | opcional, padrão `22` |
+| `COMPOSE_EXTRA` | opcional. `docker-compose.nginx.yml` quando a VPS usa nginx em vez do Caddy (seção 12) |
 | `SENTRY_ORG` / `SENTRY_PROJECT` | opcionais, junto do token acima |
 
 `DOMINIO` é variable e não secret porque ele é embutido no bundle do frontend
@@ -331,7 +332,9 @@ exatamente qual — ele não tenta conectar sem isso.
 
 ### Como disparar
 
-- **Automático:** todo push na `main`.
+- **Automático:** todo push na `main` ou na `develop`. Hoje as duas publicam
+  no mesmo `DOMINIO` (o ambiente de teste); quando existir um servidor de
+  produção separado, a `main` precisa de variáveis próprias.
 - **Versão marcada:** uma tag `v*` (ex. `v1.2.0`) também publica as imagens
   como `1.2.0`, `1.2` e `latest`.
 - **À mão:** aba **Actions > Entrega > Run workflow**, escolhendo o branch ou
@@ -398,7 +401,26 @@ docker compose -f docker-compose.prod.yml exec backend \
   python manage.py check --deploy
 ```
 
-## 12. O que ainda não está coberto
+## 12. VPS que já tem nginx (em vez do Caddy)
+
+Se a VPS já roda um nginx atendendo outros sites nas portas 80/443, o Caddy
+não pode subir. Use o override `docker-compose.nginx.yml`, que desliga o Caddy
+e publica backend e frontend só em `127.0.0.1`:
+
+```bash
+docker compose -f docker-compose.prod.yml -f docker-compose.nginx.yml up -d --build
+```
+
+- O `.env` continua precisando de `EMAIL_ACME` preenchido (qualquer e-mail):
+  o compose de produção valida a variável mesmo com o Caddy desligado.
+- No nginx, use o modelo `deploy/nginx-neoscopio.conf`: `/api`, `/admin` e
+  `/static` vão para `127.0.0.1:8000`, o resto para `127.0.0.1:3000`.
+- **Não rode o `docker-compose.yml` de desenvolvimento em produção.** Com
+  `npm run dev` atrás de um domínio, o Next 16 bloqueia os recursos de dev
+  (`/_next/hmr`) para origens fora de `allowedDevOrigins`, a página nunca é
+  hidratada e os cards ficam carregando para sempre — sem nenhuma chamada à API.
+
+## 13. O que ainda não está coberto
 
 Deixado de fora de propósito, para você decidir se precisa:
 
