@@ -8,6 +8,9 @@ const nextConfig: NextConfig = {
   // roda `node server.js` sem precisar de node_modules nem do Next instalado.
   output: "standalone",
 
+  // Em `next dev`, abrir o site por 127.0.0.1 bloqueia o JS do cliente.
+  allowedDevOrigins: ["127.0.0.1"],
+
   // Sem isto o Next sobe um nível procurando lockfile e escolhe a raiz errada.
   turbopack: { root: __dirname },
 
