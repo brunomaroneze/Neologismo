@@ -621,7 +621,7 @@ span.paginacao__seta { color: var(--filete-forte); border: 1px solid transparent
 /* --- Formulários ------------------------------------------------------------- */
 
 .painel-conta { display: flex; justify-content: center; padding-block: 3.5rem 4rem; }
-.painel-conta { background: var(--veu); }
+.painel-conta { background: transparent; }
 .painel-conta__caixa {
   width: 100%; max-width: 27rem;
   padding: 2.4rem 2.1rem 2.1rem;
@@ -872,3 +872,71 @@ textarea.entrada { min-height: 7rem; resize: vertical; line-height: 1.5; }
 @media (prefers-reduced-motion: reduce) {
   .frasco__liquido, .frasco__ponto { animation: none !important; }
 }
+
+/* --- Telas de conta (django-allauth) ------------------------------------------ */
+
+/* Os campos vêm dos formulários do allauth, sem classe: o estilo é o mesmo de .entrada. */
+.formulario-conta .campo input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]),
+.formulario-conta .campo select,
+.formulario-conta .campo textarea {
+  display: block; width: 100%;
+  font: inherit;
+  padding: 0.65rem 0.8rem;
+  border: 1px solid var(--filete-forte);
+  border-radius: var(--raio);
+  background: var(--papel);
+  color: var(--tinta);
+}
+.formulario-conta .campo input:hover { border-color: var(--malva); }
+.formulario-conta .campo input[aria-invalid="true"] { border-color: var(--ameixa); box-shadow: inset 0 0 0 1px var(--ameixa); }
+.formulario-conta .campo__ajuda ul { margin: 0.35rem 0 0; padding-left: 1.1rem; }
+.formulario-conta__acoes { display: flex; flex-wrap: wrap; gap: 0.75rem; margin-top: 1.25rem; }
+.conta-allauth .formulario-conta__acoes .botao { flex: 1 1 auto; }
+
+.campo--marcar { margin-bottom: 1rem; }
+.marcar { display: inline-flex; align-items: center; gap: 0.55rem; cursor: pointer; font-size: 0.95rem; }
+.marcar input { width: 1.1rem; height: 1.1rem; accent-color: var(--ameixa); }
+
+.conta-texto { color: var(--tinta-2); margin: 0 0 1rem; }
+.conta-texto--direita { text-align: right; margin-top: -0.5rem; font-size: 0.9rem; }
+.conta-allauth .titulo-1 { font-size: 2rem; }
+.conta-allauth .titulo-2 { font-size: 1.35rem; margin-top: 1.5rem; }
+
+.divisor { border: 0; border-top: 1px solid var(--filete); margin: 1.5rem 0; }
+.divisor-ou { display: flex; align-items: center; gap: 0.9rem; margin: 1.35rem 0; color: var(--tinta-3); font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.12em; }
+.divisor-ou::before, .divisor-ou::after { content: ""; flex: 1; border-top: 1px solid var(--filete); }
+
+.provedores { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.6rem; }
+.provedores form { margin: 0; }
+.provedor {
+  display: flex; align-items: center; justify-content: center; gap: 0.7rem;
+  width: 100%;
+  font: inherit; font-weight: 600; font-size: 0.97rem;
+  padding: 0.72rem 1rem;
+  border: 1px solid var(--filete-forte);
+  border-radius: var(--raio);
+  background: var(--papel);
+  color: var(--tinta);
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+.provedor:hover { background: var(--veu); border-color: var(--malva); }
+.provedor svg { width: 1.25rem; height: 1.25rem; flex-shrink: 0; }
+
+.botao--link { background: none; border-color: transparent; color: var(--ameixa); padding-inline: 0.25rem; }
+.botao--link:hover { background: none; text-decoration: underline; }
+.botao--perigo { background: var(--papel); border-color: var(--ameixa); color: var(--ameixa); }
+.botao--perigo:hover { background: var(--veu-forte); }
+.botoes--vertical { flex-direction: column; align-items: stretch; }
+
+.painel-allauth { padding: 1.1rem 0; border-top: 1px solid var(--filete); }
+.painel-allauth:first-child { border-top: 0; padding-top: 0; }
+
+.conta-gestao .abas { margin-top: 0.25rem; }
+.conta-gestao__caixa { max-width: 40rem; box-shadow: var(--sombra); }
+
+.tabela-rolagem { overflow-x: auto; }
+.tabela { width: 100%; border-collapse: collapse; font-size: 0.95rem; }
+.tabela th { text-align: left; font-size: 0.74rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--tinta-3); padding: 0.6rem 0.75rem; border-bottom: 1px solid var(--filete-forte); }
+.tabela td { padding: 0.75rem; border-bottom: 1px solid var(--filete); vertical-align: middle; }
+.tabela tbody tr:hover { background: var(--veu); }

@@ -17,11 +17,13 @@ urlpatterns = [
     path('admin-painel', views.moderacao_painel, name='moderacao'),
     path('admin-painel/<int:pk>/<str:acao>', views.moderar, name='moderar'),
 
-    path('login', views.login_view, name='login'),
-    path('sair', views.logout_view, name='logout'),
-    path('cadastro', views.cadastro, name='cadastro'),
-    path('recuperar-senha', views.recuperar_senha, name='recuperar_senha'),
-    path('redefinir-senha/<str:uid>/<str:token>', views.redefinir_senha, name='redefinir_senha'),
+    # Endereços antigos das telas de conta, agora servidas pelo allauth em
+    # /conta/. Mantidos como redirecionamento para links salvos e e-mails já
+    # enviados (o link de redefinição antigo leva a pedir um novo).
+    path('login', views.redirecionar('account_login'), name='login'),
+    path('cadastro', views.redirecionar('account_signup'), name='cadastro'),
+    path('recuperar-senha', views.redirecionar('account_reset_password'), name='recuperar_senha'),
+    path('redefinir-senha/<str:uid>/<str:token>', views.redirecionar('account_reset_password')),
 
     path('sobre', views.sobre, name='sobre'),
     path('equipe', views.equipe, name='equipe'),

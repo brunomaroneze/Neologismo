@@ -9,13 +9,9 @@ API nunca divergirem.
 
 from functools import wraps
 
-from django.conf import settings
 from django.contrib import messages
-from django.contrib.auth import authenticate, get_user_model
-from django.contrib.auth import login as entrar
-from django.contrib.auth import logout as sair
+from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
-from django.contrib.auth.tokens import default_token_generator
 from django.contrib.staticfiles import finders
 from django.core.paginator import Paginator
 from django.db import transaction
@@ -24,22 +20,14 @@ from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
-from django.utils.encoding import force_bytes
 from django.utils.text import slugify
-from django.utils.http import url_has_allowed_host_and_scheme, urlsafe_base64_decode, urlsafe_base64_encode
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_GET, require_POST
-from rest_framework.authtoken.models import Token
 
-from config.emails import enviar_recuperacao_senha
 from neologismo import consultas, moderacao
 from neologismo import facetas as indice_facetas
 from neologismo.models import Neologismo
 from neologismo.serializers import NeologismoSerializer
-from usuario.serializers import (
-    RecuperarSenhaSerializer,
-    RedefinirSenhaSerializer,
-    RegistroSerializer,
-)
 
 from . import conteudo
 from .limites import excedeu
@@ -49,7 +37,6 @@ Usuario = get_user_model()
 POR_PAGINA = 20
 # Na página inicial os cards ficam em 3 colunas: 12 dá 4 linhas cheias.
 POR_PAGINA_INICIO = 12
-BACKEND_AUTH = 'django.contrib.auth.backends.ModelBackend'
 
 ROTULOS_ORDEM = {
     'recentes': 'Mais recentes',
@@ -101,7 +88,7 @@ def equipe_required(view):
     @wraps(view)
     def envolvida(request, *args, **kwargs):
         if not request.user.is_authenticated:
-            return redirect(f"{reverse('web:login')}?next={request.get_full_path()}")
+            return redirect(f"{reverse('account_login')}?next={request.get_full_path()}")
         if not request.user.is_staff:
             return render(request, 'web/sem_permissao.html', status=403)
         return view(request, *args, **kwargs)
@@ -207,7 +194,7 @@ def _validar_envio(valores):
 def enviar(request):
     if not request.user.is_authenticated:
         if request.method == 'POST':
-            return redirect(f"{reverse('web:login')}?next={reverse('web:enviar')}")
+            return redirect(f"{reverse('account_login')}?next={reverse('web:enviar')}")
         return render(request, 'web/enviar.html', {'precisa_entrar': True})
 
     if request.GET.get('enviado'):
@@ -344,134 +331,14 @@ def moderar(request, pk, acao):
 
 # --- Conta ----------------------------------------------------------------------
 
-def login_view(request):
-    destino = request.POST.get('next') or request.GET.get('next', '')
-    erro = None
-    usuario_digitado = ''
-
-    if request.method == 'POST':
-        usuario_digitado = request.POST.get('username', '').strip()
-        if not usuario_digitado or not request.POST.get('password'):
-            erro = 'Preencha usuário e senha.'
-        elif excedeu(request, 'login'):
-            erro = 'Muitas tentativas de entrada. Aguarde um minuto e tente novamente.'
-        else:
-            usuario = authenticate(
-                request,
-                username=usuario_digitado,
-                password=request.POST.get('password', ''),
-            )
-            if usuario is None:
-                erro = 'Usuário ou senha inválidos.'
-            else:
-                entrar(request, usuario)
-                return redirect(_destino_seguro(request, destino))
-
-    return render(request, 'web/conta/login.html', {
-        'erro': erro,
-        'next': destino,
-        'usuario_digitado': usuario_digitado,
-    })
-
-
-@require_POST
-def logout_view(request):
-    sair(request)
-    return redirect('web:inicio')
-
-
-def cadastro(request):
-    valores = {'username': '', 'email': ''}
-    erros = {}
-
-    if request.method == 'POST':
-        valores = {campo: request.POST.get(campo, '').strip() for campo in valores}
-        senha = request.POST.get('password', '')
-
-        if excedeu(request, 'cadastro'):
-            erros['geral'] = 'Muitos cadastros a partir desta conexão. Tente novamente mais tarde.'
-        elif senha != request.POST.get('password_confirmacao', ''):
-            erros['password_confirmacao'] = 'As senhas não coincidem.'
-        else:
-            serializer = RegistroSerializer(data={**valores, 'password': senha})
-            if serializer.is_valid():
-                usuario = serializer.save()
-                entrar(request, usuario, backend=BACKEND_AUTH)
-                return redirect(_destino_seguro(request, request.POST.get('next')))
-            erros = _erros_planos(serializer.errors)
-
-    return render(request, 'web/conta/cadastro.html', {
-        'valores': valores,
-        'erros': erros,
-        'next': request.POST.get('next') or request.GET.get('next', ''),
-    })
-
-
-def recuperar_senha(request):
-    enviado = False
-    erro = None
-    email = ''
-
-    if request.method == 'POST':
-        email = request.POST.get('email', '').strip()
-        if excedeu(request, 'recuperar_senha'):
-            erro = 'Muitos pedidos de recuperação. Tente novamente mais tarde.'
-        else:
-            serializer = RecuperarSenhaSerializer(data={'email': email})
-            if serializer.is_valid():
-                # Mesma resposta exista ou não a conta: a página não pode
-                # servir para descobrir quais e-mails estão cadastrados.
-                for usuario in Usuario.objects.filter(
-                    email__iexact=serializer.validated_data['email'], is_active=True
-                ):
-                    enviar_recuperacao_senha(
-                        usuario,
-                        uid=urlsafe_base64_encode(force_bytes(usuario.pk)),
-                        token=default_token_generator.make_token(usuario),
-                    )
-                enviado = True
-            else:
-                erro = 'Informe o e-mail da sua conta.'
-
-    return render(request, 'web/conta/recuperar_senha.html', {
-        'validade_horas': round(settings.PASSWORD_RESET_TIMEOUT / 3600),
-        'enviado': enviado,
-        'erro': erro,
-        'email': email,
-    })
-
-
-def redefinir_senha(request, uid, token):
-    try:
-        usuario = Usuario.objects.get(pk=urlsafe_base64_decode(uid).decode())
-        link_valido = default_token_generator.check_token(usuario, token)
-    except (TypeError, ValueError, OverflowError, Usuario.DoesNotExist):
-        link_valido = False
-
-    erros = {}
-    if link_valido and request.method == 'POST':
-        senha = request.POST.get('password', '')
-        if excedeu(request, 'redefinir_senha'):
-            erros['geral'] = 'Muitas tentativas. Tente novamente mais tarde.'
-        elif senha != request.POST.get('password_confirmacao', ''):
-            erros['password_confirmacao'] = 'As senhas não coincidem.'
-        else:
-            serializer = RedefinirSenhaSerializer(data={'uid': uid, 'token': token, 'password': senha})
-            if serializer.is_valid():
-                usuario = serializer.validated_data['usuario']
-                usuario.set_password(senha)
-                usuario.save()
-                # Trocar a senha também revoga os tokens da API.
-                Token.objects.filter(user=usuario).delete()
-                entrar(request, usuario, backend=BACKEND_AUTH)
-                messages.success(request, 'Senha atualizada. Você já está conectado.')
-                return redirect('web:inicio')
-            erros = _erros_planos(serializer.errors)
-
-    return render(request, 'web/conta/redefinir_senha.html', {
-        'link_valido': link_valido,
-        'erros': erros,
-    })
+def redirecionar(nome):
+    """View que leva ao endereço novo preservando a querystring (?next=...)."""
+    def view(request, *args, **kwargs):
+        destino = reverse(nome)
+        if request.GET:
+            destino = f'{destino}?{request.GET.urlencode()}'
+        return redirect(destino, permanent=False)
+    return view
 
 
 # --- Institucional --------------------------------------------------------------

@@ -2,6 +2,7 @@ import re
 from smtplib import SMTPException
 from unittest.mock import patch
 
+from allauth.account.models import EmailAddress
 from django.contrib.auth import get_user_model
 from django.core import mail
 from django.core.cache import cache
@@ -55,7 +56,8 @@ class SemThrottleMixin:
 class CadastroTests(SemThrottleMixin, APITestCase):
     url = '/api/cadastro/'
 
-    def test_cadastro_devolve_token(self):
+    def test_cadastro_envia_confirmacao_e_nao_devolve_token(self):
+        """Como no site, a conta só entra depois de confirmar o e-mail."""
         resposta = self.client.post(self.url, {
             'username': 'novato',
             'email': 'novato@exemplo.com',
@@ -63,9 +65,20 @@ class CadastroTests(SemThrottleMixin, APITestCase):
         }, format='json')
 
         self.assertEqual(resposta.status_code, status.HTTP_201_CREATED)
-        self.assertIn('token', resposta.data)
-        self.assertFalse(resposta.data['is_admin'])
-        self.assertTrue(Token.objects.filter(key=resposta.data['token']).exists())
+        self.assertNotIn('token', resposta.data)
+        self.assertFalse(Token.objects.exists())
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertIn('novato@exemplo.com', mail.outbox[0].to)
+        endereco = EmailAddress.objects.get(email='novato@exemplo.com')
+        self.assertFalse(endereco.verified)
+
+    def test_email_e_obrigatorio(self):
+        resposta = self.client.post(self.url, {
+            'username': 'semmail',
+            'password': 'SenhaBemForte123',
+        }, format='json')
+        self.assertEqual(resposta.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('email', resposta.data)
 
     def test_senha_fraca_e_rejeitada(self):
         """Regressão: antes bastava ter 6 caracteres, então "123456" passava."""
@@ -100,6 +113,7 @@ class CadastroTests(SemThrottleMixin, APITestCase):
     def test_cliente_nao_se_torna_admin(self):
         resposta = self.client.post(self.url, {
             'username': 'espertinho',
+            'email': 'espertinho@exemplo.com',
             'password': 'SenhaBemForte123',
             'is_admin': True,
         }, format='json')
@@ -116,6 +130,24 @@ class LoginTests(SemThrottleMixin, APITestCase):
         cls.usuario = Usuario.objects.create_user(
             'leitor', email='l@exemplo.com', password='SenhaBemForte123'
         )
+        EmailAddress.objects.create(
+            user=cls.usuario, email='l@exemplo.com', primary=True, verified=True
+        )
+
+    def test_login_sem_email_confirmado_e_recusado(self):
+        novo = Usuario.objects.create_user(
+            'pendente', email='p@exemplo.com', password='SenhaBemForte123'
+        )
+        resposta = self.client.post('/api/login/', {
+            'username': 'pendente',
+            'password': 'SenhaBemForte123',
+        }, format='json')
+
+        self.assertEqual(resposta.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertNotIn('token', resposta.data)
+        self.assertFalse(Token.objects.filter(user=novo).exists())
+        # O link de confirmação é reenviado.
+        self.assertEqual(len(mail.outbox), 1)
 
     def test_login_valido(self):
         resposta = self.client.post('/api/login/', {

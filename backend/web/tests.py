@@ -1,11 +1,9 @@
+from allauth.account.models import EmailAddress, EmailConfirmationHMAC
 from django.contrib.auth import get_user_model
-from django.contrib.auth.tokens import default_token_generator
 from django.core import mail
 from django.core.cache import cache
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.urls import reverse
-from django.utils.encoding import force_bytes
-from django.utils.http import urlsafe_base64_encode
 
 from neologismo.models import Contexto, Neologismo
 
@@ -133,7 +131,7 @@ class CurtirTests(BaseWeb):
 
         resposta = self.client.post(reverse('web:curtir', args=[verbete.pk]))
 
-        self.assertRedirects(resposta, f"{reverse('web:login')}?next={reverse('web:curtir', args=[verbete.pk])}", fetch_redirect_response=False)
+        self.assertRedirects(resposta, f"{reverse('account_login')}?next={reverse('web:curtir', args=[verbete.pk])}", fetch_redirect_response=False)
         self.assertEqual(verbete.likes.count(), 0)
 
     def test_curtir_alterna_e_responde_json(self):
@@ -207,7 +205,7 @@ class EnvioTests(BaseWeb):
         self.assertContains(self.client.get(reverse('web:enviar')), 'Entre para enviar')
 
         resposta = self.client.post(reverse('web:enviar'), {'titulo': 'X'})
-        self.assertRedirects(resposta, f"{reverse('web:login')}?next={reverse('web:enviar')}", fetch_redirect_response=False)
+        self.assertRedirects(resposta, f"{reverse('account_login')}?next={reverse('web:enviar')}", fetch_redirect_response=False)
         self.assertFalse(Neologismo.objects.exists())
 
     def test_meus_envios_mostra_motivo_da_rejeicao(self):
@@ -265,61 +263,93 @@ class ModeracaoTests(BaseWeb):
 
 
 class ContaTests(BaseWeb):
-    def test_login_e_logout(self):
-        resposta = self.client.post(reverse('web:login'), {'username': 'autora', 'password': SENHA, 'next': '/enviar'})
-        self.assertRedirects(resposta, '/enviar', fetch_redirect_response=False)
+    """Contas pelo django-allauth: confirmação de e-mail obrigatória."""
 
-        self.client.post(reverse('web:logout'))
-        self.assertNotIn('_auth_user_id', self.client.session)
+    def setUp(self):
+        super().setUp()
+        # Contas criadas direto no banco (fora do fluxo do allauth) já entram
+        # com o e-mail confirmado, para os demais testes poderem logar.
+        for usuario in (self.autor, self.equipe):
+            EmailAddress.objects.create(user=usuario, email=usuario.email, primary=True, verified=True)
 
-    def test_login_errado_nao_diz_qual_campo_falhou(self):
-        resposta = self.client.post(reverse('web:login'), {'username': 'autora', 'password': 'errada'})
-        self.assertContains(resposta, 'Usuário ou senha inválidos.')
-
-    def test_login_bloqueia_forca_bruta(self):
-        for _ in range(10):
-            self.client.post(reverse('web:login'), {'username': 'autora', 'password': 'errada'})
-
-        resposta = self.client.post(reverse('web:login'), {'username': 'autora', 'password': SENHA})
-
-        self.assertContains(resposta, 'Muitas tentativas')
-        self.assertNotIn('_auth_user_id', self.client.session)
-
-    def test_cadastro_cria_conta_e_entra(self):
-        resposta = self.client.post(reverse('web:cadastro'), {
+    def cadastrar(self, **extra):
+        dados = {
             'username': 'nova', 'email': 'nova@exemplo.com',
-            'password': SENHA, 'password_confirmacao': SENHA,
-        })
+            'password1': SENHA, 'password2': SENHA,
+        }
+        dados.update(extra)
+        return self.client.post(reverse('account_signup'), dados)
 
-        self.assertRedirects(resposta, reverse('web:inicio'), fetch_redirect_response=False)
-        self.assertTrue(Usuario.objects.filter(username='nova').exists())
-        self.assertIn('_auth_user_id', self.client.session)
+    def test_cadastro_envia_confirmacao_e_nao_entra_antes(self):
+        resposta = self.cadastrar()
 
-    def test_cadastro_rejeita_usuario_repetido_sem_diferenciar_caixa(self):
-        resposta = self.client.post(reverse('web:cadastro'), {
-            'username': 'AUTORA', 'email': '', 'password': SENHA, 'password_confirmacao': SENHA,
-        })
-        self.assertContains(resposta, 'já está em uso')
+        self.assertRedirects(resposta, reverse('account_email_verification_sent'), fetch_redirect_response=False)
+        self.assertNotIn('_auth_user_id', self.client.session)
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertIn('nova@exemplo.com', mail.outbox[0].to)
+
+        # Tentar entrar antes de confirmar reenvia a confirmação e não loga.
+        self.client.post(reverse('account_login'), {'login': 'nova', 'password': SENHA})
+        self.assertNotIn('_auth_user_id', self.client.session)
+
+    def test_confirmar_email_libera_a_conta(self):
+        self.cadastrar()
+        endereco = EmailAddress.objects.get(email='nova@exemplo.com')
+        chave = EmailConfirmationHMAC(endereco).key
+
+        # O GET só mostra o botão de confirmar (antivírus abrem links sozinhos).
+        self.client.get(reverse('account_confirm_email', args=[chave]))
+        endereco.refresh_from_db()
+        self.assertFalse(endereco.verified)
+
+        self.client.post(reverse('account_confirm_email', args=[chave]))
+        endereco.refresh_from_db()
+        self.assertTrue(endereco.verified)
+
+    def test_login_por_usuario_ou_email_e_logout(self):
+        for identificador in ('autora', 'autora@exemplo.com'):
+            with self.subTest(identificador=identificador):
+                self.client.logout()
+                resposta = self.client.post(reverse('account_login'), {'login': identificador, 'password': SENHA})
+                self.assertRedirects(resposta, '/', fetch_redirect_response=False)
+                self.assertIn('_auth_user_id', self.client.session)
+
+        self.client.post(reverse('account_logout'))
+        self.assertNotIn('_auth_user_id', self.client.session)
+
+    def test_cadastro_com_email_existente_nao_revela_nem_duplica(self):
+        """Quem tenta cadastrar um e-mail alheio vê a mesma tela de sempre;
+        o dono do e-mail recebe um aviso. A página não serve para descobrir
+        quem tem conta."""
+        resposta = self.cadastrar(username='outra', email='AUTORA@exemplo.com')
+
+        self.assertRedirects(resposta, reverse('account_email_verification_sent'), fetch_redirect_response=False)
+        self.assertFalse(Usuario.objects.filter(username='outra').exists())
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertIn('autora@exemplo.com', [e.lower() for e in mail.outbox[0].to])
+
+    def test_enderecos_antigos_redirecionam(self):
+        for antigo, novo in (
+            ('/login?next=/enviar', '/conta/login/?next=%2Fenviar'),
+            ('/cadastro', '/conta/signup/'),
+            ('/recuperar-senha', '/conta/password/reset/'),
+            ('/redefinir-senha/abc/def', '/conta/password/reset/'),
+        ):
+            with self.subTest(antigo=antigo):
+                self.assertRedirects(self.client.get(antigo), novo, fetch_redirect_response=False)
+
+    def test_botoes_sociais_so_com_credenciais(self):
+        with override_settings(SOCIALACCOUNT_PROVIDERS={}):
+            self.assertNotContains(self.client.get(reverse('account_login')), 'Continuar com')
+        com_google = {'google': {'APPS': [{'client_id': 'x', 'secret': 'y'}]}}
+        with override_settings(SOCIALACCOUNT_PROVIDERS=com_google):
+            resposta = self.client.get(reverse('account_login'))
+            self.assertContains(resposta, 'Continuar com Google')
+            self.assertNotContains(resposta, 'Continuar com Facebook')
 
     def test_recuperar_senha_nao_revela_se_o_email_existe(self):
-        existe = self.client.post(reverse('web:recuperar_senha'), {'email': 'autora@exemplo.com'})
-        nao_existe = self.client.post(reverse('web:recuperar_senha'), {'email': 'ninguem@exemplo.com'})
+        existe = self.client.post(reverse('account_reset_password'), {'email': 'autora@exemplo.com'})
+        nao_existe = self.client.post(reverse('account_reset_password'), {'email': 'ninguem@exemplo.com'})
 
-        self.assertContains(existe, 'Se existe uma conta')
-        self.assertContains(nao_existe, 'Se existe uma conta')
-        self.assertEqual(len(mail.outbox), 1)
-        self.assertIn('/redefinir-senha/', mail.outbox[0].body)
-
-    def test_redefinir_senha_pelo_link(self):
-        uid = urlsafe_base64_encode(force_bytes(self.autor.pk))
-        token = default_token_generator.make_token(self.autor)
-        url = reverse('web:redefinir_senha', args=[uid, token])
-        nova = 'OutraSenhaForte456'
-
-        resposta = self.client.post(url, {'password': nova, 'password_confirmacao': nova})
-
-        self.assertRedirects(resposta, reverse('web:inicio'), fetch_redirect_response=False)
-        self.autor.refresh_from_db()
-        self.assertTrue(self.autor.check_password(nova))
-        # O link é de uso único.
-        self.assertContains(self.client.get(url), 'Este link já foi usado ou passou da validade.')
+        self.assertRedirects(existe, reverse('account_reset_password_done'), fetch_redirect_response=False)
+        self.assertRedirects(nao_existe, reverse('account_reset_password_done'), fetch_redirect_response=False)

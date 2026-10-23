@@ -54,14 +54,14 @@
 
         <div class="sessao">
           {% if user.is_authenticated %}
-            <span class="sessao__ola">Olá, <strong>{{ user.username }}</strong></span>
-            <form method="post" action="{% url 'web:logout' %}">
+            <a class="sessao__ola" href="{% url 'account_email' %}" title="Minha conta">Olá, <strong>{{ user.username }}</strong></a>
+            <form method="post" action="{% url 'account_logout' %}">
               {% csrf_token %}
               <button class="botao-barra" type="submit">Sair</button>
             </form>
           {% else %}
-            <a class="botao-barra" href="{% url 'web:login' %}">Entrar</a>
-            <a class="botao-barra botao-barra--cheio" href="{% url 'web:cadastro' %}">Cadastrar-se</a>
+            <a class="botao-barra" href="{% url 'account_login' %}">Entrar</a>
+            <a class="botao-barra botao-barra--cheio" href="{% url 'account_signup' %}">Cadastrar-se</a>
           {% endif %}
         </div>
       </div>

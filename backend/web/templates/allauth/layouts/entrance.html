@@ -1,0 +1,11 @@
+{% extends "allauth/layouts/base.html" %}
+{% comment %}Telas de entrada (login, cadastro, senha): um cartão no centro.{% endcomment %}
+{% block body %}
+<div class="fundo-veu">
+  <div class="conteiner painel-conta">
+    <div class="painel-conta__caixa conta-allauth">
+      {% block content %}{% endblock content %}
+    </div>
+  </div>
+</div>
+{% endblock body %}

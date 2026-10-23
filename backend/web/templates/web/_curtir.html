@@ -13,7 +13,7 @@
   </form>
 {% else %}
   <span class="curtir{% if grande %} curtir--grande{% endif %}">
-    <a class="curtir__botao" href="{% url 'web:login' %}?next={{ request.get_full_path|urlencode }}" title="Entre na sua conta para curtir verbetes." aria-label="Curtir {{ verbete.titulo }}. {{ total }} curtidas.">
+    <a class="curtir__botao" href="{% url 'account_login' %}?next={{ request.get_full_path|urlencode }}" title="Entre na sua conta para curtir verbetes." aria-label="Curtir {{ verbete.titulo }}. {{ total }} curtidas.">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 20.5s-7.5-4.6-9.2-9.3C1.6 7.8 3.9 4.5 7.3 4.5c2 0 3.6 1.1 4.7 2.7 1.1-1.6 2.7-2.7 4.7-2.7 3.4 0 5.7 3.3 4.5 6.7-1.7 4.7-9.2 9.3-9.2 9.3Z"/></svg>
       <span>{{ total }}</span>
     </a>

@@ -9,8 +9,8 @@
     <h1 class="titulo-2">Entre para enviar</h1>
     <p>Só quem tem conta pode sugerir um verbete — assim conseguimos dar crédito à autoria e acompanhar a moderação.</p>
     <div class="botoes">
-      <a class="botao" href="{% url 'web:login' %}?next={% url 'web:enviar' %}">Entrar</a>
-      <a class="botao botao--secundario" href="{% url 'web:cadastro' %}?next={% url 'web:enviar' %}">Criar conta</a>
+      <a class="botao" href="{% url 'account_login' %}?next={% url 'web:enviar' %}">Entrar</a>
+      <a class="botao botao--secundario" href="{% url 'account_signup' %}?next={% url 'web:enviar' %}">Criar conta</a>
     </div>
   </div>
 

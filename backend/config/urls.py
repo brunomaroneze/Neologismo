@@ -45,6 +45,9 @@ urlpatterns = [
     path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
     path('api/docs/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
 
+    # Contas: login, cadastro, login social, confirmação de e-mail e senha.
+    path('conta/', include('allauth.urls')),
+
     # Site (páginas renderizadas pelo Django). Por último: as rotas acima têm
     # prefixo próprio e não podem ser sombreadas por uma página.
     path('', include('web.urls')),
