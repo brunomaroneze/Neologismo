@@ -1,0 +1,48 @@
+{% extends 'web/base.html' %}
+{% load static %}
+
+{% block titulo %}Equipe — Neoscópio{% endblock %}
+
+{% block conteudo %}
+<section class="abertura">
+  <div class="conteiner">
+    <div class="abertura__corpo">
+      <span class="rotulo">Quem faz acontecer</span>
+      <h1 class="titulo-1">Nossa equipe</h1>
+      <p class="lead">O Neoscópio é construído por um time apaixonado pela língua portuguesa e pela forma como ela se reinventa todos os dias. Conheça quem está por trás do projeto.</p>
+    </div>
+  </div>
+</section>
+
+<div class="fundo-veu">
+  <div class="conteiner secao">
+    <ul class="equipe">
+      {% for membro in equipe %}
+        <li class="membro">
+          <div class="membro__foto">
+            {% if membro.foto %}
+              <img src="{% static membro.foto %}" alt="Foto de {{ membro.nome }}" width="400" height="400" loading="lazy">
+            {% else %}
+              <span class="membro__iniciais" aria-hidden="true">{{ membro.iniciais }}</span>
+            {% endif %}
+          </div>
+          <p class="membro__nome">{{ membro.nome }}</p>
+          <p class="membro__funcao">{{ membro.funcao }}</p>
+          {% if membro.bio %}<p class="membro__bio">{{ membro.bio }}</p>{% endif %}
+        </li>
+      {% endfor %}
+    </ul>
+  </div>
+</div>
+
+<section class="chamada">
+  <div class="conteiner chamada__corpo">
+    <h2 class="titulo-2">Quer fazer parte?</h2>
+    <p>O Neoscópio cresce com a colaboração da comunidade. Contribua com novas palavras e ajude a mapear o português do nosso tempo.</p>
+    <div class="botoes">
+      <a class="botao" href="{% url 'web:enviar' %}">Enviar uma palavra</a>
+      <a class="botao botao--secundario" href="{% url 'web:sobre' %}">Sobre o projeto</a>
+    </div>
+  </div>
+</section>
+{% endblock %}

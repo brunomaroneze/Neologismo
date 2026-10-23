@@ -1,0 +1,13 @@
+User-agent: *
+Allow: /
+Disallow: /admin/
+Disallow: /admin-painel
+Disallow: /minhas-palavras
+Disallow: /enviar
+Disallow: /login
+Disallow: /cadastro
+Disallow: /recuperar-senha
+Disallow: /redefinir-senha/
+Disallow: /api/
+
+Sitemap: {{ sitemap }}

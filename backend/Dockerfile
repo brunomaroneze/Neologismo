@@ -1,30 +1,49 @@
-FROM python:3.13-slim
+# --- Estágio 1: dependências ------------------------------------------------
+# Instala os pacotes em um venv próprio para copiar só o resultado adiante,
+# deixando o compilador e os headers de build fora da imagem final.
+FROM python:3.13-slim AS dependencias
 
-# Boas práticas Python em container
-ENV PYTHONUNBUFFERED=1 \
-    PYTHONDONTWRITEBYTECODE=1 \
-    PIP_NO_CACHE_DIR=1 \
+ENV PIP_NO_CACHE_DIR=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1
 
-WORKDIR /app
+RUN python -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
 
-# postgresql-client fornece o pg_isready usado pelo entrypoint
+WORKDIR /app
+COPY requirements.txt .
+RUN pip install --upgrade pip && pip install -r requirements.txt
+
+
+# --- Estágio 2: imagem final ------------------------------------------------
+FROM python:3.13-slim AS final
+
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PATH="/opt/venv/bin:$PATH"
+
+# postgresql-client fornece o pg_isready usado pelo entrypoint.
 RUN apt-get update \
     && apt-get install -y --no-install-recommends postgresql-client \
     && rm -rf /var/lib/apt/lists/*
 
-# Instala dependências primeiro para aproveitar o cache de camadas
-COPY requirements.txt .
-RUN pip install -r requirements.txt gunicorn
+# Usuário sem privilégios: um processo comprometido não vira root no container.
+RUN useradd --create-home --shell /usr/sbin/nologin neoscopio
 
-# Copia o restante do código
-COPY . .
+COPY --from=dependencias /opt/venv /opt/venv
 
-COPY entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
+WORKDIR /app
+COPY --chown=neoscopio:neoscopio . .
+
+# staticfiles/ e media/ precisam existir e pertencer ao usuário da aplicação,
+# porque o collectstatic roda no start.
+RUN mkdir -p /app/staticfiles /app/media \
+    && chown -R neoscopio:neoscopio /app/staticfiles /app/media \
+    && chmod +x /app/entrypoint.sh
+
+USER neoscopio
 
 EXPOSE 8000
 
-ENTRYPOINT ["/entrypoint.sh"]
-# Comando padrão (dev). Em produção o compose sobrescreve com gunicorn.
+ENTRYPOINT ["/app/entrypoint.sh"]
+# Padrão de desenvolvimento; o compose de produção sobrescreve com gunicorn.
 CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]

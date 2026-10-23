@@ -1,68 +1,90 @@
-import random
+import csv
+from datetime import datetime
+from pathlib import Path
+
 from django.core.management.base import BaseCommand
-from faker import Faker
-from neologismo.models import Neologismo
+from django.db import transaction
+from django.utils import timezone
+
+from neologismo.models import Contexto, Neologismo
 from usuario.models import Usuario
 
+
 class Command(BaseCommand):
-    help = 'Popula o banco de dados com usuários e neologismos usando Faker'
+    help = 'Importa os neologismos do arquivo BancoDeNeologismos.csv'
+
+    def add_arguments(self, parser):
+        parser.add_argument(
+            '--limpar',
+            action='store_true',
+            help='Apaga todos os neologismos existentes antes de importar o CSV.',
+        )
 
     def handle(self, *args, **kwargs):
-        fake = Faker(['pt_BR'])
-        
-        self.stdout.write(self.style.HTTP_INFO("--- Iniciando Seed ---"))
+        csv_path = Path(__file__).resolve().parents[2] / 'data' / 'BancoDeNeologismos.csv'
+        if not csv_path.exists():
+            raise FileNotFoundError(f'Arquivo CSV não encontrado: {csv_path}')
 
-        # 1. Garantir que temos usuários para dar likes
-        self.stdout.write("Criando usuários de teste...")
-        for _ in range(5):
-            username = fake.user_name()
-            if not Usuario.objects.filter(username=username).exists():
-                Usuario.objects.create_user(
-                    username=username,
-                    email=fake.email(),
-                    password='senha123'
-                )
+        if kwargs['limpar']:
+            apagados, _ = Neologismo.objects.all().delete()
+            self.stdout.write(self.style.WARNING(f'{apagados} registro(s) apagado(s) do banco.'))
 
-        todos_usuarios = list(Usuario.objects.all())
-        autor_principal = Usuario.objects.first()
+        importador, _ = Usuario.objects.get_or_create(
+            username='importador_csv',
+            defaults={'email': 'importador-csv@neoscopio.local'},
+        )
+        importador.set_unusable_password()
+        importador.save(update_fields=['password'])
 
-        if not autor_principal:
-            self.stdout.write(self.style.ERROR("Erro: Nenhum usuário encontrado."))
-            return
+        criados = 0
+        atualizados = 0
+        with csv_path.open(encoding='utf-8-sig', newline='') as csv_file:
+            for row in csv.DictReader(csv_file, delimiter=';'):
+                titulo = row['Neologismo'].strip()
+                if not titulo:
+                    continue
 
-        # 2. Configurações para os Neologismos
-        classes = ['Substantivo', 'Verbo', 'Adjetivo', 'Interjeição', 'Expressão']
-        status_opcoes = ['pendente', 'aprovado', 'rejeitado']
+                contextos = [
+                    {
+                        'citacao': row[f'Contexto {numero}'].strip(),
+                        'link': row[f'Fonte {numero}'].strip(),
+                    }
+                    for numero in range(1, 4)
+                    if row[f'Contexto {numero}'].strip()
+                ]
+                data_registro = self.parse_data(row['Carimbo de data/hora'])
+                defaults = {
+                    'data_registro': data_registro,
+                    'classe_gramatical': row['Classe gramatical'].strip(),
+                    'tipologia': row['Tipologia'].strip(),
+                    'elaborado_por': row['Elaborado por:'].strip(),
+                    'definicao': 'Definição não disponível na fonte original.',
+                    'contexto_uso': contextos[0]['citacao'] if contextos else '',
+                    'tags': [row['Tipologia'].strip()] if row['Tipologia'].strip() else [],
+                    'status': 'aprovado',
+                }
 
-        self.stdout.write(f"Gerando 50 neologismos...")
+                with transaction.atomic():
+                    neologismo, criado = Neologismo.objects.update_or_create(
+                        titulo=titulo,
+                        autor=importador,
+                        defaults=defaults,
+                    )
+                    neologismo.contextos.all().delete()
+                    Contexto.objects.bulk_create(
+                        [Contexto(neologismo=neologismo, **contexto) for contexto in contextos]
+                    )
 
-        for i in range(50):
-            titulo = fake.word().capitalize()
-            
-            # Criamos o objeto (Campos normais e ForeignKey)
-            neo = Neologismo.objects.create(
-                titulo=f"{titulo}_{i}", # Adicionado ID para evitar duplicatas de palavras curtas do Faker
+                criados += criado
+                atualizados += not criado
 
-                classe_gramatical=random.choice(classes),
-                definicao=fake.sentence(nb_words=12),
-                contexto_uso=fake.paragraph(nb_sentences=2),
-                tags=[fake.word() for _ in range(random.randint(1, 4))],
-                status=random.choice(status_opcoes),
-                autor=random.choice(todos_usuarios)
-            )
+        self.stdout.write(self.style.SUCCESS(
+            f'Importação concluída: {criados} criados e {atualizados} atualizados.'
+        ))
 
-            # 3. Lógica para ManyToMany (Likes e Deslikes)
-            # Sorteia uma quantidade aleatória de usuários para interagir
-            num_likes = random.randint(0, len(todos_usuarios))
-            num_deslikes = random.randint(0, len(todos_usuarios) - num_likes)
-
-            usuarios_random = random.sample(todos_usuarios, len(todos_usuarios))
-            
-            votos_like = usuarios_random[:num_likes]
-            votos_deslike = usuarios_random[num_likes : num_likes + num_deslikes]
-
-            # O segredo para não dar erro: usar .set()
-            neo.likes.set(votos_like)
-            neo.deslikes.set(votos_deslike)
-
-        self.stdout.write(self.style.SUCCESS(f"Sucesso! Banco de dados populado."))
+    @staticmethod
+    def parse_data(valor):
+        try:
+            return timezone.make_aware(datetime.strptime(valor.strip(), '%d/%m/%Y %H:%M'))
+        except (TypeError, ValueError):
+            return None

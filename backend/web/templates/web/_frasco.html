@@ -1,0 +1,22 @@
+{% comment %}
+Frasco animado do carregamento: o líquido ondula dentro do frasco da logo e
+as reticências sobem em onda, um ponto depois do outro.
+{% endcomment %}
+<svg class="frasco" viewBox="0 0 120 120" aria-hidden="true" focusable="false">
+  <defs>
+    <clipPath id="frasco-corpo-{{ id|default:'a' }}"><circle cx="54" cy="68" r="40"/></clipPath>
+  </defs>
+  <!-- gargalo -->
+  <path class="frasco__gargalo" d="M75.6 33.6 L90.6 18.6 L87.4 15.4 L106.6 34.6 L103.4 31.4 L88.4 46.4 Z"/>
+  <!-- corpo -->
+  <circle class="frasco__vidro" cx="54" cy="68" r="40"/>
+  <!-- líquido com a superfície em onda -->
+  <g clip-path="url(#frasco-corpo-{{ id|default:'a' }})">
+    <path class="frasco__liquido" d="M-100 66 q 15 -8 30 0 t 30 0 t 30 0 t 30 0 t 30 0 t 30 0 t 30 0 t 30 0 t 30 0 V 120 H -100 Z"/>
+  </g>
+  <circle class="frasco__contorno" cx="54" cy="68" r="40"/>
+  <!-- reticências -->
+  <circle class="frasco__ponto" cx="38" cy="72" r="6"/>
+  <circle class="frasco__ponto" cx="54" cy="72" r="6"/>
+  <circle class="frasco__ponto" cx="70" cy="72" r="6"/>
+</svg>

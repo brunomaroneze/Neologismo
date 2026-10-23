@@ -1,15 +1,241 @@
 @import "tailwindcss";
 
-@theme inline {
-  --color-background: #ffffff;
-  --color-foreground: #1a1a2e;
-  --font-sans: var(--font-inter);
-  --color-purple-light: #CC99CC;
+/*
+ * Tokens do Neoscópio.
+ *
+ * A paleta roxa original (#CC99CC / #996699 / #660066) foi mantida, mas
+ * organizada em papéis (superfície, borda, texto, marca) em vez de nomes de
+ * cor soltos. Assim o tema escuro é uma troca de valores, não uma varredura
+ * de classes por todo o projeto.
+ */
+@theme {
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-fraunces), Georgia, serif;
+
+  --color-roxo-50: #faf5fa;
+  --color-roxo-100: #f2e6f2;
+  --color-roxo-200: #e4cce4;
+  --color-roxo-300: #cc99cc;
+  --color-roxo-400: #b378b3;
+  --color-roxo-500: #996699;
+  --color-roxo-600: #7d4d7d;
+  --color-roxo-700: #660066;
+  --color-roxo-800: #4d004d;
+  --color-roxo-900: #330033;
+
+  /* Compatibilidade com as classes já usadas nas páginas existentes. */
+  --color-purple-light: #cc99cc;
   --color-purple-primary: #996699;
   --color-purple-dark: #660066;
+
+  --radius-card: 1rem;
+
+  --animate-surgir: surgir 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
+  --animate-pulsar-curtida: pulsar-curtida 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes surgir {
+  from {
+    opacity: 0;
+    transform: translateY(0.5rem);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes pulsar-curtida {
+  0% {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(1.35);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* --- Papéis de cor, por tema ---------------------------------------------- */
+
+:root {
+  --fundo: #ffffff;
+  --fundo-sutil: #faf9fb;
+  --superficie: #ffffff;
+  --superficie-alta: #f5f4f7;
+  --borda: #e6e4ea;
+  --borda-forte: #d4d1db;
+  --texto: #1a1a2e;
+  --texto-suave: #5b5870;
+  --texto-tenue: #8b879c;
+  --marca: #660066;
+  --marca-suave: #f2e6f2;
+  --marca-contraste: #ffffff;
+  /* Barra do header: roxo escuro nos dois temas, texto sempre claro. */
+  --barra: #660066;
+  --barra-texto: #ffffff;
+  --barra-texto-suave: #e4cce4;
+  --barra-borda: #4d004d;
+  --sombra-card: 0 1px 2px rgb(26 26 46 / 0.04), 0 4px 16px rgb(26 26 46 / 0.04);
+  --sombra-card-alta: 0 2px 4px rgb(26 26 46 / 0.06), 0 12px 32px rgb(26 26 46 / 0.08);
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --fundo: #14121a;
+    --fundo-sutil: #1a1722;
+    --superficie: #1e1a28;
+    --superficie-alta: #272134;
+    --borda: #332c44;
+    --borda-forte: #453c5c;
+    --texto: #f2f0f7;
+    --texto-suave: #b8b2c9;
+    --texto-tenue: #857e99;
+    /* O roxo 700 não tem contraste suficiente sobre fundo escuro; no tema
+       escuro a marca sobe para o 300. */
+    --marca: #d9a6d9;
+    --marca-suave: #2e2140;
+    --marca-contraste: #1a0a1a;
+    --barra: #33002e;
+    --barra-texto: #f7eef7;
+    --barra-texto-suave: #cc99cc;
+    --barra-borda: #4d004d;
+    --sombra-card: 0 1px 2px rgb(0 0 0 / 0.3), 0 4px 16px rgb(0 0 0 / 0.25);
+    --sombra-card-alta: 0 2px 4px rgb(0 0 0 / 0.35), 0 12px 32px rgb(0 0 0 / 0.4);
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme="dark"] {
+  --fundo: #14121a;
+  --fundo-sutil: #1a1722;
+  --superficie: #1e1a28;
+  --superficie-alta: #272134;
+  --borda: #332c44;
+  --borda-forte: #453c5c;
+  --texto: #f2f0f7;
+  --texto-suave: #b8b2c9;
+  --texto-tenue: #857e99;
+  --marca: #d9a6d9;
+  --marca-suave: #2e2140;
+  --marca-contraste: #1a0a1a;
+  --barra: #33002e;
+  --barra-texto: #f7eef7;
+  --barra-texto-suave: #cc99cc;
+  --barra-borda: #4d004d;
+  --sombra-card: 0 1px 2px rgb(0 0 0 / 0.3), 0 4px 16px rgb(0 0 0 / 0.25);
+  --sombra-card-alta: 0 2px 4px rgb(0 0 0 / 0.35), 0 12px 32px rgb(0 0 0 / 0.4);
+  color-scheme: dark;
+}
+
+/* Expõe os papéis como utilitários do Tailwind (bg-fundo, text-suave, ...). */
+@theme inline {
+  --color-fundo: var(--fundo);
+  --color-fundo-sutil: var(--fundo-sutil);
+  --color-superficie: var(--superficie);
+  --color-superficie-alta: var(--superficie-alta);
+  --color-borda: var(--borda);
+  --color-borda-forte: var(--borda-forte);
+  --color-texto: var(--texto);
+  --color-suave: var(--texto-suave);
+  --color-tenue: var(--texto-tenue);
+  --color-marca: var(--marca);
+  --color-marca-suave: var(--marca-suave);
+  --color-marca-contraste: var(--marca-contraste);
+  --color-barra: var(--barra);
+  --color-barra-texto: var(--barra-texto);
+  --color-barra-suave: var(--barra-texto-suave);
+  --color-barra-borda: var(--barra-borda);
+}
+
+/* --- Base ----------------------------------------------------------------- */
+
+html {
+  scroll-behavior: smooth;
 }
 
 body {
-  background: var(--color-background);
-  color: var(--color-foreground);
+  background: var(--fundo);
+  color: var(--texto);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Foco visível e consistente em tudo que é interativo — o padrão do
+   Tailwind some em botões com `outline-none` e deixava a navegação por
+   teclado sem nenhuma indicação. */
+:focus-visible {
+  outline: 2px solid var(--marca);
+  outline-offset: 2px;
+  border-radius: 0.375rem;
+}
+
+::selection {
+  background: var(--marca-suave);
+  color: var(--texto);
+}
+
+/* Respeita quem pediu menos animação no sistema. */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* --- Utilitários ---------------------------------------------------------- */
+
+@utility cartao {
+  background: var(--superficie);
+  border: 1px solid var(--borda);
+  border-radius: var(--radius-card);
+  box-shadow: var(--sombra-card);
+}
+
+@utility campo {
+  width: 100%;
+  background: var(--superficie);
+  border: 1px solid var(--borda-forte);
+  border-radius: 0.75rem;
+  padding: 0.625rem 1rem;
+  font-size: 0.875rem;
+  color: var(--texto);
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+@utility esqueleto {
+  background: linear-gradient(
+    90deg,
+    var(--superficie-alta) 25%,
+    var(--borda) 37%,
+    var(--superficie-alta) 63%
+  );
+  background-size: 400% 100%;
+  animation: brilho 1.4s ease infinite;
+}
+
+@keyframes brilho {
+  0% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0 50%;
+  }
+}
+
+.campo::placeholder {
+  color: var(--texto-tenue);
+}
+
+.campo:focus {
+  outline: none;
+  border-color: var(--marca);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--marca) 18%, transparent);
 }

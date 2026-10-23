@@ -1,7 +1,9 @@
-from django.core.management.base import BaseCommand
-from django.contrib.auth import get_user_model
-from neologismo.models import Neologismo, Contexto
 import random
+
+from django.contrib.auth import get_user_model
+from django.core.management.base import BaseCommand
+
+from neologismo.models import Contexto, Neologismo
 
 Usuario = get_user_model()
 
@@ -135,71 +137,125 @@ NEOLOGISMOS = [
 ]
 
 
+
+# Leitores fictícios usados só para distribuir as curtidas de demonstração.
+LEITORES = [
+    'ana.lima', 'bruno.reis', 'carla.melo', 'diego.souza', 'elisa.rocha',
+    'fabio.nunes', 'gabi.torres', 'heitor.dias', 'iris.campos', 'joao.prado',
+    'kaue.matos', 'lara.freitas', 'marcos.vieira', 'nina.barros', 'otavio.pinto',
+]
+
+FONTES = [
+    '@usuario no X',
+    'Comentário no Instagram',
+    'Conversa de WhatsApp',
+    'TikTok',
+    'Podcast Papo Reto',
+]
+
+
 class Command(BaseCommand):
-    help = "Gera dados fake de neologismos no banco de dados"
+    help = 'Popula o banco com verbetes de demonstração e um usuário admin.'
 
     def add_arguments(self, parser):
         parser.add_argument(
-            "--flush",
-            action="store_true",
-            help="Apaga todos os neologismos existentes antes de gerar novos",
+            '--flush',
+            action='store_true',
+            help='Apaga os neologismos existentes antes de popular.',
+        )
+        parser.add_argument(
+            '--admin-password',
+            default='admin123',
+            help='Senha do usuário admin criado (padrão: admin123).',
         )
 
     def handle(self, *args, **options):
-        if options["flush"]:
-            count = Neologismo.objects.count()
+        if options['flush']:
+            total = Neologismo.objects.count()
             Neologismo.objects.all().delete()
-            self.stdout.write(self.style.WARNING(f"Removidos {count} neologismos."))
+            self.stdout.write(self.style.WARNING(f'Removidos {total} neologismos.'))
 
-        usuario, created = Usuario.objects.get_or_create(
-            username="admin",
-            defaults={
-                "email": "admin@neologismo.com",
-                "is_staff": True,
-                "is_superuser": True,
-            },
-        )
-        if created:
-            usuario.set_password("admin123")
-            usuario.save()
-            self.stdout.write(self.style.SUCCESS("Usuário 'admin' criado com senha 'admin123'."))
-        else:
-            self.stdout.write(self.style.SUCCESS("Usuário 'admin' já existe."))
+        admin = self._criar_admin(options['admin_password'])
+        leitores = self._criar_leitores()
 
         criados = 0
         for item in NEOLOGISMOS:
-            if not Neologismo.objects.filter(titulo=item["titulo"]).exists():
-                n = Neologismo.objects.create(
-                    titulo=item["titulo"],
+            if Neologismo.objects.filter(titulo=item['titulo']).exists():
+                continue
 
-                    classe_gramatical=item["classe_gramatical"],
-                    definicao=item["definicao"],
-                    contexto_uso=item["contexto_uso"],
-                    tags=item["tags"],
-                    status=random.choice(["aprovado", "aprovado", "aprovado", "pendente"]),
-                    autor=usuario,
-                )
-                # Contexto estruturado a partir da frase de exemplo
-                Contexto.objects.create(
-                    neologismo=n,
-                    citacao=item["contexto_uso"],
-                    fonte=random.choice(
-                        ["@usuario no X", "Comentário no Instagram",
-                         "Conversa de WhatsApp", "TikTok"]
-                    ),
-                    link="https://exemplo.com/fonte",
-                )
+            neologismo = Neologismo.objects.create(
+                titulo=item['titulo'],
+                classe_gramatical=item['classe_gramatical'],
+                definicao=item['definicao'],
+                contexto_uso=item['contexto_uso'],
+                tags=item['tags'],
+                status=random.choice(['aprovado', 'aprovado', 'aprovado', 'pendente']),
+                autor=random.choice(leitores + [admin]),
+            )
 
-                num_likes = random.randint(10, 500)
-                num_deslikes = random.randint(0, 50)
+            Contexto.objects.create(
+                neologismo=neologismo,
+                citacao=item['contexto_uso'],
+                fonte=random.choice(FONTES),
+                link='https://exemplo.com/fonte',
+            )
 
-                for _ in range(num_likes):
-                    n.likes.add(usuario)
+            # Um M2M ignora repetições: `likes.add(mesmo_usuario)` N vezes
+            # deixa a contagem em 1. Por isso sorteamos usuários distintos.
+            curtidores = random.sample(
+                leitores, k=random.randint(0, len(leitores))
+            )
+            if curtidores:
+                neologismo.likes.add(*curtidores)
 
-                for _ in range(num_deslikes):
-                    n.deslikes.add(usuario)
+            criados += 1
+            self.stdout.write(
+                f'  Criado: {neologismo.titulo} '
+                f'({neologismo.total_likes} curtidas, {neologismo.status})'
+            )
 
-                criados += 1
-                self.stdout.write(f"  Criado: {n.titulo} ({n.total_likes} likes)")
+        self.stdout.write(
+            self.style.SUCCESS(f'\n{criados} neologismos criados com sucesso!')
+        )
 
-        self.stdout.write(self.style.SUCCESS(f"\n{criados} neologismos criados com sucesso!"))
+    def _criar_admin(self, senha):
+        admin, criado = Usuario.objects.get_or_create(
+            username='admin',
+            defaults={
+                'email': 'admin@neoscopio.local',
+                'is_staff': True,
+                'is_superuser': True,
+                # Sem is_admin=True o login devolve is_admin=false e o painel
+                # de moderação nunca aparece no frontend.
+                'is_admin': True,
+            },
+        )
+        if criado:
+            admin.set_password(senha)
+            admin.save()
+            self.stdout.write(
+                self.style.SUCCESS(f"Usuário 'admin' criado com a senha '{senha}'.")
+            )
+        else:
+            # Conta antiga pode ter sido criada antes do campo is_admin.
+            if not (admin.is_admin and admin.is_staff):
+                admin.is_admin = True
+                admin.save()
+                self.stdout.write(self.style.WARNING("Usuário 'admin' promovido."))
+            else:
+                self.stdout.write("Usuário 'admin' já existe.")
+        return admin
+
+    def _criar_leitores(self):
+        leitores = []
+        for username in LEITORES:
+            leitor, criado = Usuario.objects.get_or_create(
+                username=username,
+                defaults={'email': f'{username}@exemplo.com'},
+            )
+            if criado:
+                leitor.set_password('leitor123')
+                leitor.save()
+            leitores.append(leitor)
+        self.stdout.write(f'{len(leitores)} leitores de demonstração prontos.')
+        return leitores

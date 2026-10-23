@@ -1,0 +1,42 @@
+# Um domínio, dois upstreams: /api, /admin e /static vão para o Django; todo o
+# resto vai para o Next. O Caddy pede e renova o certificado TLS sozinho.
+
+{
+	# `email` é uma opção GLOBAL do Caddy: dentro do bloco do site o Caddy
+	# recusa o arquivo inteiro com "unrecognized directive".
+	email {$EMAIL_ACME}
+}
+
+{$DOMINIO} {
+	encode zstd gzip
+
+	# --- Backend Django ---
+	@backend path /api/* /admin/* /static/* /media/*
+	handle @backend {
+		reverse_proxy backend:8000 {
+			# O Django precisa destes headers para montar URLs absolutas
+			# corretas e para SECURE_PROXY_SSL_HEADER funcionar.
+			header_up X-Forwarded-Proto {scheme}
+			header_up X-Forwarded-For {remote_host}
+			header_up Host {host}
+		}
+	}
+
+	# --- Frontend Next.js ---
+	handle {
+		reverse_proxy frontend:3000
+	}
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		# O Caddy anuncia a si mesmo por padrão.
+		-Server
+	}
+
+	log {
+		output stdout
+		format console
+	}
+}

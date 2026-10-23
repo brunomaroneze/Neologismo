@@ -1,0 +1,32 @@
+{% load verbetes %}
+{% if pagina.paginator.num_pages > 1 %}
+{% paginas pagina as numeros %}
+<nav class="paginacao" aria-label="Paginação">
+  <ul class="paginacao__lista">
+    <li>
+      {% if pagina.number > 1 %}<a class="paginacao__seta" href="{% consulta pagina=1 %}{{ ancora }}" aria-label="Primeira página">«</a>{% else %}<span class="paginacao__seta" aria-hidden="true">«</span>{% endif %}
+    </li>
+    <li>
+      {% if pagina.has_previous %}<a class="paginacao__seta" href="{% consulta pagina=pagina.previous_page_number %}{{ ancora }}" rel="prev" aria-label="Página anterior">‹</a>{% else %}<span class="paginacao__seta" aria-hidden="true">‹</span>{% endif %}
+    </li>
+    {% for numero in numeros %}
+      <li>
+        {% if numero == pagina.paginator.ELLIPSIS %}
+          <span class="paginacao__reticencias" aria-hidden="true">…</span>
+        {% elif numero == pagina.number %}
+          <span class="paginacao__numero" aria-current="page"><span class="visualmente-oculto">Página </span>{{ numero }}</span>
+        {% else %}
+          <a class="paginacao__numero" href="{% consulta pagina=numero %}{{ ancora }}"><span class="visualmente-oculto">Página </span>{{ numero }}</a>
+        {% endif %}
+      </li>
+    {% endfor %}
+    <li>
+      {% if pagina.has_next %}<a class="paginacao__seta" href="{% consulta pagina=pagina.next_page_number %}{{ ancora }}" rel="next" aria-label="Próxima página">›</a>{% else %}<span class="paginacao__seta" aria-hidden="true">›</span>{% endif %}
+    </li>
+    <li>
+      {% if pagina.number < pagina.paginator.num_pages %}<a class="paginacao__seta" href="{% consulta pagina=pagina.paginator.num_pages %}{{ ancora }}" aria-label="Última página">»</a>{% else %}<span class="paginacao__seta" aria-hidden="true">»</span>{% endif %}
+    </li>
+  </ul>
+  <p class="paginacao__posicao">Página {{ pagina.number }} de {{ pagina.paginator.num_pages }}</p>
+</nav>
+{% endif %}

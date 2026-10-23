@@ -1,0 +1,8 @@
+{% load verbetes %}
+{# Cards de uma página, mais o link para a próxima. Usado na página inicial e pelo "Carregar mais". #}
+{% for verbete in pagina.object_list %}
+  {% include 'web/_card.html' %}
+{% endfor %}
+{% if pagina.has_next %}
+  <template data-proxima="{% consulta pagina=pagina.next_page_number parcial="" %}"></template>
+{% endif %}

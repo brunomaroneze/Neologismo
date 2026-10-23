@@ -1,0 +1,58 @@
+name: CodeQL
+
+# Análise estática de segurança do GitHub. Olha para classes de problema que
+# lint e teste não pegam: SQL montado por concatenação, redirecionamento
+# controlado pelo usuário, XSS, dado de request chegando a um `eval`.
+#
+# Roda em PR (para o problema ser discutido antes de entrar), em push para os
+# branches principais e uma vez por semana. O agendamento importa porque as
+# regras do CodeQL são atualizadas: um código que estava limpo em janeiro
+# pode acusar algo em março sem ninguém ter tocado nele.
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+  schedule:
+    # Segunda-feira, 6h UTC (3h em Brasília) — fora do horário de trabalho.
+    - cron: '0 6 * * 1'
+
+concurrency:
+  group: codeql-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  analisar:
+    name: Analisar (${{ matrix.linguagem }})
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      # Para publicar os achados na aba Security do repositório.
+      security-events: write
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - linguagem: python
+            caminho: backend
+          - linguagem: javascript-typescript
+            caminho: frontend
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Inicializar o CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: ${{ matrix.linguagem }}
+          # `security-and-quality` traz, além das falhas de segurança, os
+          # problemas de qualidade que costumam virar falha depois.
+          queries: security-and-quality
+
+      - name: Analisar
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: /language:${{ matrix.linguagem }}

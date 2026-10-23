@@ -1,0 +1,17 @@
+Fotos da equipe: salve aqui como <nome>.jpg (ou .png/.webp), quadradas, 400x400 px ou mais.
+Nomes esperados:
+
+ana-maria-ribeiro
+fernanda-assef
+julia-magnavita
+matheus-lima
+amanda-candido
+igor-varejao
+karina-marques
+pyetra-werneck
+beatriz-latini
+joao-colombo
+luis-eduardo
+romulo-ferreira
+joao-victor-ifran
+bruno-maroneze

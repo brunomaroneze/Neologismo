@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import Header from "@/components/Header";
 import {
   Sparkles,
   BookOpen,
@@ -43,14 +42,13 @@ const goals = [
   {
     icon: Sparkles,
     title: "Colaboração aberta",
-    text: "Qualquer pessoa pode contribuir. O dicionário cresce com a participação de toda a comunidade.",
+    text: "Qualquer pessoa pode contribuir. O banco de neologismos cresce com a participação de toda a comunidade.",
   },
 ];
 
 export default function SobrePage() {
   return (
     <>
-      <Header />
 
       {/* Hero */}
       <section className="bg-gradient-to-br from-white to-purple-light/20 py-14 px-4">
@@ -102,7 +100,7 @@ export default function SobrePage() {
           </h2>
           <p className="text-base text-gray-600 max-w-2xl mx-auto">
             O <span className="font-semibold text-purple-dark">Neoscópio</span>{" "}
-            é um dicionário colaborativo dedicado a registrar, explorar e
+            é um banco de dados dedicado a registrar, explorar e
             discutir os neologismos que moldam o português do nosso tempo. A
             ideia é simples: dar um lugar para as palavras que o brasileiro cria
             todos os dias.

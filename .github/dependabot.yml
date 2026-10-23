@@ -1,0 +1,86 @@
+version: 2
+
+# Atualização automática de dependências.
+#
+# O projeto fixa versão exata em requirements.txt e tem package-lock.json, o
+# que é bom para reprodutibilidade e ruim para segurança: sem alguém olhando,
+# as versões envelhecem e as CVEs acumulam. O Dependabot abre o PR, o CI roda
+# em cima dele, e a decisão continua sendo de uma pessoa.
+#
+# Tudo agrupado por ecossistema e semanal: um PR por semana por área, em vez
+# de quinze PRs soltos que ninguém revisa.
+
+updates:
+  # --- Backend (pip) ---
+  - package-ecosystem: pip
+    directory: /backend
+    schedule:
+      interval: weekly
+      day: monday
+      time: '06:00'
+      timezone: America/Sao_Paulo
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: 'deps(backend)'
+    groups:
+      # Patch e minor juntos: são as atualizações que o CI consegue validar
+      # sozinho. Major vem em PR separado, porque quase sempre exige leitura
+      # de changelog.
+      backend-compativeis:
+        patterns: ['*']
+        update-types: [minor, patch]
+    ignore:
+      # Django major é migração de projeto, não atualização de dependência.
+      - dependency-name: Django
+        update-types: [version-update:semver-major]
+
+  # --- Frontend (npm) ---
+  - package-ecosystem: npm
+    directory: /frontend
+    schedule:
+      interval: weekly
+      day: monday
+      time: '06:00'
+      timezone: America/Sao_Paulo
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: 'deps(frontend)'
+    groups:
+      frontend-compativeis:
+        patterns: ['*']
+        update-types: [minor, patch]
+    ignore:
+      # React e Next major andam juntos e mudam API: atualização planejada.
+      - dependency-name: next
+        update-types: [version-update:semver-major]
+      - dependency-name: react
+        update-types: [version-update:semver-major]
+      - dependency-name: react-dom
+        update-types: [version-update:semver-major]
+
+  # --- Actions usadas nos workflows ---
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: '06:00'
+      timezone: America/Sao_Paulo
+    commit-message:
+      prefix: 'deps(ci)'
+    groups:
+      actions:
+        patterns: ['*']
+
+  # --- Imagens base dos Dockerfiles ---
+  - package-ecosystem: docker
+    directories:
+      - /backend
+      - /frontend
+    schedule:
+      interval: weekly
+      day: monday
+      time: '06:00'
+      timezone: America/Sao_Paulo
+    commit-message:
+      prefix: 'deps(docker)'
