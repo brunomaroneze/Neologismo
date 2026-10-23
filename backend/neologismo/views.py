@@ -8,9 +8,8 @@ from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import IsAdminUser, IsAuthenticated
 from rest_framework.response import Response
 
-from . import consultas
+from . import consultas, moderacao
 from . import facetas as indice_facetas
-from . import moderacao
 from .models import Neologismo
 from .permissions import DonoOuStaff
 from .serializers import (
@@ -19,6 +18,7 @@ from .serializers import (
     NeologismoSerializer,
     RejeicaoSerializer,
 )
+
 
 class NeologismoViewSet(viewsets.ModelViewSet):
     queryset = Neologismo.objects.all()

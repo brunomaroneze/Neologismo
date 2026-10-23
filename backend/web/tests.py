@@ -373,7 +373,7 @@ class PainelTests(BaseWeb):
     def test_aprovar_em_lote(self):
         a = criar_verbete(self.autor, 'Um', Neologismo.PENDENTE)
         b = criar_verbete(self.autor, 'Dois', Neologismo.PENDENTE)
-        c = criar_verbete(self.autor, 'Tres', Neologismo.PENDENTE)
+        criar_verbete(self.autor, 'Tres', Neologismo.PENDENTE)
         self.client.login(username='moderadora', password=SENHA)
 
         self.client.post(reverse('web:painel_lote'), {'acao': 'aprovar', 'ids': [a.pk, b.pk]})

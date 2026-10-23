@@ -59,7 +59,9 @@ class RegistroView(generics.CreateAPIView):
     throttle_classes = [ScopedRateThrottle]
     throttle_scope = 'cadastro'
 
-    @extend_schema(responses={201: OpenApiResponse(description='Conta criada; falta confirmar o e-mail.')})
+    @extend_schema(
+        responses={201: OpenApiResponse(description='Conta criada; falta confirmar o e-mail.')}
+    )
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
