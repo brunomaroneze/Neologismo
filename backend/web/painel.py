@@ -11,6 +11,7 @@ from functools import wraps
 from allauth.account.models import EmailAddress
 from django.contrib import messages
 from django.contrib.auth import get_user_model
+from django.contrib.auth.views import redirect_to_login
 from django.core.paginator import Paginator
 from django.db import transaction
 from django.db.models import Count, Exists, Max, OuterRef, Q
@@ -45,7 +46,7 @@ def _exigir(teste):
         @wraps(view)
         def envolvida(request, *args, **kwargs):
             if not request.user.is_authenticated:
-                return redirect(f"{reverse('account_login')}?next={request.get_full_path()}")
+                return redirect_to_login(request.get_full_path())
             if not teste(request.user):
                 return render(request, 'web/sem_permissao.html', status=403)
             return view(request, *args, **kwargs)
@@ -197,7 +198,10 @@ def lote(request):
     elif acao == 'rejeitar':
         motivo = request.POST.get('motivo', '').strip()
         if not MOTIVO_MIN <= len(motivo) <= MOTIVO_MAX:
-            messages.info(request, 'Escreva um motivo com pelo menos 5 caracteres; ele vai para todos os autores.')
+            messages.info(
+                request,
+                'Escreva um motivo com pelo menos 5 caracteres; ele vai para todos os autores.',
+            )
             return redirect(voltar)
         alvos = [n for n in selecionados if n.status != Neologismo.REJEITADO]
         for neologismo in alvos:
@@ -212,7 +216,8 @@ def lote(request):
 @equipe_required
 def editar_verbete(request, pk):
     neologismo = get_object_or_404(Neologismo.objects.select_related('autor'), pk=pk)
-    voltar = _destino_seguro(request, request.POST.get('voltar') or request.GET.get('voltar'), 'web:painel_verbetes')
+    pedido = request.POST.get('voltar') or request.GET.get('voltar')
+    voltar = _destino_seguro(request, pedido, 'web:painel_verbetes')
     form = VerbeteForm(request.POST or None, instance=neologismo)
 
     if request.method == 'POST' and form.is_valid():
@@ -294,7 +299,10 @@ def usuario_acao(request, pk, acao):
         messages.info(request, 'Você não pode alterar o seu próprio acesso.')
         return redirect(voltar)
     if alvo.is_superuser and not request.user.is_superuser:
-        messages.info(request, f'{alvo.username} é superusuário; só outro superusuário altera essa conta.')
+        messages.info(
+            request,
+            f'{alvo.username} é superusuário; só outro superusuário altera essa conta.',
+        )
         return redirect(voltar)
 
     if acao == 'papel':
@@ -353,7 +361,8 @@ def membro(request, pk=None):
             maior = MembroEquipe.objects.aggregate(m=Max('ordem'))['m'] or 0
             membro_salvo.ordem = maior + 10
         membro_salvo.save()
-        messages.success(request, f'{membro_salvo.nome} foi {"adicionado(a) à" if novo else "atualizado(a) na"} equipe.')
+        acao = 'adicionado(a) à' if novo else 'atualizado(a) na'
+        messages.success(request, f'{membro_salvo.nome} foi {acao} equipe.')
         return redirect('web:painel_equipe')
 
     return render(request, 'web/painel/membro.html', _contexto(
@@ -389,4 +398,4 @@ def membro_mover(request, pk, direcao):
         with transaction.atomic():
             for posicao, item in enumerate(membros, start=1):
                 MembroEquipe.objects.filter(pk=item.pk).update(ordem=posicao * 10)
-    return redirect(f"{reverse('web:painel_equipe')}#membro-{pk}")
+    return redirect(_destino_seguro(request, f"{reverse('web:painel_equipe')}#membro-{pk}"))

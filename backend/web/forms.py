@@ -20,7 +20,10 @@ class VerbeteForm(forms.ModelForm):
 
     class Meta:
         model = Neologismo
-        fields = ['titulo', 'classe_gramatical', 'tipologia', 'definicao', 'contexto_uso', 'elaborado_por']
+        fields = [
+            'titulo', 'classe_gramatical', 'tipologia',
+            'definicao', 'contexto_uso', 'elaborado_por',
+        ]
         labels = {
             'titulo': 'Palavra',
             'classe_gramatical': 'Classe gramatical',
@@ -83,7 +86,10 @@ class MembroEquipeForm(forms.ModelForm):
         fields = ['nome', 'funcao', 'bio', 'ativo']
         labels = {'nome': 'Nome', 'funcao': 'Função', 'bio': 'Frase de apresentação'}
         help_texts = {
-            'nome': 'Para indicar outra instituição, use “Nome - SIGLA”, como em “Beatriz Latini - UFMG”.',
+            'nome': (
+                'Para indicar outra instituição, use “Nome - SIGLA”, '
+                'como em “Beatriz Latini - UFMG”.'
+            ),
         }
         widgets = {
             'bio': forms.Textarea(attrs={'rows': 3, 'maxlength': 300}),

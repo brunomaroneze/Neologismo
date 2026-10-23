@@ -3,6 +3,17 @@
 (function () {
   "use strict";
 
+  // Só aceita endereços do próprio site (evita usar um "javascript:" ou um
+  // domínio externo vindo de HTML alterado).
+  function enderecoInterno(valor) {
+    try {
+      var url = new URL(valor, location.href);
+      return url.origin === location.origin ? url.href : null;
+    } catch (erro) {
+      return null;
+    }
+  }
+
   function csrf(form) {
     var campo = form.querySelector("input[name=csrfmiddlewaretoken]");
     return campo ? campo.value : "";
@@ -98,8 +109,9 @@
           var primeiroNovo = molde.content.querySelector("li");
           grade.appendChild(molde.content);
           carregarMais.removeAttribute("aria-busy");
-          if (proxima) {
-            carregarMais.href = proxima.getAttribute("data-proxima") + "#explorar";
+          var destino = proxima && enderecoInterno(proxima.getAttribute("data-proxima") + "#explorar");
+          if (destino) {
+            carregarMais.href = destino;
           } else {
             carregarMais.hidden = true;
           }
@@ -108,7 +120,10 @@
           var link = primeiroNovo && primeiroNovo.querySelector(".card__titulo a");
           if (link) link.focus({ preventScroll: true });
         })
-        .catch(function () { location.href = carregarMais.href; });
+        .catch(function () {
+          var destino = enderecoInterno(carregarMais.href);
+          if (destino) location.href = destino;
+        });
     });
 
     if (verMenos) {

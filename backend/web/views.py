@@ -7,14 +7,13 @@ views só traduzem formulário e querystring para essas peças, para o site e a
 API nunca divergirem.
 """
 
-from functools import wraps
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
 from django.db import transaction
-from django.db.models import Count, Q
-from django.http import HttpResponse, JsonResponse
+from django.db.models import Q
+from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
@@ -142,7 +141,9 @@ def curtir(request, pk):
 
     if excedeu(request, 'curtida'):
         if quer_json:
-            return JsonResponse({'detail': 'Muitas curtidas seguidas. Aguarde um minuto.'}, status=429)
+            return JsonResponse(
+                {'detail': 'Muitas curtidas seguidas. Aguarde um minuto.'}, status=429
+            )
         messages.error(request, 'Muitas curtidas seguidas. Aguarde um minuto.')
         return redirect(_destino_seguro(request, request.POST.get('next')))
 
@@ -184,27 +185,37 @@ def enviar(request):
     if request.GET.get('enviado'):
         return render(request, 'web/enviar.html', {'enviado': True})
 
-    valores = {'titulo': '', 'classe_gramatical': '', 'definicao': '', 'contexto_uso': '', 'tags': ''}
+    valores = dict.fromkeys(
+        ('titulo', 'classe_gramatical', 'definicao', 'contexto_uso', 'tags'), ''
+    )
     citacoes = []
     erros = {}
 
     if request.method == 'POST':
         valores = {campo: request.POST.get(campo, '') for campo in valores}
         citacoes = [
-            {'citacao': c, 'fonte': f, 'link': l}
-            for c, f, l in zip(
+            {'citacao': citacao, 'fonte': fonte, 'link': link}
+            # strict=False: um POST montado à mão com listas desiguais não
+            # derruba o envio, só perde as citações incompletas.
+            for citacao, fonte, link in zip(
                 request.POST.getlist('citacao'),
                 request.POST.getlist('fonte'),
                 request.POST.getlist('link'),
+                strict=False,
             )
         ]
 
         erros = _validar_envio(valores)
         if not erros and excedeu(request, 'envio'):
-            erros['geral'] = 'Você enviou muitos verbetes na última hora. Tente novamente mais tarde.'
+            erros['geral'] = (
+                'Você enviou muitos verbetes na última hora. Tente novamente mais tarde.'
+            )
         if not erros:
             dados = {
-                **{campo: valores[campo] for campo in ('titulo', 'classe_gramatical', 'definicao', 'contexto_uso')},
+                **{
+                    campo: valores[campo]
+                    for campo in ('titulo', 'classe_gramatical', 'definicao', 'contexto_uso')
+                },
                 'tags': [t for t in valores['tags'].split(',') if t.strip()],
                 # Citações sem texto são descartadas pelo serializer.
                 'contextos': [
@@ -260,7 +271,7 @@ def redirecionar(nome):
         destino = reverse(nome)
         if request.GET:
             destino = f'{destino}?{request.GET.urlencode()}'
-        return redirect(destino, permanent=False)
+        return redirect(_destino_seguro(request, destino))
     return view
 
 
@@ -300,7 +311,10 @@ def sitemap(request):
         'web/sitemap.xml',
         {
             'base': request.build_absolute_uri('/').rstrip('/'),
-            'paginas': [reverse(nome) for nome in ('web:inicio', 'web:sobre', 'web:equipe', 'web:referencias')],
+            'paginas': [
+                reverse(nome)
+                for nome in ('web:inicio', 'web:sobre', 'web:equipe', 'web:referencias')
+            ],
             'verbetes': verbetes,
         },
         content_type='application/xml',
