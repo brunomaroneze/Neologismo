@@ -16,7 +16,7 @@ from django.db.models import Count
 
 from .models import Neologismo
 
-CHAVE_CACHE = 'neologismo:facetas:v1'
+CHAVE_CACHE = 'neologismo:facetas:v2'
 
 
 def normalizar(valor):
@@ -37,6 +37,15 @@ def calcular():
         for tag in tags or []:
             contagem_tags[tag] = contagem_tags.get(tag, 0) + 1
 
+    # Contagem por letra inicial, para o índice A–Z da página inicial.
+    # "Ângulo" conta em A; títulos que começam por número ou símbolo ficam
+    # de fora do índice (continuam acessíveis pela busca).
+    contagem_iniciais = {}
+    for titulo in aprovados.values_list('titulo', flat=True):
+        inicial = normalizar(titulo[:1]).upper()
+        if inicial.isalpha():
+            contagem_iniciais[inicial] = contagem_iniciais.get(inicial, 0) + 1
+
     classes = (
         aprovados
         .values('classe_gramatical')
@@ -52,6 +61,7 @@ def calcular():
                 contagem_tags.items(), key=lambda item: (-item[1], item[0])
             )
         ],
+        'iniciais': contagem_iniciais,
         'classes': [
             {'nome': c['classe_gramatical'], 'total': c['total']}
             for c in classes

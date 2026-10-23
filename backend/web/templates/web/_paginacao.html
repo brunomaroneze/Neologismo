@@ -1,0 +1,16 @@
+{% load verbetes %}
+{% if pagina.paginator.num_pages > 1 %}
+<nav class="paginacao" aria-label="Paginação">
+  {% if pagina.has_previous %}
+    <a href="{% consulta pagina=pagina.previous_page_number %}" rel="prev">← Página anterior</a>
+  {% else %}
+    <span class="paginacao__inativo" aria-hidden="true">← Página anterior</span>
+  {% endif %}
+  <span class="paginacao__posicao">Página {{ pagina.number }} de {{ pagina.paginator.num_pages }}</span>
+  {% if pagina.has_next %}
+    <a href="{% consulta pagina=pagina.next_page_number %}" rel="next">Próxima página →</a>
+  {% else %}
+    <span class="paginacao__inativo" aria-hidden="true">Próxima página →</span>
+  {% endif %}
+</nav>
+{% endif %}

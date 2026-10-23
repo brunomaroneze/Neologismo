@@ -90,8 +90,12 @@ INSTALLED_APPS = [
     # apps do projeto
     'neologismo',
     'usuario',
+    'web',
     'drf_spectacular',
 ]
+
+# Páginas que exigem conta mandam para o login do site, não o do admin.
+LOGIN_URL = 'web:login'
 
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
@@ -376,7 +380,7 @@ LOGGING = {
 # Endereço público do frontend. Usado para montar os links que vão nos
 # e-mails (recuperação de senha, aviso de moderação) — sem ele o link sairia
 # apontando para localhost em produção.
-SITE_URL = os.getenv('SITE_URL', 'http://localhost:3000').rstrip('/')
+SITE_URL = os.getenv('SITE_URL', 'http://localhost:8000').rstrip('/')
 
 DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'Neoscópio <nao-responda@localhost>')
 SERVER_EMAIL = os.getenv('SERVER_EMAIL', DEFAULT_FROM_EMAIL)

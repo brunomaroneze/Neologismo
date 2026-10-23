@@ -1,0 +1,32 @@
+{% load verbetes %}
+<li>
+  <article class="card" aria-labelledby="card-{{ verbete.pk }}">
+    <div class="card__topo">
+      <span class="card__classe">{{ verbete.classe_gramatical }}</span>
+      <time class="card__data" datetime="{{ verbete.data_criacao|date:'c' }}">{{ verbete.data_criacao|data_curta }}</time>
+    </div>
+
+    <h3 class="card__titulo" id="card-{{ verbete.pk }}"><a href="{% url 'web:verbete' verbete.pk %}">{{ verbete.titulo|lower }}</a></h3>
+    {% if verbete.tipologia %}<p class="card__tipologia">{{ verbete.tipologia }}</p>{% endif %}
+
+    <p class="card__definicao">{{ verbete.definicao }}</p>
+
+    {% if verbete.contexto_uso %}
+      <blockquote class="citacao">
+        <p>&ldquo;{{ verbete.contexto_uso }}&rdquo;</p>
+        <footer>— {{ verbete.autor.username }}</footer>
+        {% with primeira=verbete.contextos.all.0 %}
+          {% if primeira.link %}<a href="{{ primeira.link }}" target="_blank" rel="noopener noreferrer nofollow">{{ primeira.link }}</a>{% endif %}
+        {% endwith %}
+      </blockquote>
+    {% endif %}
+
+    <div class="card__rodape">
+      <ul class="etiquetas">
+        {% for tag in verbete.tags|slice:":3" %}<li>{{ tag }}</li>{% endfor %}
+        {% if verbete.tags|length > 3 %}<li>+{{ verbete.tags|length|add:"-3" }}</li>{% endif %}
+      </ul>
+      {% include 'web/_curtir.html' %}
+    </div>
+  </article>
+</li>

@@ -1,0 +1,12 @@
+{% extends 'web/base.html' %}
+
+{% block titulo %}Acesso restrito — Neoscópio{% endblock %}
+{% block meta %}<meta name="robots" content="noindex">{% endblock %}
+
+{% block conteudo %}
+<div class="conteiner pagina">
+  <h1 class="titulo-pagina">Acesso restrito à equipe de moderação</h1>
+  <p class="lead">Sua conta não tem permissão para esta página. Se você faz parte da equipe, peça a um administrador que libere o acesso.</p>
+  <p><a href="{% url 'web:inicio' %}">Voltar aos verbetes</a></p>
+</div>
+{% endblock %}

@@ -2,7 +2,6 @@
 
 from django.contrib import admin
 from django.urls import include, path
-from django.views.generic import RedirectView
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 from rest_framework.routers import DefaultRouter
 
@@ -21,7 +20,6 @@ router = DefaultRouter()
 router.register(r'neologismos', NeologismoViewSet, basename='neologismo')
 
 urlpatterns = [
-    path('', RedirectView.as_view(url='/api/docs/', permanent=False)),
     path('admin/', admin.site.urls),
 
     # Usado pelo healthcheck do Docker e pelo proxy antes de mandar tráfego.
@@ -46,4 +44,8 @@ urlpatterns = [
     # Documentação (OpenAPI + Swagger UI)
     path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
     path('api/docs/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
+
+    # Site (páginas renderizadas pelo Django). Por último: as rotas acima têm
+    # prefixo próprio e não podem ser sombreadas por uma página.
+    path('', include('web.urls')),
 ]

@@ -1,0 +1,120 @@
+{% extends 'web/base.html' %}
+
+{% block titulo %}Enviar neologismo — Neoscópio{% endblock %}
+
+{% block conteudo %}
+<div class="conteiner">
+{% if precisa_entrar %}
+  <div class="sucesso">
+    <h1 class="titulo-2">Entre para enviar</h1>
+    <p>Só quem tem conta pode sugerir um verbete — assim conseguimos dar crédito à autoria e acompanhar a moderação.</p>
+    <div class="botoes">
+      <a class="botao" href="{% url 'web:login' %}?next={% url 'web:enviar' %}">Entrar</a>
+      <a class="botao botao--secundario" href="{% url 'web:cadastro' %}?next={% url 'web:enviar' %}">Criar conta</a>
+    </div>
+  </div>
+
+{% elif enviado %}
+  <div class="sucesso" role="status">
+    <h1 class="titulo-2">Neologismo enviado!</h1>
+    <p>Ele entra na fila de moderação e aparece no banco assim que for aprovado. Você acompanha o andamento em Minhas palavras.</p>
+    <div class="botoes">
+      <a class="botao" href="{% url 'web:meus_envios' %}">Ver meus envios</a>
+      <a class="botao botao--secundario" href="{% url 'web:enviar' %}">Enviar outra</a>
+    </div>
+  </div>
+
+{% else %}
+  <section class="secao secao--estreita">
+    <span class="rotulo">Enviar neologismo</span>
+    <h1 class="titulo-1">Registre uma nova palavra</h1>
+    <p class="lead">Sua sugestão passa por moderação antes de ser publicada. Campos com <span class="campo__obrigatorio">*</span> são obrigatórios.</p>
+
+    {% if erros.geral %}<div class="aviso aviso--error" role="alert" tabindex="-1" data-foco-inicial>{{ erros.geral }}</div>{% endif %}
+
+    <form class="formulario" method="post" novalidate data-formulario-envio>
+      {% csrf_token %}
+
+      <div class="campo">
+        <label class="campo__rotulo" for="titulo">Palavra <span class="campo__obrigatorio">*</span></label>
+        <input class="entrada" id="titulo" name="titulo" maxlength="50" value="{{ valores.titulo }}" placeholder="Ex.: biscoitar" data-contador="ajuda-titulo" aria-describedby="ajuda-titulo{% if erros.titulo %} erro-titulo{% endif %}" {% if erros.titulo %}aria-invalid="true"{% endif %}>
+        <p class="campo__ajuda" id="ajuda-titulo" data-modelo="{n}/50">{{ valores.titulo|length }}/50</p>
+        {% if erros.titulo %}<p class="campo__erro" id="erro-titulo">{{ erros.titulo }}</p>{% endif %}
+      </div>
+
+      <div class="campo">
+        <label class="campo__rotulo" for="classe">Classe gramatical <span class="campo__obrigatorio">*</span></label>
+        <input class="entrada" id="classe" name="classe_gramatical" list="classes-gramaticais" maxlength="50" value="{{ valores.classe_gramatical }}" placeholder="Verbo, substantivo, adjetivo…" {% if erros.classe_gramatical %}aria-invalid="true" aria-describedby="erro-classe"{% endif %}>
+        <datalist id="classes-gramaticais">{% for classe in classes %}<option value="{{ classe }}">{% endfor %}</datalist>
+        {% if erros.classe_gramatical %}<p class="campo__erro" id="erro-classe">{{ erros.classe_gramatical }}</p>{% endif %}
+      </div>
+
+      <div class="campo">
+        <label class="campo__rotulo" for="definicao">Definição <span class="campo__obrigatorio">*</span></label>
+        <textarea class="entrada" id="definicao" name="definicao" rows="4" placeholder="O que a palavra significa? De onde ela parece ter vindo?" data-contador="ajuda-definicao" aria-describedby="ajuda-definicao{% if erros.definicao %} erro-definicao{% endif %}" {% if erros.definicao %}aria-invalid="true"{% endif %}>{{ valores.definicao }}</textarea>
+        <p class="campo__ajuda" id="ajuda-definicao" data-modelo="{n} caracteres (mínimo 10)">{{ valores.definicao|length }} caracteres (mínimo 10)</p>
+        {% if erros.definicao %}<p class="campo__erro" id="erro-definicao">{{ erros.definicao }}</p>{% endif %}
+      </div>
+
+      <div class="campo">
+        <label class="campo__rotulo" for="contexto_uso">Frase de exemplo</label>
+        <textarea class="entrada" id="contexto_uso" name="contexto_uso" rows="2" placeholder="Ela passou a tarde biscoitando no Instagram." aria-describedby="ajuda-exemplo">{{ valores.contexto_uso }}</textarea>
+        <p class="campo__ajuda" id="ajuda-exemplo">Uma frase curta mostrando a palavra em uso.</p>
+        {% if erros.contexto_uso %}<p class="campo__erro">{{ erros.contexto_uso }}</p>{% endif %}
+      </div>
+
+      <div class="campo">
+        <label class="campo__rotulo" for="tags">Tags</label>
+        <input class="entrada" id="tags" name="tags" value="{{ valores.tags }}" placeholder="Internetês, anglicismo…" aria-describedby="ajuda-tags{% if erros.tags %} erro-tags{% endif %}" data-etiquetas data-sugestoes="{{ sugestoes_tags|join:'|' }}" {% if erros.tags %}aria-invalid="true"{% endif %}>
+        <p class="campo__ajuda" id="ajuda-tags">Enter ou vírgula para adicionar. <span data-etiquetas-total>0</span>/8</p>
+        {% if erros.tags %}<p class="campo__erro" id="erro-tags">{{ erros.tags }}</p>{% endif %}
+      </div>
+
+      <fieldset class="grupo-campos">
+        <legend>Citações com fonte <span class="campo__opcional">(opcional)</span></legend>
+        <p class="campo__ajuda">Trechos reais onde a palavra aparece — post, matéria, conversa. Fortalecem muito o verbete na revisão.</p>
+        {% if erros.contextos %}<p class="campo__erro">{{ erros.contextos }}</p>{% endif %}
+
+        <div data-citacoes>
+          {% for c in citacoes %}
+            <div class="citacao-form" data-citacao>
+              <div class="citacao-form__cabeca"><span data-citacao-numero>Citação {{ forloop.counter }}</span><button type="button" data-remover-citacao aria-label="Remover a citação {{ forloop.counter }}">Remover</button></div>
+              <textarea class="entrada" name="citacao" rows="2" placeholder="Trecho onde a palavra aparece." aria-label="Texto da citação {{ forloop.counter }}">{{ c.citacao }}</textarea>
+              <div class="citacao-form__linha">
+                <input class="entrada" name="fonte" maxlength="200" value="{{ c.fonte }}" placeholder="Fonte — @usuario no X" aria-label="Fonte da citação {{ forloop.counter }}">
+                <input class="entrada" name="link" type="url" maxlength="500" value="{{ c.link }}" placeholder="https://…" aria-label="Link da citação {{ forloop.counter }}">
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+        <template data-modelo-citacao>
+          <div class="citacao-form" data-citacao>
+            <div class="citacao-form__cabeca"><span data-citacao-numero>Citação</span><button type="button" data-remover-citacao>Remover</button></div>
+            <textarea class="entrada" name="citacao" rows="2" placeholder="Trecho onde a palavra aparece."></textarea>
+            <div class="citacao-form__linha">
+              <input class="entrada" name="fonte" maxlength="200" placeholder="Fonte — @usuario no X">
+              <input class="entrada" name="link" type="url" maxlength="500" placeholder="https://…">
+            </div>
+          </div>
+        </template>
+        <noscript>
+          <div class="citacao-form">
+            <textarea class="entrada" name="citacao" rows="2" placeholder="Trecho onde a palavra aparece."></textarea>
+            <div class="citacao-form__linha">
+              <input class="entrada" name="fonte" maxlength="200" placeholder="Fonte — @usuario no X">
+              <input class="entrada" name="link" type="url" maxlength="500" placeholder="https://…">
+            </div>
+          </div>
+        </noscript>
+        <button class="botao botao--discreto botao--pequeno" type="button" data-adicionar-citacao hidden>+ Adicionar citação</button>
+      </fieldset>
+
+      <div class="acoes">
+        <button class="botao" type="submit">Enviar neologismo</button>
+        <a href="{% url 'web:inicio' %}">Cancelar</a>
+      </div>
+    </form>
+  </section>
+{% endif %}
+</div>
+{% endblock %}
