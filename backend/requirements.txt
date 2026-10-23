@@ -6,7 +6,7 @@ Django==6.1.2
 djangorestframework==3.18.3
 drf-spectacular==0.30.0
 Faker==40.43.0
-gunicorn==23.0.0
+gunicorn==26.2.0
 inflection==0.5.1
 jsonschema-specifications==2025.9.1
 jsonschema==4.26.0
