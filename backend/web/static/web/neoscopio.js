@@ -292,6 +292,42 @@
     detalhes.querySelector("summary").focus();
   });
 
+  // --- Carregamento entre páginas ------------------------------------------------
+  // O frasco só aparece se a próxima página demorar: em navegação rápida ele
+  // nem chega a piscar. Fica por último para enxergar o preventDefault dos
+  // tratamentos acima (curtir e "Carregar mais" não trocam de página).
+  var carregando = document.querySelector("[data-carregando]");
+  if (carregando) {
+    var temporizador = null;
+    var mostrarCarregando = function () {
+      clearTimeout(temporizador);
+      temporizador = setTimeout(function () { carregando.hidden = false; }, 350);
+    };
+    var esconderCarregando = function () {
+      clearTimeout(temporizador);
+      carregando.hidden = true;
+    };
+
+    document.addEventListener("click", function (evento) {
+      if (evento.defaultPrevented || evento.button !== 0) return;
+      if (evento.metaKey || evento.ctrlKey || evento.shiftKey || evento.altKey) return;
+      var link = evento.target.closest("a[href]");
+      if (!link || link.target === "_blank" || link.hasAttribute("download")) return;
+      var destino = new URL(link.href, location.href);
+      if (destino.origin !== location.origin) return;
+      // Âncora na própria página não carrega nada.
+      if (destino.pathname === location.pathname && destino.search === location.search) return;
+      mostrarCarregando();
+    });
+
+    document.addEventListener("submit", function (evento) {
+      if (!evento.defaultPrevented) mostrarCarregando();
+    });
+
+    // Voltar pelo histórico restaura a página do cache já com o frasco visível.
+    window.addEventListener("pageshow", esconderCarregando);
+  }
+
   // --- Foco no resumo de erros depois de um envio com problemas ----------------
   var resumo = document.querySelector("[data-foco-inicial]");
   if (resumo) resumo.focus();

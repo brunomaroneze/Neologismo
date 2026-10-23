@@ -61,7 +61,10 @@
     </ul>
     {% if pagina.has_next %}
       <div class="mais">
-        <a class="botao botao--discreto" href="{% consulta pagina=pagina.next_page_number %}#explorar" data-carregar-mais>Carregar mais</a>
+        <a class="botao botao--discreto" href="{% consulta pagina=pagina.next_page_number %}#explorar" data-carregar-mais>
+          <span class="mini-frasco" aria-hidden="true">{% include 'web/_frasco.html' with id='mais' %}</span>
+          <span>Carregar mais</span>
+        </a>
       </div>
     {% endif %}
   {% else %}

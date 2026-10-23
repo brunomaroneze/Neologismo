@@ -6,7 +6,8 @@
   <title>{% block titulo %}Neoscópio — Banco de Neologismos{% endblock %}</title>
   <meta name="description" content="{% block descricao %}Registre, explore e discuta os neologismos que moldam o português do nosso tempo.{% endblock %}">
   {% block meta %}{% endblock %}
-  <link rel="icon" href="{% static 'web/favicon.ico' %}">
+  <link rel="icon" href="{% static 'web/frasco.svg' %}" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="{% static 'web/frasco.svg' %}">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400..700;1,6..72,400..600&family=Source+Sans+3:wght@400;600;700&display=swap">
@@ -15,6 +16,12 @@
 </head>
 <body>
   <a class="pular" href="#conteudo">Ir para o conteúdo</a>
+
+  {# Aparece quando uma página demora a abrir (ver neoscopio.js). #}
+  <div class="carregando" data-carregando hidden>
+    {% include 'web/_frasco.html' with id='pagina' %}
+    <p class="carregando__texto" role="status">Carregando…</p>
+  </div>
 
   {% with nome=request.resolver_match.url_name %}
   <div class="instituicao">
