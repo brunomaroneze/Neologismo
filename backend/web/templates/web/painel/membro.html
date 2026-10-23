@@ -1,0 +1,38 @@
+{% extends 'web/painel/base.html' %}
+{% block titulo_painel %}{% if membro %}Editar {{ membro.nome }}{% else %}Adicionar membro{% endif %}{% endblock %}
+{% block titulo_h1 %}{% if membro %}Editar membro{% else %}Adicionar membro{% endif %}{% endblock %}
+{% block painel %}
+<div class="painel__duas-colunas">
+  <form class="formulario cartao" method="post" enctype="multipart/form-data" novalidate>
+    {% csrf_token %}
+    {% for campo in form %}
+      {% if campo.name == 'remover_foto' and not membro.foto %}{% elif campo.widget_type == 'checkbox' %}
+        <div class="campo campo--marcar"><label class="marcar">{{ campo }} <span>{{ campo.label }}</span></label>{% for erro in campo.errors %}<p class="campo__erro">{{ erro }}</p>{% endfor %}</div>
+      {% else %}
+        <div class="campo">
+          <label class="campo__rotulo" for="{{ campo.id_for_label }}">{{ campo.label }}</label>
+          {{ campo }}
+          {% if campo.help_text %}<p class="campo__ajuda">{{ campo.help_text }}</p>{% endif %}
+          {% for erro in campo.errors %}<p class="campo__erro">{{ erro }}</p>{% endfor %}
+        </div>
+      {% endif %}
+    {% endfor %}
+    <div class="acoes">
+      <button class="botao" type="submit">{% if membro %}Salvar{% else %}Adicionar à equipe{% endif %}</button>
+      <a href="{% url 'web:painel_equipe' %}">Cancelar</a>
+    </div>
+  </form>
+
+  <aside class="cartao cartao--centro">
+    <h2 class="cartao__titulo">Como aparece no site</h2>
+    <div class="membro membro--previa">
+      <div class="membro__foto">
+        {% if membro.foto %}<img src="{{ membro.foto.url }}" alt="" width="400" height="400" data-previa-foto>{% else %}<span class="membro__iniciais" data-previa-iniciais aria-hidden="true">{{ membro.iniciais|default:"?" }}</span><img alt="" width="400" height="400" data-previa-foto hidden>{% endif %}
+      </div>
+      <p class="membro__nome" data-previa="id_nome">{{ membro.nome|default:"Nome" }}</p>
+      <p class="membro__funcao" data-previa="id_funcao">{{ membro.funcao|default:"Função" }}</p>
+      <p class="membro__bio" data-previa="id_bio">{{ membro.bio }}</p>
+    </div>
+  </aside>
+</div>
+{% endblock %}

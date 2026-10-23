@@ -2,7 +2,7 @@
 # compartilhados e os enviados nos e-mails continuam funcionando.
 from django.urls import path
 
-from . import views
+from . import painel, views
 
 app_name = 'web'
 
@@ -14,8 +14,19 @@ urlpatterns = [
     path('enviar', views.enviar, name='enviar'),
     path('minhas-palavras', views.meus_envios, name='meus_envios'),
 
-    path('admin-painel', views.moderacao_painel, name='moderacao'),
-    path('admin-painel/<int:pk>/<str:acao>', views.moderar, name='moderar'),
+    # Painel do administrador (web/painel.py).
+    path('admin-painel', painel.inicio, name='moderacao'),
+    path('admin-painel/verbetes', painel.verbetes, name='painel_verbetes'),
+    path('admin-painel/verbetes/lote', painel.lote, name='painel_lote'),
+    path('admin-painel/verbetes/<int:pk>/editar', painel.editar_verbete, name='painel_editar_verbete'),
+    path('admin-painel/<int:pk>/<str:acao>', painel.moderar, name='moderar'),
+    path('admin-painel/usuarios', painel.usuarios, name='painel_usuarios'),
+    path('admin-painel/usuarios/<int:pk>/<str:acao>', painel.usuario_acao, name='painel_usuario_acao'),
+    path('admin-painel/equipe', painel.equipe, name='painel_equipe'),
+    path('admin-painel/equipe/novo', painel.membro, name='painel_membro_novo'),
+    path('admin-painel/equipe/<int:pk>', painel.membro, name='painel_membro'),
+    path('admin-painel/equipe/<int:pk>/remover', painel.membro_remover, name='painel_membro_remover'),
+    path('admin-painel/equipe/<int:pk>/<str:direcao>', painel.membro_mover, name='painel_membro_mover'),
 
     # Endereços antigos das telas de conta, agora servidas pelo allauth em
     # /conta/. Mantidos como redirecionamento para links salvos e e-mails já

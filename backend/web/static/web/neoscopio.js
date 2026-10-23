@@ -311,6 +311,52 @@
     detalhes.querySelector("summary").focus();
   });
 
+  // --- Painel: seletores que se aplicam ao escolher ----------------------------
+  document.querySelectorAll("select[data-autoenvio-campo]").forEach(function (select) {
+    select.addEventListener("change", function () { select.form.requestSubmit(); });
+  });
+
+  // --- Painel: ações em lote -----------------------------------------------------
+  var formLote = document.querySelector("[data-lote]");
+  if (formLote) {
+    var itensLote = document.querySelectorAll("[data-lote-item]");
+    var marcarTodos = formLote.querySelector("[data-marcar-todos]");
+    var contagemLote = formLote.querySelector("[data-lote-contagem]");
+    var atualizarLote = function () {
+      var marcados = Array.prototype.filter.call(itensLote, function (c) { return c.checked; }).length;
+      contagemLote.textContent = marcados === 0 ? "Nenhum marcado" : marcados === 1 ? "1 marcado" : marcados + " marcados";
+      marcarTodos.checked = marcados > 0 && marcados === itensLote.length;
+      marcarTodos.indeterminate = marcados > 0 && marcados < itensLote.length;
+      formLote.querySelectorAll("button[name=acao]").forEach(function (b) { b.disabled = marcados === 0; });
+    };
+    marcarTodos.addEventListener("change", function () {
+      itensLote.forEach(function (c) { c.checked = marcarTodos.checked; });
+      atualizarLote();
+    });
+    itensLote.forEach(function (c) { c.addEventListener("change", atualizarLote); });
+    atualizarLote();
+  }
+
+  // --- Painel: prévia do membro da equipe ---------------------------------------
+  document.querySelectorAll("[data-previa]").forEach(function (alvo) {
+    var campo = document.getElementById(alvo.getAttribute("data-previa"));
+    if (!campo) return;
+    var padrao = alvo.textContent;
+    campo.addEventListener("input", function () { alvo.textContent = campo.value || padrao; });
+  });
+  var campoFoto = document.getElementById("id_foto");
+  var previaFoto = document.querySelector("[data-previa-foto]");
+  if (campoFoto && previaFoto) {
+    campoFoto.addEventListener("change", function () {
+      var arquivo = campoFoto.files && campoFoto.files[0];
+      if (!arquivo) return;
+      previaFoto.src = URL.createObjectURL(arquivo);
+      previaFoto.hidden = false;
+      var iniciais = document.querySelector("[data-previa-iniciais]");
+      if (iniciais) iniciais.hidden = true;
+    });
+  }
+
   // --- Carregamento entre páginas ------------------------------------------------
   // O frasco só aparece se a próxima página demorar: em navegação rápida ele
   // nem chega a piscar. Fica por último para enxergar o preventDefault dos

@@ -221,6 +221,7 @@ class ModeracaoTests(BaseWeb):
     def test_usuario_comum_recebe_403(self):
         self.client.login(username='autora', password=SENHA)
         self.assertEqual(self.client.get(reverse('web:moderacao')).status_code, 403)
+        self.assertEqual(self.client.get(reverse('web:painel_verbetes')).status_code, 403)
 
     def test_aprovar_publica_e_avisa_o_autor(self):
         verbete = criar_verbete(self.autor, 'Novo', Neologismo.PENDENTE)
@@ -353,3 +354,159 @@ class ContaTests(BaseWeb):
 
         self.assertRedirects(existe, reverse('account_reset_password_done'), fetch_redirect_response=False)
         self.assertRedirects(nao_existe, reverse('account_reset_password_done'), fetch_redirect_response=False)
+
+
+class PainelTests(BaseWeb):
+    """Painel do administrador: moderação, usuários e equipe."""
+
+    def setUp(self):
+        super().setUp()
+        self.admin = Usuario.objects.create_user('chefe', email='chefe@exemplo.com', password=SENHA, is_admin=True)
+
+    def test_moderador_ve_verbetes_mas_nao_usuarios_nem_equipe(self):
+        self.client.login(username='moderadora', password=SENHA)
+        self.assertEqual(self.client.get(reverse('web:moderacao')).status_code, 200)
+        self.assertEqual(self.client.get(reverse('web:painel_verbetes')).status_code, 200)
+        self.assertEqual(self.client.get(reverse('web:painel_usuarios')).status_code, 403)
+        self.assertEqual(self.client.get(reverse('web:painel_equipe')).status_code, 403)
+
+    def test_aprovar_em_lote(self):
+        a = criar_verbete(self.autor, 'Um', Neologismo.PENDENTE)
+        b = criar_verbete(self.autor, 'Dois', Neologismo.PENDENTE)
+        c = criar_verbete(self.autor, 'Tres', Neologismo.PENDENTE)
+        self.client.login(username='moderadora', password=SENHA)
+
+        self.client.post(reverse('web:painel_lote'), {'acao': 'aprovar', 'ids': [a.pk, b.pk]})
+
+        self.assertEqual(
+            dict(Neologismo.objects.values_list('titulo', 'status')),
+            {'Um': 'aprovado', 'Dois': 'aprovado', 'Tres': 'pendente'},
+        )
+        self.assertEqual(len(mail.outbox), 2)
+
+    def test_rejeitar_em_lote_exige_motivo(self):
+        a = criar_verbete(self.autor, 'Um', Neologismo.PENDENTE)
+        self.client.login(username='moderadora', password=SENHA)
+
+        self.client.post(reverse('web:painel_lote'), {'acao': 'rejeitar', 'ids': [a.pk], 'motivo': ''})
+        a.refresh_from_db()
+        self.assertEqual(a.status, Neologismo.PENDENTE)
+
+        self.client.post(reverse('web:painel_lote'), {'acao': 'rejeitar', 'ids': [a.pk], 'motivo': 'Falta abonação com fonte.'})
+        a.refresh_from_db()
+        self.assertEqual(a.status, Neologismo.REJEITADO)
+        self.assertEqual(a.motivo_rejeicao, 'Falta abonação com fonte.')
+
+    def test_editar_e_aprovar(self):
+        verbete = criar_verbete(self.autor, 'Biscoiter', Neologismo.PENDENTE)
+        self.client.login(username='moderadora', password=SENHA)
+
+        resposta = self.client.post(reverse('web:painel_editar_verbete', args=[verbete.pk]), {
+            'titulo': 'Biscoitar', 'classe_gramatical': 'Verbo intransitivo', 'tipologia': 'derivação sufixal',
+            'definicao': 'Buscar elogios nas redes sociais.', 'contexto_uso': '', 'elaborado_por': '',
+            'tags': 'Internetês, Gíria', 'aprovar': '1',
+        })
+
+        self.assertEqual(resposta.status_code, 302)
+        verbete.refresh_from_db()
+        self.assertEqual(verbete.titulo, 'Biscoitar')
+        self.assertEqual(verbete.tags, ['Internetês', 'Gíria'])
+        self.assertEqual(verbete.status, Neologismo.APROVADO)
+
+    def test_editar_valida_como_o_envio(self):
+        verbete = criar_verbete(self.autor, 'Algo', Neologismo.PENDENTE)
+        self.client.login(username='moderadora', password=SENHA)
+
+        resposta = self.client.post(reverse('web:painel_editar_verbete', args=[verbete.pk]), {
+            'titulo': 'Algo', 'classe_gramatical': 'Verbo', 'definicao': 'curta', 'tags': '',
+        })
+
+        self.assertContains(resposta, 'Descreva o significado com ao menos 10 caracteres.')
+
+    def test_admin_muda_papel_e_nao_mexe_na_propria_conta(self):
+        self.client.login(username='chefe', password=SENHA)
+
+        self.client.post(reverse('web:painel_usuario_acao', args=[self.autor.pk, 'papel']), {'papel': 'moderador'})
+        self.autor.refresh_from_db()
+        self.assertTrue(self.autor.is_staff)
+        self.assertFalse(self.autor.is_admin)
+
+        self.client.post(reverse('web:painel_usuario_acao', args=[self.admin.pk, 'papel']), {'papel': 'leitor'})
+        self.admin.refresh_from_db()
+        self.assertTrue(self.admin.is_admin)
+
+    def test_rebaixar_administrador_tira_o_acesso_de_moderacao(self):
+        outro = Usuario.objects.create_user('outro', password=SENHA, is_admin=True)
+        self.client.login(username='chefe', password=SENHA)
+
+        self.client.post(reverse('web:painel_usuario_acao', args=[outro.pk, 'papel']), {'papel': 'leitor'})
+
+        outro.refresh_from_db()
+        self.assertFalse(outro.is_admin)
+        self.assertFalse(outro.is_staff)
+
+    def test_desativar_e_confirmar_email(self):
+        self.client.login(username='chefe', password=SENHA)
+
+        self.client.post(reverse('web:painel_usuario_acao', args=[self.autor.pk, 'confirmar-email']))
+        self.assertTrue(EmailAddress.objects.filter(user=self.autor, verified=True).exists())
+
+        self.client.post(reverse('web:painel_usuario_acao', args=[self.autor.pk, 'desativar']))
+        self.autor.refresh_from_db()
+        self.assertFalse(self.autor.is_active)
+
+    def test_adicionar_membro_com_foto_reduz_para_400(self):
+        from io import BytesIO
+
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        from PIL import Image
+
+        from .models import MembroEquipe
+
+        bruta = BytesIO()
+        Image.new('RGB', (1200, 800), (102, 0, 102)).save(bruta, 'PNG')
+        foto = SimpleUploadedFile('retrato.png', bruta.getvalue(), content_type='image/png')
+        self.client.login(username='chefe', password=SENHA)
+
+        resposta = self.client.post(reverse('web:painel_membro_novo'), {
+            'nome': 'Nova Pesquisadora', 'funcao': 'Graduanda em Letras', 'bio': '', 'ativo': 'on', 'foto': foto,
+        })
+
+        self.assertRedirects(resposta, reverse('web:painel_equipe'), fetch_redirect_response=False)
+        membro = MembroEquipe.objects.get(nome='Nova Pesquisadora')
+        try:
+            with Image.open(membro.foto.path) as salva:
+                self.assertEqual(salva.size, (400, 400))
+                self.assertEqual(salva.format, 'JPEG')
+            self.assertContains(self.client.get(reverse('web:equipe')), 'Nova Pesquisadora')
+        finally:
+            membro.foto.delete(save=False)
+
+    def test_foto_que_nao_e_imagem_e_recusada(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+
+        from .models import MembroEquipe
+
+        falsa = SimpleUploadedFile('foto.jpg', b'<?php echo 1; ?>', content_type='image/jpeg')
+        self.client.login(username='chefe', password=SENHA)
+
+        resposta = self.client.post(reverse('web:painel_membro_novo'), {
+            'nome': 'Teste', 'funcao': 'Teste', 'ativo': 'on', 'foto': falsa,
+        })
+
+        self.assertEqual(resposta.status_code, 200)
+        self.assertFalse(MembroEquipe.objects.filter(nome='Teste').exists())
+
+    def test_reordenar_e_remover_membro(self):
+        from .models import MembroEquipe
+
+        MembroEquipe.objects.all().delete()
+        a = MembroEquipe.objects.create(nome='Ana', funcao='x', ordem=10)
+        b = MembroEquipe.objects.create(nome='Bia', funcao='x', ordem=20)
+        self.client.login(username='chefe', password=SENHA)
+
+        self.client.post(reverse('web:painel_membro_mover', args=[b.pk, 'subir']))
+        self.assertEqual(list(MembroEquipe.objects.values_list('nome', flat=True)), ['Bia', 'Ana'])
+
+        self.client.post(reverse('web:painel_membro_remover', args=[a.pk]))
+        self.assertEqual(list(MembroEquipe.objects.values_list('nome', flat=True)), ['Bia'])

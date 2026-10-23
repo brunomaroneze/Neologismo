@@ -1,0 +1,73 @@
+{% extends 'web/painel/base.html' %}
+{% load verbetes %}
+{% block titulo_painel %}Usuários{% endblock %}
+{% block titulo_h1 %}Usuários{% endblock %}
+{% block painel %}
+<form class="filtros-painel" method="get" role="search">
+  <label class="visualmente-oculto" for="busca-usuarios">Buscar usuário</label>
+  <input class="entrada" id="busca-usuarios" type="search" name="q" value="{{ busca }}" placeholder="Nome de usuário ou e-mail">
+  <label class="visualmente-oculto" for="papel">Papel</label>
+  <select class="seletor" id="papel" name="papel" data-autoenvio-campo>
+    <option value="">Todos os papéis</option>
+    {% for chave, rotulo in papeis.items %}<option value="{{ chave }}" {% if papel == chave %}selected{% endif %}>{{ rotulo }}es</option>{% endfor %}
+    <option value="inativos" {% if papel == 'inativos' %}selected{% endif %}>Contas desativadas</option>
+  </select>
+  <button class="botao botao--discreto botao--pequeno" type="submit">Filtrar</button>
+</form>
+
+<p class="nota">Moderadores aprovam e rejeitam verbetes. Administradores também gerenciam usuários e a equipe.</p>
+
+{% if pagina.object_list %}
+<div class="tabela-rolagem cartao cartao--sem-respiro">
+  <table class="tabela">
+    <thead>
+      <tr><th scope="col">Usuário</th><th scope="col">E-mail</th><th scope="col">Cadastro</th><th scope="col">Envios</th><th scope="col">Papel</th><th scope="col"><span class="visualmente-oculto">Ações</span></th></tr>
+    </thead>
+    <tbody>
+      {% for conta in pagina.object_list %}
+        <tr{% if not conta.is_active %} class="tabela__inativa"{% endif %}>
+          <td><strong>{{ conta.username }}</strong>{% if not conta.is_active %} <span class="situacao situacao--rejeitado">Desativada</span>{% endif %}{% if conta == user %} <span class="nota">(você)</span>{% endif %}</td>
+          <td>
+            {{ conta.email|default:"—" }}
+            {% if conta.email %}{% if conta.email_ok %}<span class="situacao situacao--aprovado">Confirmado</span>{% else %}<span class="situacao situacao--pendente">Não confirmado</span>{% endif %}{% endif %}
+          </td>
+          <td>{{ conta.date_joined|data_curta }}</td>
+          <td>{{ conta.envios }}</td>
+          <td>
+            {% if conta == user or conta.is_superuser and not user.is_superuser %}
+              {{ conta.papel|capfirst }}
+            {% else %}
+              <form class="papel" method="post" action="{% url 'web:painel_usuario_acao' conta.pk 'papel' %}">
+                {% csrf_token %}<input type="hidden" name="voltar" value="{{ request.get_full_path }}">
+                <label class="visualmente-oculto" for="papel-{{ conta.pk }}">Papel de {{ conta.username }}</label>
+                <select class="seletor" id="papel-{{ conta.pk }}" name="papel" data-autoenvio-campo>
+                  {% for chave, rotulo in papeis.items %}<option value="{{ chave }}" {% if conta.papel == chave %}selected{% endif %}>{{ rotulo }}</option>{% endfor %}
+                </select>
+                <noscript><button class="botao botao--discreto botao--pequeno" type="submit">Salvar</button></noscript>
+              </form>
+            {% endif %}
+          </td>
+          <td class="tabela__acoes">
+            {% if conta != user and not conta.is_superuser or conta != user and user.is_superuser %}
+              {% if conta.email and not conta.email_ok %}
+                <form method="post" action="{% url 'web:painel_usuario_acao' conta.pk 'confirmar-email' %}">
+                  {% csrf_token %}<input type="hidden" name="voltar" value="{{ request.get_full_path }}">
+                  <button class="botao botao--link botao--pequeno" type="submit">Confirmar e-mail</button>
+                </form>
+              {% endif %}
+              <form method="post" action="{% url 'web:painel_usuario_acao' conta.pk conta.is_active|yesno:'desativar,reativar' %}">
+                {% csrf_token %}<input type="hidden" name="voltar" value="{{ request.get_full_path }}">
+                <button class="botao botao--link botao--pequeno" type="submit">{% if conta.is_active %}Desativar{% else %}Reativar{% endif %}</button>
+              </form>
+            {% endif %}
+          </td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% include 'web/_paginacao.html' %}
+{% else %}
+  <div class="vazio"><p class="vazio__titulo">Nenhum usuário encontrado</p><p>Ajuste a busca ou o filtro de papel.</p></div>
+{% endif %}
+{% endblock %}

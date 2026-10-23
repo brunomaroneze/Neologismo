@@ -1,5 +1,4 @@
 {% extends 'web/base.html' %}
-{% load static %}
 
 {% block titulo %}Equipe — Neoscópio{% endblock %}
 
@@ -21,7 +20,7 @@
         <li class="membro">
           <div class="membro__foto">
             {% if membro.foto %}
-              <img src="{% static membro.foto %}" alt="Foto de {{ membro.nome }}" width="400" height="400" loading="lazy">
+              <img src="{{ membro.foto.url }}" alt="Foto de {{ membro.nome }}" width="400" height="400" loading="lazy">
             {% else %}
               <span class="membro__iniciais" aria-hidden="true">{{ membro.iniciais }}</span>
             {% endif %}

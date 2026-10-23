@@ -10,9 +10,7 @@ API nunca divergirem.
 from functools import wraps
 
 from django.contrib import messages
-from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
-from django.contrib.staticfiles import finders
 from django.core.paginator import Paginator
 from django.db import transaction
 from django.db.models import Count, Q
@@ -20,19 +18,17 @@ from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
-from django.utils.text import slugify
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_GET, require_POST
 
-from neologismo import consultas, moderacao
+from neologismo import consultas
 from neologismo import facetas as indice_facetas
 from neologismo.models import Neologismo
 from neologismo.serializers import NeologismoSerializer
 
 from . import conteudo
 from .limites import excedeu
-
-Usuario = get_user_model()
+from .models import MembroEquipe
 
 POR_PAGINA = 20
 # Na página inicial os cards ficam em 3 colunas: 12 dá 4 linhas cheias.
@@ -81,18 +77,6 @@ def _erros_planos(erros):
     if 'non_field_errors' in planos:
         planos['geral'] = planos.pop('non_field_errors')
     return planos
-
-
-def equipe_required(view):
-    """Restringe à equipe de moderação, com login antes quando preciso."""
-    @wraps(view)
-    def envolvida(request, *args, **kwargs):
-        if not request.user.is_authenticated:
-            return redirect(f"{reverse('account_login')}?next={request.get_full_path()}")
-        if not request.user.is_staff:
-            return render(request, 'web/sem_permissao.html', status=403)
-        return view(request, *args, **kwargs)
-    return envolvida
 
 
 def _visiveis(usuario):
@@ -268,67 +252,6 @@ def meus_envios(request):
     })
 
 
-# --- Moderação ------------------------------------------------------------------
-
-@equipe_required
-@require_GET
-def moderacao_painel(request):
-    status = request.GET.get('status')
-    if status not in dict(Neologismo.STATUS_CHOICES):
-        status = Neologismo.PENDENTE
-
-    contagens = dict(Neologismo.objects.values_list('status').annotate(total=Count('id')))
-    qs = consultas.filtrar(
-        consultas.anotados(request.user).filter(status=status),
-        busca=request.GET.get('q'),
-    )
-    # A fila de pendentes é atendida por ordem de chegada.
-    if status == Neologismo.PENDENTE:
-        qs = qs.order_by('data_criacao', 'id')
-
-    return render(request, 'web/moderacao.html', {
-        'pagina': Paginator(qs, POR_PAGINA).get_page(request.GET.get('pagina')),
-        'status': status,
-        'busca': request.GET.get('q', ''),
-        'resumo': [
-            ('Pendentes', contagens.get(Neologismo.PENDENTE, 0), True),
-            ('Publicados', contagens.get(Neologismo.APROVADO, 0), False),
-            ('Rejeitados', contagens.get(Neologismo.REJEITADO, 0), False),
-            ('Total', sum(contagens.values()), False),
-        ],
-        'abas': [
-            (Neologismo.PENDENTE, 'Pendentes'),
-            (Neologismo.APROVADO, 'Publicados'),
-            (Neologismo.REJEITADO, 'Rejeitados'),
-        ],
-    })
-
-
-@equipe_required
-@require_POST
-def moderar(request, pk, acao):
-    neologismo = get_object_or_404(Neologismo, pk=pk)
-    voltar = _destino_seguro(request, request.POST.get('voltar'), 'web:moderacao')
-
-    if acao == 'aprovar':
-        moderacao.aprovar(neologismo, request.user)
-        messages.success(request, f'"{neologismo.titulo}" foi publicado.')
-    elif acao == 'reativar':
-        moderacao.reativar(neologismo, request.user)
-        messages.success(request, f'"{neologismo.titulo}" voltou para o banco.')
-    elif acao == 'rejeitar':
-        motivo = request.POST.get('motivo', '').strip()
-        if not 5 <= len(motivo) <= 1000:
-            messages.info(request, 'Escreva um motivo com pelo menos 5 caracteres.')
-        else:
-            moderacao.rejeitar(neologismo, request.user, motivo)
-            messages.success(request, f'"{neologismo.titulo}" foi rejeitado.')
-    else:
-        return HttpResponse(status=404)
-
-    return redirect(voltar)
-
-
 # --- Conta ----------------------------------------------------------------------
 
 def redirecionar(nome):
@@ -351,31 +274,10 @@ def sobre(request):
     })
 
 
-def _membro(dados):
-    """Acrescenta a foto (se o arquivo existir) e as iniciais de reserva.
-
-    As fotos ficam em web/static/web/equipe/<nome-em-slug>.jpg|png|webp.
-    Quem ainda não tem foto aparece com as iniciais.
-    """
-    nome = dados['nome'].split(' - ')[0].replace('Prof. ', '')
-    slug = slugify(nome)
-    foto = next(
-        (
-            f'web/equipe/{slug}.{extensao}'
-            for extensao in ('jpg', 'jpeg', 'png', 'webp')
-            if finders.find(f'web/equipe/{slug}.{extensao}')
-        ),
-        None,
-    )
-    partes = nome.split()
-    iniciais = (partes[0][0] + (partes[-1][0] if len(partes) > 1 else '')).upper()
-    return {**dados, 'foto': foto, 'iniciais': iniciais}
-
-
 @require_GET
 def equipe(request):
     return render(request, 'web/equipe.html', {
-        'equipe': [_membro(m) for m in conteudo.EQUIPE],
+        'equipe': MembroEquipe.objects.filter(ativo=True),
     })
 
 

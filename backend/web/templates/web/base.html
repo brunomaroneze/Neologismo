@@ -48,7 +48,7 @@
             <li><a href="{% url 'web:equipe' %}" {% if nome == 'equipe' %}aria-current="page"{% endif %}>Equipe</a></li>
             <li><a href="{% url 'web:referencias' %}" {% if nome == 'referencias' %}aria-current="page"{% endif %}>Indicações de leitura</a></li>
             {% if user.is_authenticated %}<li><a href="{% url 'web:meus_envios' %}" {% if nome == 'meus_envios' %}aria-current="page"{% endif %}>Minhas palavras</a></li>{% endif %}
-            {% if user.is_staff %}<li><a href="{% url 'web:moderacao' %}" {% if nome == 'moderacao' %}aria-current="page"{% endif %}>Moderação</a></li>{% endif %}
+            {% if user.is_staff %}<li><a href="{% url 'web:moderacao' %}" {% if 'admin-painel' in request.path %}aria-current="page"{% endif %}>Painel</a></li>{% endif %}
           </ul>
         </nav>
 

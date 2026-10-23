@@ -940,3 +940,138 @@ textarea.entrada { min-height: 7rem; resize: vertical; line-height: 1.5; }
 .tabela th { text-align: left; font-size: 0.74rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--tinta-3); padding: 0.6rem 0.75rem; border-bottom: 1px solid var(--filete-forte); }
 .tabela td { padding: 0.75rem; border-bottom: 1px solid var(--filete); vertical-align: middle; }
 .tabela tbody tr:hover { background: var(--veu); }
+
+/* --- Painel do administrador ------------------------------------------------- */
+
+.painel { background: var(--veu); padding-block: 2.5rem 4rem; min-height: 60vh; }
+.painel__topo .titulo-1 { margin-bottom: 0.25rem; }
+.painel__abas { margin: 1.25rem 0 2rem; }
+.abas--secundarias { margin-top: 0; }
+.abas__total { font-weight: 400; color: var(--tinta-3); font-variant-numeric: tabular-nums; margin-left: 0.15rem; }
+
+.cartao {
+  background: var(--papel);
+  border: 1px solid var(--filete);
+  border-radius: var(--raio-card);
+  padding: 1.5rem 1.6rem;
+  box-shadow: var(--sombra);
+}
+.cartao--sem-respiro { padding: 0.25rem 0; }
+.cartao--centro { text-align: center; align-self: start; }
+.cartao__cabeca { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; }
+.cartao__cabeca a { font-size: 0.9rem; font-weight: 600; }
+.cartao__titulo { font-family: var(--sans); font-size: 1rem; font-weight: 700; margin: 0 0 0.25rem; }
+.cartao__titulo--menor { font-size: 0.9rem; margin-top: 1.25rem; }
+.cartao__subtitulo { font-size: 0.85rem; color: var(--tinta-3); margin: 0 0 1.25rem; }
+
+/* Indicadores: o número em sans, como pede a regra de "figura" da visualização. */
+.indicadores { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1.25rem; list-style: none; margin: 0 0 1.5rem; padding: 0; }
+.indicador {
+  display: flex; flex-direction: column; gap: 0.15rem;
+  background: var(--papel);
+  border: 1px solid var(--filete);
+  border-radius: var(--raio-card);
+  padding: 1.2rem 1.4rem;
+  box-shadow: var(--sombra);
+}
+.indicador--destaque { border-color: var(--malva); box-shadow: inset 4px 0 0 var(--ameixa), var(--sombra); }
+.indicador__rotulo { font-size: 0.85rem; font-weight: 600; color: var(--tinta-2); }
+.indicador__valor { font-family: var(--sans); font-size: 2.6rem; font-weight: 600; line-height: 1.1; color: var(--tinta); }
+.indicador__contexto { font-size: 0.85rem; color: var(--tinta-3); }
+
+.painel__grade { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 1.25rem; }
+.painel__grade > .cartao:first-child { grid-row: span 2; }
+.painel__duas-colunas { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); gap: 1.5rem; align-items: start; }
+.painel__barra { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 1rem; margin-bottom: 1.25rem; }
+.painel__barra .nota { margin: 0; }
+
+/* Gráfico de colunas: uma série, colunas finas com ponta arredondada. */
+.grafico {
+  display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 2px;
+  height: 14rem; align-items: stretch;
+  border-bottom: 1px solid var(--filete-forte);
+  margin-bottom: 0.25rem;
+}
+.grafico__coluna { position: relative; display: flex; flex-direction: column; align-items: center; outline-offset: 3px; border-radius: 6px; }
+.grafico__coluna:hover, .grafico__coluna:focus-visible { background: var(--veu); }
+.grafico__trilho { position: relative; flex: 1; width: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; }
+.grafico__barra { display: block; width: min(24px, 60%); min-height: 2px; background: var(--ameixa); border-radius: 4px 4px 0 0; }
+.grafico__valor { font-size: 0.82rem; font-weight: 700; color: var(--tinta); margin-bottom: 0.25rem; font-variant-numeric: tabular-nums; }
+.grafico__mes { position: absolute; bottom: -1.6rem; font-size: 0.78rem; color: var(--tinta-3); }
+.grafico__dica {
+  position: absolute; top: -0.4rem; left: 50%; transform: translate(-50%, -100%);
+  background: var(--tinta); color: var(--papel);
+  font-size: 0.78rem; white-space: nowrap;
+  padding: 0.3rem 0.55rem; border-radius: 6px;
+  opacity: 0; pointer-events: none; transition: opacity 0.12s ease;
+  z-index: 2;
+}
+.grafico__coluna:hover .grafico__dica, .grafico__coluna:focus-visible .grafico__dica { opacity: 1; }
+.grafico__tabela { margin-top: 2.25rem; font-size: 0.9rem; }
+.grafico__tabela summary { cursor: pointer; color: var(--ameixa); font-weight: 600; }
+.grafico__tabela .tabela { margin-top: 0.75rem; }
+
+.lista-simples { list-style: none; margin: 0.75rem 0 0; padding: 0; }
+.lista-simples li { display: flex; justify-content: space-between; gap: 1rem; padding: 0.6rem 0; border-bottom: 1px solid var(--filete); font-size: 0.95rem; }
+.lista-simples li:last-child { border-bottom: 0; }
+.lista-simples a { font-family: var(--serifa); font-size: 1.08rem; font-weight: 600; text-decoration: none; color: var(--tinta); }
+.lista-simples a:hover { color: var(--ameixa); }
+.lista-simples span { color: var(--tinta-3); font-size: 0.85rem; text-align: right; }
+
+.lote {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem 1.25rem;
+  background: var(--papel);
+  border: 1px solid var(--filete);
+  border-radius: var(--raio-card);
+  padding: 0.8rem 1.1rem;
+  margin-bottom: 1rem;
+  position: sticky; top: 5.5rem; z-index: 3;
+  box-shadow: var(--sombra);
+}
+.lote__contagem { font-size: 0.88rem; color: var(--tinta-3); }
+.lote__acoes { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 0.6rem; margin-left: auto; }
+.item--selecionavel { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 1rem; background: var(--papel); }
+.item__marcar { padding-top: 0.45rem; }
+.item__marcar input { width: 1.15rem; height: 1.15rem; accent-color: var(--ameixa); cursor: pointer; }
+
+.filtros-painel { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 0.75rem; }
+.filtros-painel .entrada { width: auto; flex: 1 1 16rem; }
+
+.tabela__inativa td { color: var(--tinta-3); }
+.tabela__acoes { white-space: nowrap; text-align: right; }
+.tabela__acoes form { display: inline; margin: 0; }
+.tabela .situacao { margin-left: 0.35rem; vertical-align: middle; }
+.papel { margin: 0; }
+
+.ficha--coluna { grid-template-columns: 1fr; border-bottom: 0; padding-top: 0.5rem; }
+
+.membros-painel { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.75rem; }
+.membro-painel {
+  display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 1rem;
+  background: var(--papel);
+  border: 1px solid var(--filete);
+  border-radius: var(--raio-card);
+  padding: 0.75rem 1rem;
+  box-shadow: var(--sombra);
+  scroll-margin-top: 7rem;
+}
+.membro-painel--oculto { opacity: 0.6; }
+.membro-painel__texto { display: flex; flex-direction: column; }
+.membro-painel__texto strong { font-family: var(--serifa); font-size: 1.15rem; }
+.membro-painel__texto span { font-size: 0.88rem; color: var(--tinta-2); }
+.membro-painel__acoes { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: flex-end; gap: 0.4rem; }
+.membro-painel__acoes form { margin: 0; }
+.membro-painel__acoes .rejeitar[open] { flex-basis: 100%; }
+.membro__foto--pequena { width: 4rem; height: 4rem; padding: 3px; margin: 0; }
+.membro__foto--pequena .membro__iniciais { font-size: 1.2rem; border-width: 2px; }
+.membro__foto--pequena img { border-width: 2px; }
+.membro--previa { box-shadow: none; border: 0; padding: 1rem 0 0; }
+
+@media (max-width: 900px) {
+  .indicadores { grid-template-columns: 1fr; }
+  .painel__grade, .painel__duas-colunas { grid-template-columns: 1fr; }
+  .painel__grade > .cartao:first-child { grid-row: auto; }
+  .membro-painel { grid-template-columns: auto minmax(0, 1fr); }
+  .membro-painel__acoes { grid-column: 1 / -1; justify-content: flex-start; }
+  .lote { position: static; }
+}
