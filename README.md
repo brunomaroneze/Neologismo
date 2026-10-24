@@ -23,7 +23,9 @@ docker compose up --build
 - Documentação da API (Swagger): <http://localhost:8000/api/docs>
 - Admin do Django: <http://localhost:8000/admin>
 
-Popule a base com verbetes de demonstração e um usuário `admin` / `admin123`:
+Popule a base com verbetes de demonstração e um usuário `admin` (administrador
+do painel). A senha é gerada na hora e aparece uma vez na saída do comando; para
+escolher, use `--admin-password`:
 
 ```bash
 docker compose exec backend python manage.py seed_fake_data

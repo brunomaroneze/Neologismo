@@ -104,11 +104,14 @@ docker compose -f docker-compose.prod.yml exec backend python manage.py shell -c
   "from django.contrib.auth import get_user_model; U=get_user_model(); u=U.objects.get(username='SEU_USUARIO'); u.is_admin=True; u.save(); print('promovido')"
 ```
 
-Para popular a base com verbetes de demonstração (**apenas em homologação**):
+Para popular a base com verbetes de demonstração (**apenas em homologação**).
+Com `DEBUG=False` o comando se recusa a rodar sem `--permitir-producao`, e a
+conta `admin` que ele cria fica com uma senha aleatória, mostrada uma vez na
+saída:
 
 ```bash
 docker compose -f docker-compose.prod.yml exec backend \
-  python manage.py seed_fake_data
+  python manage.py seed_fake_data --permitir-producao
 ```
 
 ## 5. E-mail transacional
