@@ -13,8 +13,10 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
-      # Exposto no host para inspeção (ex.: DBeaver). Remova se não precisar.
-      - "${DB_PORT:-5432}:5432"
+      # Exposto só na máquina local, para inspeção (ex.: DBeaver). Em todas as
+      # interfaces, um servidor com este compose deixaria o banco aberto na
+      # internet com a senha padrão.
+      - "127.0.0.1:${DB_PORT:-5432}:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-admin_neologismo} -d ${POSTGRES_DB:-banco_neologismo}"]
       interval: 5s
@@ -34,8 +36,6 @@ services:
       SECRET_KEY: ${SECRET_KEY:-chave-de-desenvolvimento-nao-use-em-producao}
       DEBUG: ${DEBUG:-True}
       ALLOWED_HOSTS: ${ALLOWED_HOSTS:-127.0.0.1,localhost,backend}
-      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000}
-      CSRF_TRUSTED_ORIGINS: ${CSRF_TRUSTED_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000}
       DATABASE_URL: postgres://${POSTGRES_USER:-admin_neologismo}:${POSTGRES_PASSWORD:-senha123}@db:5432/${POSTGRES_DB:-banco_neologismo}
       POSTGRES_HOST: db
       POSTGRES_PORT: "5432"
@@ -56,31 +56,6 @@ services:
       - ./backend:/app
     ports:
       - "${BACKEND_PORT:-8000}:8000"
-
-  frontend:
-    build:
-      context: ./frontend
-      # Em dev paramos no estágio de dependências: o código vem do bind mount
-      # e o Next roda em modo dev. Construir o standalone aqui seria inútil.
-      target: dependencias
-    container_name: neologismo_frontend
-    restart: unless-stopped
-    depends_on:
-      - backend
-    environment:
-      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000/api}
-      NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:-http://localhost:3000}
-      # Usada pelo Next no servidor (sitemap, OG tags). Dentro da rede do
-      # Compose o host "localhost" do navegador não existe — é "backend".
-      API_URL_INTERNA: http://backend:8000/api
-      WATCHPACK_POLLING: "true"
-    command: npm run dev -- --hostname 0.0.0.0 --port 3000
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules
-      - /app/.next
-    ports:
-      - "${FRONTEND_PORT:-3000}:3000"
 
 volumes:
   postgres_data:

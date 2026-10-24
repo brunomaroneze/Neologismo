@@ -31,7 +31,7 @@
             <summary class="botao botao--discreto botao--pequeno">Remover</summary>
             <form class="rejeitar__corpo" method="post" action="{% url 'web:painel_membro_remover' membro.pk %}">
               {% csrf_token %}
-              <p class="conta-texto">Remover {{ membro.nome }} da equipe? A foto também é apagada. Para manter a pessoa na página como ex-integrante, use “Tornar ex-integrante”.</p>
+              <p class="conta-texto">Remover {{ membro.nome }} da equipe? A foto também é apagada. Para manter a pessoa na página como ex-integrante, use "Tornar ex-integrante".</p>
               <div class="acoes">
                 <button class="botao botao--perigo botao--pequeno" type="submit">Remover definitivamente</button>
                 <button class="botao botao--discreto botao--pequeno" type="button" data-fechar-detalhes>Cancelar</button>

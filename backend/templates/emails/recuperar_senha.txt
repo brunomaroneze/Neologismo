@@ -7,8 +7,8 @@ abaixo para escolher uma nova:
 
 O link vale por {{ validade_horas }} hora{{ validade_horas|pluralize }} e só pode ser usado uma vez.
 
-Se não foi você que pediu, ignore este e-mail — sua senha atual continua
-valendo e nada foi alterado.
+Se não foi você que pediu, pode ignorar este e-mail. Sua senha continua a
+mesma.
 
 --
 Neoscópio — banco de neologismos

@@ -1,7 +1,4 @@
-"""Conteúdo fixo das páginas institucionais.
-
-Textos idênticos aos do frontend anterior.
-"""
+"""Conteúdo fixo das páginas institucionais."""
 
 # A equipe fica no banco (web.models.MembroEquipe) e é gerida pelo painel.
 
@@ -12,22 +9,22 @@ PASSOS = [
     {
         'titulo': 'Registre',
         'texto': (
-            'Cadastre uma palavra nova com definição, classe gramatical, '
-            'exemplos de uso e até citações com fonte.'
+            'Cadastre a palavra com a definição e a classe gramatical. Se '
+            'tiver, inclua um exemplo de uso e citações com fonte.'
         ),
     },
     {
         'titulo': 'Explore',
         'texto': (
-            'Navegue e pesquise pelos neologismos já registrados, filtrando '
-            'por categorias como internetês, anglicismo e gíria.'
+            'Pesquise os neologismos já registrados e filtre por tags como '
+            'internetês ou anglicismo.'
         ),
     },
     {
         'titulo': 'Discuta',
         'texto': (
-            'Curta, comente e ajude a comunidade a entender como e onde cada '
-            'palavra está sendo usada.'
+            'Curta as palavras que você já ouviu por aí e mande citações que '
+            'mostrem onde cada uma aparece.'
         ),
     },
 ]
@@ -36,22 +33,21 @@ OBJETIVOS = [
     {
         'titulo': 'Linguagem viva',
         'texto': (
-            'Tratar o português como ele realmente é: uma língua viva, '
-            'moldada todos os dias por quem fala.'
+            'Registrar o português como ele é falado hoje, sem esperar que a '
+            'palavra chegue ao dicionário.'
         ),
     },
     {
         'titulo': 'Registro confiável',
         'texto': (
-            'Cada sugestão passa por moderação antes de ser publicada, '
-            'garantindo qualidade e seriedade ao acervo.'
+            'Toda sugestão passa pela equipe antes de ser publicada. Entra no '
+            'banco o que tem definição clara e, de preferência, fonte.'
         ),
     },
     {
         'titulo': 'Colaboração aberta',
         'texto': (
-            'Qualquer pessoa pode contribuir. O banco de neologismos cresce '
-            'com a participação de toda a comunidade.'
+            'Qualquer pessoa pode enviar uma palavra. Basta criar uma conta.'
         ),
     },
 ]
