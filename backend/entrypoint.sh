@@ -19,6 +19,8 @@ fi
 # Aplica as migrações. Falhar aqui precisa derrubar o start: subir a aplicação
 # com o schema defasado causa erros 500 difíceis de diagnosticar.
 python manage.py migrate --noinput
+# Léxico do detector de neologismos: carrega só no primeiro start (≈15 s).
+python manage.py importar_lexico --se-vazio
 
 # Tabela de cache usada pelo throttle do DRF. O comando é idempotente: se a
 # tabela já existe, ele avisa e segue. Sem ela, cada worker do gunicorn

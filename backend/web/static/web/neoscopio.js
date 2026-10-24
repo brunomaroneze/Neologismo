@@ -2,7 +2,6 @@
 // formulários e links continuam funcionando por envio e navegação normais.
 (function () {
   "use strict";
-
   // Só aceita endereços do próprio site (evita usar um "javascript:" ou um
   // domínio externo vindo de HTML alterado).
   function enderecoInterno(valor) {
@@ -406,6 +405,65 @@
 
     // Voltar pelo histórico restaura a página do cache já com o frasco visível.
     window.addEventListener("pageshow", esconderCarregando);
+  }
+
+  // --- Assistente (Pamola): respostas prontas --------------------------------
+  var assistente = document.querySelector("[data-assistente]");
+  if (assistente) {
+    var abrir = assistente.querySelector("[data-assistente-abrir]");
+    var janela = assistente.querySelector(".assistente__janela");
+    var conversa = assistente.querySelector("[data-assistente-conversa]");
+    var calma = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    assistente.hidden = false;
+
+    function alternarAssistente(aberto) {
+      janela.hidden = !aberto;
+      abrir.setAttribute("aria-expanded", aberto ? "true" : "false");
+      if (aberto) {
+        var primeira = janela.querySelector("[data-pergunta]");
+        if (primeira) primeira.focus();
+      }
+    }
+
+    function fala(quem) {
+      var bolha = document.createElement("div");
+      bolha.className = "assistente__fala assistente__fala--" + quem;
+      conversa.appendChild(bolha);
+      conversa.scrollTop = conversa.scrollHeight;
+      return bolha;
+    }
+
+    abrir.addEventListener("click", function () {
+      alternarAssistente(janela.hidden);
+    });
+    assistente.querySelector("[data-assistente-fechar]").addEventListener("click", function () {
+      alternarAssistente(false);
+      abrir.focus();
+    });
+    document.addEventListener("keydown", function (evento) {
+      if (evento.key === "Escape" && !janela.hidden) {
+        alternarAssistente(false);
+        abrir.focus();
+      }
+    });
+
+    assistente.querySelectorAll("[data-pergunta]").forEach(function (botao) {
+      botao.addEventListener("click", function () {
+        var modelo = assistente.querySelector('template[data-resposta="' + botao.getAttribute("data-pergunta") + '"]');
+        if (!modelo) return;
+        var pergunta = document.createElement("p");
+        pergunta.textContent = botao.textContent;
+        fala("pessoa").appendChild(pergunta);
+
+        var resposta = fala("pamola");
+        resposta.innerHTML = '<span class="assistente__digitando" aria-hidden="true"><span></span><span></span><span></span></span>';
+        setTimeout(function () {
+          resposta.textContent = "";
+          resposta.appendChild(modelo.content.cloneNode(true));
+          conversa.scrollTop = resposta.offsetTop - conversa.offsetTop - 8;
+        }, calma ? 0 : 550);
+      });
+    });
   }
 
   // --- Foco no resumo de erros depois de um envio com problemas ----------------

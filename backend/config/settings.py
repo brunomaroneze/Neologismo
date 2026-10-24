@@ -91,6 +91,7 @@ INSTALLED_APPS = [
     'neologismo',
     'usuario',
     'web',
+    'detector',
     'drf_spectacular',
 
     # contas: cadastro, login social, confirmação de e-mail e senha

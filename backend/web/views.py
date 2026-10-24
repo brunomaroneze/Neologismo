@@ -26,6 +26,7 @@ from neologismo.models import Neologismo
 from neologismo.serializers import NeologismoSerializer
 
 from . import conteudo
+from .forms import PerfilForm
 from .limites import excedeu
 from .models import MembroEquipe
 
@@ -208,7 +209,7 @@ def enviar(request):
         erros = _validar_envio(valores)
         if not erros and excedeu(request, 'envio'):
             erros['geral'] = (
-                'Você enviou muitos verbetes na última hora. Tente novamente mais tarde.'
+                'Você enviou muitos neologismos na última hora. Tente novamente mais tarde.'
             )
         if not erros:
             dados = {
@@ -273,6 +274,33 @@ def redirecionar(nome):
             destino = f'{destino}?{request.GET.urlencode()}'
         return redirect(_destino_seguro(request, destino))
     return view
+
+
+@login_required
+def perfil(request):
+    usuario = request.user
+    form = PerfilForm(request.POST or None, instance=usuario)
+    if request.method == 'POST' and form.is_valid():
+        form.save()
+        messages.success(request, 'Perfil atualizado.')
+        return redirect('web:perfil')
+
+    meus = Neologismo.objects.filter(autor=usuario)
+    curtidos = (
+        consultas.anotados(usuario)
+        .filter(status=Neologismo.APROVADO, likes=usuario)
+        .order_by('titulo')
+    )
+    return render(request, 'web/perfil.html', {
+        'form': form,
+        'enviados': meus.count(),
+        'publicados': meus.filter(status=Neologismo.APROVADO).count(),
+        'curtidas_recebidas': Neologismo.likes.through.objects.filter(
+            neologismo__autor=usuario, neologismo__status=Neologismo.APROVADO,
+        ).count(),
+        'curtidos': curtidos[:30],
+        'total_curtidos': curtidos.count(),
+    })
 
 
 # --- Institucional --------------------------------------------------------------

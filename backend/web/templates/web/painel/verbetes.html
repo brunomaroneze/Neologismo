@@ -1,6 +1,6 @@
 {% extends 'web/painel/base.html' %}
 {% load verbetes %}
-{% block titulo_painel %}Verbetes{% endblock %}
+{% block titulo_painel %}Neologismos{% endblock %}
 {% block titulo_h1 %}Moderação{% endblock %}
 {% block painel %}
 <nav class="abas abas--secundarias" aria-label="Filtrar por status">
@@ -11,7 +11,7 @@
 
 <form class="filtro-moderacao" method="get" role="search">
   <input type="hidden" name="status" value="{{ status }}">
-  <label class="visualmente-oculto" for="filtrar">Filtrar verbetes</label>
+  <label class="visualmente-oculto" for="filtrar">Filtrar neologismos</label>
   <input class="entrada" id="filtrar" type="search" name="q" value="{{ busca }}" placeholder="Filtrar por título, definição ou tag…">
 </form>
 
@@ -86,7 +86,7 @@
                 <form class="rejeitar__corpo" method="post" action="{% url 'web:moderar' verbete.pk 'rejeitar' %}">
                   {% csrf_token %}<input type="hidden" name="voltar" value="{{ request.get_full_path }}">
                   <label class="campo__rotulo" for="motivo-{{ verbete.pk }}">Motivo da rejeição <span class="campo__opcional">(o autor vai ler isto)</span></label>
-                  <textarea class="entrada" id="motivo-{{ verbete.pk }}" name="motivo" rows="3" maxlength="1000" placeholder="Ex.: já existe um verbete equivalente; falta fonte de uso real."></textarea>
+                  <textarea class="entrada" id="motivo-{{ verbete.pk }}" name="motivo" rows="3" maxlength="1000" placeholder="Ex.: já existe um neologismo equivalente; falta fonte de uso real."></textarea>
                   <div class="acoes">
                     <button class="botao botao--pequeno" type="submit">Confirmar rejeição</button>
                     <button class="botao botao--discreto botao--pequeno" type="button" data-fechar-detalhes>Cancelar</button>
@@ -107,7 +107,7 @@
       <p>Ajuste os filtros para ver outros verbetes.</p>
     {% elif status == 'pendente' %}
       <p class="vazio__titulo">Fila de moderação zerada</p>
-      <p>Nenhum verbete aguardando revisão. Bom trabalho.</p>
+      <p>Nenhum neologismo aguardando revisão. Bom trabalho.</p>
     {% else %}
       <p class="vazio__titulo">Nada neste status</p>
       <p>Ajuste os filtros para ver outros verbetes.</p>

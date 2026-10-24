@@ -13,6 +13,7 @@ urlpatterns = [
 
     path('enviar', views.enviar, name='enviar'),
     path('minhas-palavras', views.meus_envios, name='meus_envios'),
+    path('perfil', views.perfil, name='perfil'),
 
     # Painel do administrador (web/painel.py).
     path('admin-painel', painel.inicio, name='moderacao'),
@@ -21,6 +22,10 @@ urlpatterns = [
     path('admin-painel/verbetes/<int:pk>/editar', painel.editar_verbete,
          name='painel_editar_verbete'),
     path('admin-painel/<int:pk>/<str:acao>', painel.moderar, name='moderar'),
+    path('admin-painel/detector', painel.detector, name='painel_detector'),
+    path('admin-painel/detector/ignorar', painel.detector_ignorar, name='painel_detector_ignorar'),
+    path('admin-painel/detector/registrar', painel.detector_registrar,
+         name='painel_detector_registrar'),
     path('admin-painel/usuarios', painel.usuarios, name='painel_usuarios'),
     path('admin-painel/usuarios/<int:pk>/<str:acao>', painel.usuario_acao,
          name='painel_usuario_acao'),

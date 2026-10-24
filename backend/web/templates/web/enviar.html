@@ -7,7 +7,7 @@
 {% if precisa_entrar %}
   <div class="sucesso">
     <h1 class="titulo-2">Entre para enviar</h1>
-    <p>Só quem tem conta pode sugerir um verbete — assim conseguimos dar crédito à autoria e acompanhar a moderação.</p>
+    <p>Só quem tem conta pode sugerir um neologismo — assim conseguimos dar crédito à autoria e acompanhar a moderação.</p>
     <div class="botoes">
       <a class="botao" href="{% url 'account_login' %}?next={% url 'web:enviar' %}">Entrar</a>
       <a class="botao botao--secundario" href="{% url 'account_signup' %}?next={% url 'web:enviar' %}">Criar conta</a>
@@ -72,7 +72,7 @@
 
       <fieldset class="grupo-campos">
         <legend>Citações com fonte <span class="campo__opcional">(opcional)</span></legend>
-        <p class="campo__ajuda">Trechos reais onde a palavra aparece — post, matéria, conversa. Fortalecem muito o verbete na revisão.</p>
+        <p class="campo__ajuda">Trechos reais onde a palavra aparece — post, matéria, conversa. Fortalecem muito o neologismo na revisão.</p>
         {% if erros.contextos %}<p class="campo__erro">{{ erros.contextos }}</p>{% endif %}
 
         <div data-citacoes>

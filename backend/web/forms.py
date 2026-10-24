@@ -1,4 +1,5 @@
 from django import forms
+from django.contrib.auth import get_user_model
 from rest_framework.exceptions import ValidationError as ErroDRF
 
 from neologismo.models import Neologismo
@@ -125,3 +126,18 @@ class MembroEquipeForm(forms.ModelForm):
         if commit:
             membro.save()
         return membro
+
+
+class PerfilForm(forms.ModelForm):
+    """Dados do próprio perfil. O e-mail muda pela tela de e-mails do allauth,
+    que exige confirmação do endereço novo."""
+
+    class Meta:
+        model = get_user_model()
+        fields = ['first_name', 'last_name']
+        labels = {'first_name': 'Nome', 'last_name': 'Sobrenome'}
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for campo in self.fields.values():
+            campo.widget.attrs.setdefault('class', 'entrada')

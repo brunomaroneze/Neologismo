@@ -26,8 +26,9 @@
   {% with nome=request.resolver_match.url_name %}
   <div class="instituicao">
     <div class="conteiner instituicao__linha">
-      <span>Universidade Federal do Espírito Santo · Universidade Federal da Grande Dourados</span>
-      <span>Pró-Reitoria de Extensão · Laboratório de Neologismos</span>
+      <span class="instituicao__longa">Universidade Federal do Espírito Santo · Universidade Federal da Grande Dourados</span>
+      <span class="instituicao__longa">Pró-Reitoria de Extensão · Laboratório de Neologismos</span>
+      <span class="instituicao__curta"><abbr title="Universidade Federal do Espírito Santo">UFES</abbr> · <abbr title="Universidade Federal da Grande Dourados">UFGD</abbr> · Laboratório de Neologismos</span>
     </div>
   </div>
 
@@ -54,7 +55,7 @@
 
         <div class="sessao">
           {% if user.is_authenticated %}
-            <a class="sessao__ola" href="{% url 'account_email' %}" title="Minha conta">Olá, <strong>{{ user.username }}</strong></a>
+            <a class="sessao__ola" href="{% url 'web:perfil' %}" title="Meu perfil">Olá, <strong>{{ user.username }}</strong></a>
             <form method="post" action="{% url 'account_logout' %}">
               {% csrf_token %}
               <button class="botao-barra" type="submit">Sair</button>
@@ -82,15 +83,25 @@
   </main>
 
   <footer class="rodape">
+    <div class="instituicoes">
+      <div class="conteiner instituicoes__linha">
+        <p class="instituicoes__rotulo">Instituições</p>
+        <ul class="instituicoes__lista">
+          <li><a href="https://www.ufes.br/" target="_blank" rel="noopener"><img src="{% static 'web/instituicoes/ufes.png' %}" alt="Universidade Federal do Espírito Santo (UFES)" width="149" height="101" loading="lazy"></a></li>
+          <li><a href="https://portal.ufgd.edu.br/" target="_blank" rel="noopener"><img src="{% static 'web/instituicoes/ufgd.png' %}" alt="Universidade Federal da Grande Dourados (UFGD)" width="600" height="282" loading="lazy"></a></li>
+          <li><a href="https://proex.ufes.br/" target="_blank" rel="noopener"><img src="{% static 'web/instituicoes/proex.png' %}" alt="Pró-Reitoria de Extensão da UFES (ProEx)" width="180" height="66" loading="lazy"></a></li>
+        </ul>
+      </div>
+    </div>
     <div class="conteiner rodape__grade">
       <div>
         <p class="rodape__nome">Neoscópio</p>
-        <p>Banco dos neologismos que moldam o português brasileiro do nosso tempo. Cada verbete passa por moderação antes de ser publicado.</p>
+        <p>Banco dos neologismos que moldam o português brasileiro do nosso tempo. Cada neologismo passa por moderação antes de ser publicado.</p>
       </div>
       <nav aria-label="Explorar">
         <h2>Explorar</h2>
         <ul>
-          <li><a href="{% url 'web:inicio' %}">Todos os verbetes</a></li>
+          <li><a href="{% url 'web:inicio' %}">Todos os neologismos</a></li>
           <li><a href="{% url 'web:enviar' %}">Enviar um neologismo</a></li>
         </ul>
       </nav>
@@ -110,5 +121,7 @@
       </div>
     </div>
   </footer>
+
+  {% include 'web/_assistente.html' %}
 </body>
 </html>

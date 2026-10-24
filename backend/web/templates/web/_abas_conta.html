@@ -1,0 +1,8 @@
+{% with nome=request.resolver_match.url_name %}
+<nav class="abas" aria-label="Configurações da conta">
+  <a href="{% url 'web:perfil' %}" {% if nome == 'perfil' %}aria-current="page"{% endif %}>Perfil</a>
+  <a href="{% url 'account_email' %}" {% if nome == 'account_email' %}aria-current="page"{% endif %}>E-mails</a>
+  <a href="{% url 'account_change_password' %}" {% if nome == 'account_change_password' or nome == 'account_set_password' %}aria-current="page"{% endif %}>Senha</a>
+  <a href="{% url 'socialaccount_connections' %}" {% if nome == 'socialaccount_connections' %}aria-current="page"{% endif %}>Contas conectadas</a>
+</nav>
+{% endwith %}

@@ -29,9 +29,11 @@
       <div class="membro__foto">
         {% if membro.foto %}<img src="{{ membro.foto.url }}" alt="" width="400" height="400" data-previa-foto>{% else %}<span class="membro__iniciais" data-previa-iniciais aria-hidden="true">{{ membro.iniciais|default:"?" }}</span><img alt="" width="400" height="400" data-previa-foto hidden>{% endif %}
       </div>
-      <p class="membro__nome" data-previa="id_nome">{{ membro.nome|default:"Nome" }}</p>
-      <p class="membro__funcao" data-previa="id_funcao">{{ membro.funcao|default:"Função" }}</p>
-      <p class="membro__bio" data-previa="id_bio">{{ membro.bio }}</p>
+      <div class="membro__texto">
+        <p class="membro__nome" data-previa="id_nome">{{ membro.nome|default:"Nome" }}</p>
+        <p class="membro__funcao" data-previa="id_funcao">{{ membro.funcao|default:"Função" }}</p>
+        <p class="membro__bio" data-previa="id_bio">{{ membro.bio }}</p>
+      </div>
     </div>
   </aside>
 </div>
