@@ -186,7 +186,7 @@ def lote(request):
     selecionados = list(Neologismo.objects.filter(pk__in=ids))
 
     if not selecionados:
-        messages.info(request, 'Marque ao menos um verbete.')
+        messages.info(request, 'Marque ao menos um neologismo.')
         return redirect(voltar)
 
     if acao == 'aprovar':
@@ -194,7 +194,7 @@ def lote(request):
         alvos = [n for n in selecionados if n.status != Neologismo.APROVADO]
         for neologismo in alvos:
             moderacao.aprovar(neologismo, request.user)
-        messages.success(request, f'{len(alvos)} verbete(s) publicado(s).')
+        messages.success(request, f'{len(alvos)} neologismo(s) publicado(s).')
     elif acao == 'rejeitar':
         motivo = request.POST.get('motivo', '').strip()
         if not MOTIVO_MIN <= len(motivo) <= MOTIVO_MAX:
@@ -206,7 +206,7 @@ def lote(request):
         alvos = [n for n in selecionados if n.status != Neologismo.REJEITADO]
         for neologismo in alvos:
             moderacao.rejeitar(neologismo, request.user, motivo)
-        messages.success(request, f'{len(alvos)} verbete(s) rejeitado(s).')
+        messages.success(request, f'{len(alvos)} neologismo(s) rejeitado(s).')
     else:
         raise Http404
 

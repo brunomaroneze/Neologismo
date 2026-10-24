@@ -1,12 +1,12 @@
 {% extends "emails/base_email.html" %}
 
-{% block titulo %}Seu verbete foi publicado{% endblock %}
+{% block titulo %}Seu neologismo foi publicado{% endblock %}
 
 {% block conteudo %}
   <p style="margin:0 0 16px;">Olá, {{ neologismo.autor.username }}.</p>
 
   <p style="margin:0 0 16px;">
-    O verbete <strong>{{ neologismo.titulo|lower }}</strong> passou pela
+    O neologismo <strong>{{ neologismo.titulo|lower }}</strong> passou pela
     moderação e já está no dicionário público.
   </p>
 
@@ -14,7 +14,7 @@
     <tr>
       <td style="background-color:#660066; border-radius:999px;">
         <a href="{{ url_verbete }}" style="display:inline-block; padding:12px 28px; color:#ffffff; font-size:14px; font-weight:bold; text-decoration:none;">
-          Ver o verbete
+          Ver o neologismo
         </a>
       </td>
     </tr>

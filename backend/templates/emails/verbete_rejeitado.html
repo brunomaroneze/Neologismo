@@ -1,12 +1,12 @@
 {% extends "emails/base_email.html" %}
 
-{% block titulo %}Sobre o seu verbete{% endblock %}
+{% block titulo %}Sobre o seu neologismo{% endblock %}
 
 {% block conteudo %}
   <p style="margin:0 0 16px;">Olá, {{ neologismo.autor.username }}.</p>
 
   <p style="margin:0 0 16px;">
-    O verbete <strong>{{ neologismo.titulo|lower }}</strong> não foi publicado
+    O neologismo <strong>{{ neologismo.titulo|lower }}</strong> não foi publicado
     desta vez. O motivo registrado pela equipe:
   </p>
 

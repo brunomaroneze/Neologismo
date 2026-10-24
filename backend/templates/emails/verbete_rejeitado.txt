@@ -1,6 +1,6 @@
 Olá, {{ neologismo.autor.username }}.
 
-O verbete "{{ neologismo.titulo|lower }}" não foi publicado desta vez.
+O neologismo "{{ neologismo.titulo|lower }}" não foi publicado desta vez.
 O motivo registrado pela equipe:
 
   {{ neologismo.motivo_rejeicao|default:"Sem motivo registrado." }}

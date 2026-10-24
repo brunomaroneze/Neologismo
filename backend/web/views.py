@@ -209,7 +209,7 @@ def enviar(request):
         erros = _validar_envio(valores)
         if not erros and excedeu(request, 'envio'):
             erros['geral'] = (
-                'Você enviou muitos verbetes na última hora. Tente novamente mais tarde.'
+                'Você enviou muitos neologismos na última hora. Tente novamente mais tarde.'
             )
         if not erros:
             dados = {

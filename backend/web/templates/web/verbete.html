@@ -20,7 +20,7 @@
     <a class="voltar" href="{% url 'web:inicio' %}">← Voltar ao dicionário</a>
 
     {% if verbete.status == 'pendente' %}
-      <div class="estado"><p><strong>Em moderação.</strong> Só você e a equipe conseguem ver este verbete até que ele seja aprovado.</p></div>
+      <div class="estado"><p><strong>Em moderação.</strong> Só você e a equipe conseguem ver este neologismo até que ele seja aprovado.</p></div>
     {% elif verbete.status == 'rejeitado' %}
       <div class="estado estado--rejeitado"><p><strong>Rejeitado.</strong> {{ verbete.motivo_rejeicao|default:"Sem motivo registrado." }}</p></div>
     {% endif %}
