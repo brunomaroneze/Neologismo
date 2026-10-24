@@ -1090,3 +1090,24 @@ textarea.entrada { min-height: 7rem; resize: vertical; line-height: 1.5; }
   .instituicoes__lista { gap: 1.25rem 2rem; }
   .instituicoes__lista img { height: 2.9rem; }
 }
+
+/* --- Perfil -------------------------------------------------------------------- */
+.perfil { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); gap: 1.5rem; align-items: start; }
+.perfil__cabeca { display: flex; align-items: center; gap: 1rem; margin-bottom: 1.5rem; }
+.perfil__cabeca .titulo-2 { margin: 0; }
+.perfil__cabeca .nota { margin: 0.2rem 0 0; font-style: normal; }
+.perfil__avatar {
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  width: 4rem; height: 4rem; border-radius: 50%;
+  background: linear-gradient(160deg, var(--ameixa), var(--malva));
+  color: var(--papel); font-family: var(--serifa); font-size: 1.5rem;
+}
+.perfil__campos { display: grid; grid-template-columns: 1fr 1fr; gap: 0 1rem; }
+.perfil__lateral { display: grid; gap: 1.25rem; }
+.indicadores--coluna { grid-template-columns: 1fr; margin: 0; }
+.indicadores--coluna .indicador__valor { font-size: 2rem; }
+.perfil__curtidos { padding-bottom: 0; }
+@media (max-width: 900px) {
+  .perfil { grid-template-columns: 1fr; }
+  .perfil__campos { grid-template-columns: 1fr; }
+}

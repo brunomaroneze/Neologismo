@@ -1,0 +1,67 @@
+{% extends 'web/base.html' %}
+{% load verbetes %}
+{% block titulo %}Meu perfil — Neoscópio{% endblock %}
+{% block meta %}<meta name="robots" content="noindex">{% endblock %}
+{% block conteudo %}
+<div class="fundo-veu">
+  <div class="conteiner secao conta-gestao">
+    <span class="rotulo">Sua conta</span>
+    {% include 'web/_abas_conta.html' %}
+
+    <div class="perfil">
+      <section class="cartao perfil__dados" aria-labelledby="titulo-dados">
+        <div class="perfil__cabeca">
+          <span class="perfil__avatar" aria-hidden="true">{{ user.first_name|default:user.username|first|upper }}{{ user.last_name|first|upper }}</span>
+          <div>
+            <h1 class="titulo-2" id="titulo-dados">{{ user.get_full_name|default:user.username }}</h1>
+            <p class="nota">@{{ user.username }} · {{ user.email|default:"sem e-mail" }}{% if user.is_staff %} · <span class="situacao situacao--aprovado">{% if user.is_admin or user.is_superuser %}Administrador{% else %}Moderador{% endif %}</span>{% endif %}</p>
+          </div>
+        </div>
+
+        <form class="formulario" method="post" novalidate>
+          {% csrf_token %}
+          <div class="perfil__campos">
+            {% for campo in form %}
+              <div class="campo">
+                <label class="campo__rotulo" for="{{ campo.id_for_label }}">{{ campo.label }}</label>
+                {{ campo }}
+                {% for erro in campo.errors %}<p class="campo__erro">{{ erro }}</p>{% endfor %}
+              </div>
+            {% endfor %}
+          </div>
+          <p class="campo__ajuda">O nome de usuário não muda. Para trocar o e-mail, use a aba <a href="{% url 'account_email' %}">E-mails</a>; o endereço novo precisa ser confirmado.</p>
+          <div class="acoes"><button class="botao" type="submit">Salvar perfil</button></div>
+        </form>
+      </section>
+
+      <aside class="perfil__lateral">
+        <ul class="indicadores indicadores--coluna">
+          <li class="indicador"><span class="indicador__rotulo">Verbetes enviados</span><strong class="indicador__valor">{{ enviados }}</strong><span class="indicador__contexto"><a href="{% url 'web:meus_envios' %}">Ver meus envios</a></span></li>
+          <li class="indicador"><span class="indicador__rotulo">Publicados</span><strong class="indicador__valor">{{ publicados }}</strong></li>
+          <li class="indicador"><span class="indicador__rotulo">Curtidas recebidas</span><strong class="indicador__valor">{{ curtidas_recebidas }}</strong><span class="indicador__contexto">nos seus verbetes publicados</span></li>
+        </ul>
+        <section class="cartao">
+          <h2 class="cartao__titulo">Segurança</h2>
+          <ul class="lista-simples">
+            <li><a href="{% url 'account_change_password' %}">{% if user.has_usable_password %}Alterar senha{% else %}Criar senha{% endif %}</a></li>
+            <li><a href="{% url 'account_email' %}">Gerenciar e-mails</a></li>
+            <li><a href="{% url 'socialaccount_connections' %}">Contas conectadas</a></li>
+          </ul>
+        </section>
+      </aside>
+    </div>
+
+    <section class="secao perfil__curtidos" aria-labelledby="titulo-curtidos">
+      <h2 class="titulo-2" id="titulo-curtidos">Verbetes que curti {% if total_curtidos %}<span class="abas__total">{{ total_curtidos }}</span>{% endif %}</h2>
+      {% if curtidos %}
+        <ul class="grade">
+          {% for verbete in curtidos %}{% include 'web/_card.html' %}{% endfor %}
+        </ul>
+        {% if total_curtidos > curtidos|length %}<p class="nota">Mostrando os {{ curtidos|length }} primeiros, em ordem alfabética.</p>{% endif %}
+      {% else %}
+        <div class="vazio"><p>Você ainda não curtiu nenhum verbete.</p><div class="botoes"><a class="botao botao--secundario" href="{% url 'web:inicio' %}">Explorar neologismos</a></div></div>
+      {% endif %}
+    </section>
+  </div>
+</div>
+{% endblock %}

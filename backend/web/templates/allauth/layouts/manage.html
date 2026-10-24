@@ -1,17 +1,13 @@
 {% extends "allauth/layouts/base.html" %}
-{% comment %}Configurações da conta: menu ao lado e o conteúdo num cartão.{% endcomment %}
+{% comment %}Configurações da conta: as mesmas abas do perfil e o conteúdo num cartão.{% endcomment %}
 {% block body %}
-{% with nome=request.resolver_match.url_name %}
-<div class="conteiner secao conta-gestao">
-  <span class="rotulo">Sua conta</span>
-  <nav class="abas" aria-label="Configurações da conta">
-    <a href="{% url 'account_email' %}" {% if nome == 'account_email' %}aria-current="page"{% endif %}>E-mails</a>
-    <a href="{% url 'account_change_password' %}" {% if nome == 'account_change_password' or nome == 'account_set_password' %}aria-current="page"{% endif %}>Senha</a>
-    <a href="{% url 'socialaccount_connections' %}" {% if nome == 'socialaccount_connections' %}aria-current="page"{% endif %}>Contas conectadas</a>
-  </nav>
-  <div class="painel-conta__caixa conta-allauth conta-gestao__caixa">
-    {% block content %}{% endblock content %}
+<div class="fundo-veu">
+  <div class="conteiner secao conta-gestao">
+    <span class="rotulo">Sua conta</span>
+    {% include 'web/_abas_conta.html' %}
+    <div class="painel-conta__caixa conta-allauth conta-gestao__caixa">
+      {% block content %}{% endblock content %}
+    </div>
   </div>
 </div>
-{% endwith %}
 {% endblock body %}

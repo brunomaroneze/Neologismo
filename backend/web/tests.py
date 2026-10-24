@@ -510,3 +510,81 @@ class PainelTests(BaseWeb):
 
         self.client.post(reverse('web:painel_membro_remover', args=[a.pk]))
         self.assertEqual(list(MembroEquipe.objects.values_list('nome', flat=True)), ['Bia'])
+
+
+class PerfilTests(BaseWeb):
+    def setUp(self):
+        super().setUp()
+        EmailAddress.objects.create(user=self.autor, email=self.autor.email, primary=True, verified=True)
+
+    def test_perfil_exige_login(self):
+        resposta = self.client.get(reverse('web:perfil'))
+        self.assertEqual(resposta.status_code, 302)
+
+    def test_atualiza_nome_e_mostra_resumo(self):
+        verbete = criar_verbete(self.autor, 'Publicado')
+        verbete.likes.add(self.equipe)
+        criar_verbete(self.autor, 'Pendente', Neologismo.PENDENTE)
+        self.client.login(username='autora', password=SENHA)
+
+        resposta = self.client.get(reverse('web:perfil'))
+        self.assertEqual(resposta.context['enviados'], 2)
+        self.assertEqual(resposta.context['publicados'], 1)
+        self.assertEqual(resposta.context['curtidas_recebidas'], 1)
+
+        self.client.post(reverse('web:perfil'), {'first_name': 'Ana', 'last_name': 'Souza'})
+        self.autor.refresh_from_db()
+        self.assertEqual(self.autor.get_full_name(), 'Ana Souza')
+
+    def test_lista_os_verbetes_curtidos(self):
+        curtido = criar_verbete(self.equipe, 'Curtido')
+        criar_verbete(self.equipe, 'Outro')
+        curtido.likes.add(self.autor)
+        self.client.login(username='autora', password=SENHA)
+
+        resposta = self.client.get(reverse('web:perfil'))
+
+        self.assertEqual([v.titulo for v in resposta.context['curtidos']], ['Curtido'])
+
+    def test_alterar_senha(self):
+        self.client.login(username='autora', password=SENHA)
+        nova = 'OutraSenhaForte456'
+
+        resposta = self.client.post(reverse('account_change_password'), {
+            'oldpassword': SENHA, 'password1': nova, 'password2': nova,
+        })
+
+        self.assertEqual(resposta.status_code, 302)
+        self.autor.refresh_from_db()
+        self.assertTrue(self.autor.check_password(nova))
+
+
+class CriarAdminTests(TestCase):
+    def test_cria_admin_sem_senha_com_email_confirmado_e_link(self):
+        from io import StringIO
+
+        from django.core.management import call_command
+
+        saida = StringIO()
+        call_command('criar_admin', 'bruno', 'Bruno@Exemplo.com', '--nome', 'Bruno Maroneze', stdout=saida)
+
+        usuario = Usuario.objects.get(username='bruno')
+        self.assertTrue(usuario.is_admin)
+        self.assertTrue(usuario.is_staff)
+        self.assertFalse(usuario.has_usable_password())
+        self.assertEqual(usuario.get_full_name(), 'Bruno Maroneze')
+        self.assertTrue(EmailAddress.objects.filter(user=usuario, email='bruno@exemplo.com', verified=True).exists())
+
+        link = saida.getvalue().strip().splitlines()[-1]
+        self.assertIn('/conta/password/reset/key/', link)
+        caminho = link.split('://', 1)[1].split('/', 1)[1]
+        resposta = self.client.get('/' + caminho, follow=True)
+        self.assertContains(resposta, 'name="password1"')
+
+    def test_nao_rouba_email_de_outra_conta(self):
+        from django.core.management import call_command
+        from django.core.management.base import CommandError
+
+        Usuario.objects.create_user('ana', email='ana@exemplo.com', password=SENHA)
+        with self.assertRaises(CommandError):
+            call_command('criar_admin', 'outra', 'ana@exemplo.com')

@@ -54,7 +54,7 @@
 
         <div class="sessao">
           {% if user.is_authenticated %}
-            <a class="sessao__ola" href="{% url 'account_email' %}" title="Minha conta">Olá, <strong>{{ user.username }}</strong></a>
+            <a class="sessao__ola" href="{% url 'web:perfil' %}" title="Meu perfil">Olá, <strong>{{ user.username }}</strong></a>
             <form method="post" action="{% url 'account_logout' %}">
               {% csrf_token %}
               <button class="botao-barra" type="submit">Sair</button>
