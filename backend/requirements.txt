@@ -7,7 +7,7 @@ dj-database-url==3.1.2
 django-allauth[socialaccount]==65.19.7
 django-cors-headers==4.9.0
 Django==6.0.8
-djangorestframework==3.18.1
+djangorestframework==3.18.2
 drf-spectacular==0.29.0
 Faker==40.8.0
 gunicorn==23.0.0
@@ -16,7 +16,7 @@ inflection==0.5.1
 jsonschema-specifications==2025.9.1
 jsonschema==4.26.0
 oauthlib==4.0.0
-pillow==12.1.1
+pillow==13.0.0
 psycopg-binary==3.3.3
 psycopg==3.3.3
 pycparser==3.12
