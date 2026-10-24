@@ -4,7 +4,7 @@
 {% block painel %}
 <form class="cartao detector__form" method="post" novalidate>
   {% csrf_token %}
-  <p class="conta-texto">Cole um texto — notícia, post, transcrição — para encontrar palavras que não estão no léxico de referência (≈480 mil formas). Os candidatos aparecem destacados, com a classe gramatical e uma sugestão de processo de formação.</p>
+  <p class="conta-texto">Cole um texto, como uma notícia ou a transcrição de um vídeo, para encontrar as palavras que não estão no léxico de referência (≈480 mil formas). Cada candidato aparece destacado, com a classe gramatical e uma sugestão de processo de formação.</p>
   <div class="campo">
     <label class="campo__rotulo" for="texto">Texto</label>
     <textarea class="entrada" id="texto" name="texto" rows="9" maxlength="{{ max_caracteres }}" required placeholder="Cole aqui o texto a analisar…">{{ texto }}</textarea>
@@ -61,7 +61,7 @@
     {% else %}
       <div class="vazio"><p class="vazio__titulo">Nenhum candidato encontrado</p><p>Todas as palavras do texto estão no léxico de referência.</p></div>
     {% endif %}
-    <p class="nota">A sugestão de processo vem de um classificador treinado com os neologismos já classificados pela equipe; abaixo de 50% de confiança, vale conferir com atenção.</p>
+    <p class="nota">A sugestão de processo vem de um classificador treinado com os neologismos que a equipe já classificou. Abaixo de 50% de confiança, confira com atenção.</p>
   </section>
 {% endif %}
 {% endblock %}

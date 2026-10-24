@@ -7,7 +7,7 @@
 {% if precisa_entrar %}
   <div class="sucesso">
     <h1 class="titulo-2">Entre para enviar</h1>
-    <p>Só quem tem conta pode sugerir um neologismo — assim conseguimos dar crédito à autoria e acompanhar a moderação.</p>
+    <p>Para sugerir um neologismo você precisa de uma conta. É por ela que damos o crédito pela palavra e avisamos você do resultado da moderação.</p>
     <div class="botoes">
       <a class="botao" href="{% url 'account_login' %}?next={% url 'web:enviar' %}">Entrar</a>
       <a class="botao botao--secundario" href="{% url 'account_signup' %}?next={% url 'web:enviar' %}">Criar conta</a>
@@ -72,7 +72,7 @@
 
       <fieldset class="grupo-campos">
         <legend>Citações com fonte <span class="campo__opcional">(opcional)</span></legend>
-        <p class="campo__ajuda">Trechos reais onde a palavra aparece — post, matéria, conversa. Fortalecem muito o neologismo na revisão.</p>
+        <p class="campo__ajuda">Trechos reais em que a palavra aparece, como um post ou uma matéria. Citação com fonte pesa bastante na revisão.</p>
         {% if erros.contextos %}<p class="campo__erro">{{ erros.contextos }}</p>{% endif %}
 
         <div data-citacoes>
@@ -81,7 +81,7 @@
               <div class="citacao-form__cabeca"><span data-citacao-numero>Citação {{ forloop.counter }}</span><button type="button" data-remover-citacao aria-label="Remover a citação {{ forloop.counter }}">Remover</button></div>
               <textarea class="entrada" name="citacao" rows="2" placeholder="Trecho onde a palavra aparece." aria-label="Texto da citação {{ forloop.counter }}">{{ c.citacao }}</textarea>
               <div class="citacao-form__linha">
-                <input class="entrada" name="fonte" maxlength="200" value="{{ c.fonte }}" placeholder="Fonte — @usuario no X" aria-label="Fonte da citação {{ forloop.counter }}">
+                <input class="entrada" name="fonte" maxlength="200" value="{{ c.fonte }}" placeholder="Fonte, ex.: @usuario no X" aria-label="Fonte da citação {{ forloop.counter }}">
                 <input class="entrada" name="link" type="url" maxlength="500" value="{{ c.link }}" placeholder="https://…" aria-label="Link da citação {{ forloop.counter }}">
               </div>
             </div>
@@ -92,7 +92,7 @@
             <div class="citacao-form__cabeca"><span data-citacao-numero>Citação</span><button type="button" data-remover-citacao>Remover</button></div>
             <textarea class="entrada" name="citacao" rows="2" placeholder="Trecho onde a palavra aparece."></textarea>
             <div class="citacao-form__linha">
-              <input class="entrada" name="fonte" maxlength="200" placeholder="Fonte — @usuario no X">
+              <input class="entrada" name="fonte" maxlength="200" placeholder="Fonte, ex.: @usuario no X">
               <input class="entrada" name="link" type="url" maxlength="500" placeholder="https://…">
             </div>
           </div>
@@ -101,7 +101,7 @@
           <div class="citacao-form">
             <textarea class="entrada" name="citacao" rows="2" placeholder="Trecho onde a palavra aparece."></textarea>
             <div class="citacao-form__linha">
-              <input class="entrada" name="fonte" maxlength="200" placeholder="Fonte — @usuario no X">
+              <input class="entrada" name="fonte" maxlength="200" placeholder="Fonte, ex.: @usuario no X">
               <input class="entrada" name="link" type="url" maxlength="500" placeholder="https://…">
             </div>
           </div>
