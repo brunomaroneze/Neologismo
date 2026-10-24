@@ -657,3 +657,26 @@ class SeedTests(TestCase):
         self.assertTrue(admin.is_admin)
         self.assertFalse(admin.is_superuser)
         self.assertFalse(admin.check_password('admin123'))
+
+
+class ImportarWixTests(TestCase):
+    def test_importa_uma_vez_e_preserva_o_que_ja_existe(self):
+        autor = Usuario.objects.create_user('alguem', password='SenhaForte123')
+        existente = criar_neologismo(autor, 'sororidade', Neologismo.PENDENTE)
+
+        call_command('importar_wix', stdout=StringIO())
+        total = Neologismo.objects.count()
+        call_command('importar_wix', stdout=StringIO())
+
+        self.assertEqual(Neologismo.objects.count(), total)
+        existente.refresh_from_db()
+        self.assertEqual(existente.status, Neologismo.PENDENTE)
+        crush = Neologismo.objects.get(titulo='crush')
+        self.assertEqual(crush.status, Neologismo.APROVADO)
+        self.assertEqual(crush.contextos.count(), 3)
+        self.assertTrue(all(c.link.startswith('http') for c in crush.contextos.all()))
+
+    def test_simular_nao_grava(self):
+        call_command('importar_wix', '--simular', stdout=StringIO())
+        self.assertEqual(Neologismo.objects.count(), 0)
+
