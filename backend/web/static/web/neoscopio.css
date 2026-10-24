@@ -1075,3 +1075,18 @@ textarea.entrada { min-height: 7rem; resize: vertical; line-height: 1.5; }
   .membro-painel__acoes { grid-column: 1 / -1; justify-content: flex-start; }
   .lote { position: static; }
 }
+
+/* --- Faixa das instituições, no topo do rodapé ------------------------------- */
+/* Fundo claro: as logos aparecem nas cores oficiais, sem recoloração. */
+.instituicoes { background: var(--papel); border-top: 1px solid var(--filete); }
+.instituicoes__linha { display: flex; flex-wrap: wrap; align-items: center; gap: 1rem 3rem; padding-block: 1.75rem; }
+.instituicoes__rotulo { margin: 0; font-size: 0.74rem; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--tinta-3); }
+.instituicoes__lista { display: flex; flex-wrap: wrap; align-items: center; gap: 1.5rem 3rem; list-style: none; margin: 0; padding: 0; }
+.instituicoes__lista a { display: block; border-radius: var(--raio); transition: opacity 0.15s ease; }
+.instituicoes__lista a:hover { opacity: 0.8; }
+.instituicoes__lista img { height: 3.6rem; width: auto; }
+
+@media (max-width: 640px) {
+  .instituicoes__lista { gap: 1.25rem 2rem; }
+  .instituicoes__lista img { height: 2.9rem; }
+}
