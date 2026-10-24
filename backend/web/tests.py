@@ -125,6 +125,16 @@ class ConsultaTests(BaseWeb):
                 self.assertEqual(self.client.get(reverse(nome)).status_code, 200)
 
 
+class AssistenteTests(BaseWeb):
+    def test_respostas_prontas_em_todas_as_paginas(self):
+        for nome in ('web:inicio', 'web:sobre', 'web:equipe'):
+            resposta = self.client.get(reverse(nome))
+
+            self.assertContains(resposta, 'data-assistente-abrir')
+            self.assertContains(resposta, 'data-resposta="aprovacao"')
+            self.assertContains(resposta, 'pamola-96.png')
+
+
 class CurtirTests(BaseWeb):
     def test_curtir_exige_login(self):
         verbete = criar_verbete(self.autor, 'Tankar')

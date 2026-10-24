@@ -1,0 +1,93 @@
+{% load static %}
+{% comment %}
+Assistente com respostas prontas sobre o Neoscópio. Não há modelo de
+linguagem por trás: cada pergunta tem um texto escrito pela equipe, guardado
+num <template> abaixo. Sem JavaScript, a bolinha não aparece.
+{% endcomment %}
+<div class="assistente" data-assistente hidden>
+  <section class="assistente__janela" id="assistente-janela" role="dialog" aria-modal="false" aria-labelledby="assistente-titulo" hidden>
+    <header class="assistente__topo">
+      <img src="{% static 'web/pamola-96.png' %}" alt="" width="40" height="40" class="assistente__avatar">
+      <div>
+        <h2 id="assistente-titulo" class="assistente__nome">Pamola</h2>
+        <p class="assistente__papel">Assistente do Neoscópio</p>
+      </div>
+      <button type="button" class="assistente__fechar" data-assistente-fechar aria-label="Fechar assistente">×</button>
+    </header>
+
+    <div class="assistente__conversa" data-assistente-conversa aria-live="polite">
+      <div class="assistente__fala assistente__fala--pamola">
+        <p>Oi! Eu sou a Pamola. Escolha uma pergunta abaixo que eu respondo.</p>
+      </div>
+    </div>
+
+    <div class="assistente__perguntas" role="group" aria-label="Perguntas">
+      <button type="button" data-pergunta="neologismo">O que é um neologismo?</button>
+      <button type="button" data-pergunta="neoscopio">O que é o Neoscópio?</button>
+      <button type="button" data-pergunta="enviar">Como envio um neologismo?</button>
+      <button type="button" data-pergunta="aprovacao">Como funciona a aprovação?</button>
+      <button type="button" data-pergunta="rejeicao">Por que um envio é rejeitado?</button>
+      <button type="button" data-pergunta="pesquisar">Como pesquiso os neologismos?</button>
+      <button type="button" data-pergunta="conta">Preciso de conta?</button>
+      <button type="button" data-pergunta="equipe">Quem faz o Neoscópio?</button>
+    </div>
+  </section>
+
+  <button type="button" class="assistente__bolinha" data-assistente-abrir aria-expanded="false" aria-controls="assistente-janela">
+    <img src="{% static 'web/pamola-96.png' %}" srcset="{% static 'web/pamola-192.png' %} 2x" alt="" width="64" height="64">
+    <span class="visualmente-oculto">Abrir assistente: perguntas frequentes</span>
+  </button>
+
+  <template data-resposta="neologismo">
+    <p>Neologismo é uma <strong>palavra nova</strong> na língua, ou um <strong>sentido novo</strong> para uma palavra que já existia.</p>
+    <p>Ele pode nascer de várias formas: por derivação (<em>bolsonarismo</em>, <em>emojificação</em>), por composição, por empréstimo de outra língua (<em>shippar</em>), por siglas, entre outras.</p>
+    <p>Enquanto a palavra não está registrada nos dicionários de referência, ela é tratada como neologismo.</p>
+  </template>
+
+  <template data-resposta="neoscopio">
+    <p>O Neoscópio é um banco colaborativo de neologismos do português brasileiro, criado como projeto de iniciação científica da UFES com a UFGD.</p>
+    <p>Qualquer pessoa pode sugerir uma palavra; a equipe revisa antes de publicar. <a href="{% url 'web:sobre' %}">Saiba mais sobre o projeto</a>.</p>
+  </template>
+
+  <template data-resposta="enviar">
+    <p>É assim:</p>
+    <ol>
+      <li>Crie uma conta e confirme seu e-mail.</li>
+      <li>Abra <a href="{% url 'web:enviar' %}">Enviar um neologismo</a>.</li>
+      <li>Preencha a palavra, a definição e a classe gramatical. Se puder, inclua um exemplo de uso real com a fonte.</li>
+    </ol>
+    <p>O envio vai para a moderação, e você acompanha em <a href="{% url 'web:meus_envios' %}">Minhas palavras</a>.</p>
+  </template>
+
+  <template data-resposta="aprovacao">
+    <p>Todo envio entra como <strong>pendente</strong>. A equipe de moderação confere se a palavra é mesmo nova, se a definição está clara e se o exemplo tem fonte.</p>
+    <p>Depois disso, o neologismo é <strong>aprovado</strong> e aparece no site, ou <strong>rejeitado</strong>. A moderação pode ajustar o texto antes de aprovar.</p>
+    <p>O andamento de cada envio aparece em <a href="{% url 'web:meus_envios' %}">Minhas palavras</a>.</p>
+  </template>
+
+  <template data-resposta="rejeicao">
+    <p>Os motivos mais comuns:</p>
+    <ul>
+      <li>a palavra já está no Neoscópio;</li>
+      <li>ela já aparece nos dicionários, então não é mais neologismo;</li>
+      <li>a definição está incompleta ou não há exemplo de uso;</li>
+      <li>é um nome próprio, um erro de digitação ou uma brincadeira.</li>
+    </ul>
+    <p>Você pode enviar de novo com as informações completas.</p>
+  </template>
+
+  <template data-resposta="pesquisar">
+    <p>Na <a href="{% url 'web:inicio' %}">página inicial</a> você busca pela palavra e filtra por tema (como internetês, anglicismo e gíria), classe gramatical ou letra inicial.</p>
+    <p>Clique num card para ver a definição completa, os exemplos e as fontes.</p>
+  </template>
+
+  <template data-resposta="conta">
+    <p>Para <strong>ler e pesquisar</strong>, não precisa.</p>
+    <p>Para <strong>enviar</strong> neologismos e <strong>curtir</strong>, sim: <a href="{% url 'account_signup' %}">crie sua conta</a> e confirme o e-mail.</p>
+  </template>
+
+  <template data-resposta="equipe">
+    <p>O Neoscópio é feito por pesquisadores, professores e estudantes da UFES e da UFGD.</p>
+    <p>Conheça todo mundo na página da <a href="{% url 'web:equipe' %}">Equipe</a>.</p>
+  </template>
+</div>

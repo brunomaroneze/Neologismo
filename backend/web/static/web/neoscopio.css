@@ -1175,3 +1175,116 @@ textarea.entrada { min-height: 7rem; resize: vertical; line-height: 1.5; }
 .detector__confianca { display: inline-block; margin-left: 0.4rem; padding: 0.05rem 0.45rem; border-radius: 999px; font-size: 0.78rem; font-weight: 700; background: var(--veu-forte); color: var(--ameixa); }
 .detector__confianca--baixa { background: var(--ceu-veu); color: var(--tinta-2); }
 .item--registrado { border-left-color: var(--ceu); opacity: 0.85; }
+
+/* --- Assistente (Pamola) ---------------------------------------------------------- */
+
+.assistente {
+  position: fixed; right: 1.25rem; bottom: 1.25rem; z-index: 30;
+  display: flex; flex-direction: column; align-items: flex-end; gap: 0.75rem;
+}
+.assistente[hidden], .assistente__janela[hidden] { display: none; }
+
+.assistente__bolinha {
+  width: 4.25rem; height: 4.25rem; padding: 0;
+  border-radius: 50%;
+  border: 3px solid var(--ameixa);
+  background: var(--papel);
+  box-shadow: var(--sombra-forte);
+  overflow: hidden; cursor: pointer;
+  transition: transform 0.18s ease;
+}
+.assistente__bolinha img { display: block; width: 100%; height: 100%; }
+.assistente__bolinha:hover { transform: translateY(-2px) scale(1.04); }
+.assistente__bolinha:focus-visible { outline: 3px solid var(--ceu); outline-offset: 3px; }
+.assistente__bolinha[aria-expanded="true"] { border-color: var(--malva); }
+
+.assistente__janela {
+  width: min(23rem, calc(100vw - 2rem));
+  max-height: min(34rem, calc(100vh - 8rem));
+  display: flex; flex-direction: column;
+  background: var(--papel);
+  border: 1px solid var(--filete-forte);
+  border-radius: var(--raio-card);
+  box-shadow: var(--sombra-forte);
+  overflow: hidden;
+  animation: assistente-abrir 0.18s ease-out;
+}
+@keyframes assistente-abrir { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+.assistente__topo {
+  display: flex; align-items: center; gap: 0.7rem;
+  padding: 0.75rem 0.9rem;
+  background: var(--ameixa); color: var(--papel);
+}
+.assistente__avatar { border-radius: 50%; background: var(--papel); flex: none; }
+.assistente__nome { font-family: var(--serifa); font-size: 1.15rem; margin: 0; line-height: 1.1; color: var(--papel); }
+.assistente__papel { margin: 0; font-size: 0.82rem; opacity: 0.85; }
+.assistente__fechar {
+  margin-left: auto; width: 2rem; height: 2rem;
+  border: 0; border-radius: 50%;
+  background: transparent; color: var(--papel);
+  font-size: 1.5rem; line-height: 1; cursor: pointer;
+}
+.assistente__fechar:hover { background: color-mix(in srgb, var(--papel) 15%, transparent); }
+.assistente__fechar:focus-visible { outline: 2px solid var(--ceu); }
+
+.assistente__conversa {
+  flex: 1; min-height: 6rem; overflow-y: auto;
+  padding: 0.9rem; display: flex; flex-direction: column; gap: 0.6rem;
+  background: var(--veu);
+  font-size: 0.93rem; line-height: 1.5;
+}
+.assistente__fala {
+  max-width: 88%; padding: 0.55rem 0.8rem;
+  border-radius: 12px;
+}
+.assistente__fala > :first-child { margin-top: 0; }
+.assistente__fala > :last-child { margin-bottom: 0; }
+.assistente__fala p, .assistente__fala ol, .assistente__fala ul { margin: 0.45rem 0; }
+.assistente__fala ol, .assistente__fala ul { padding-left: 1.2rem; }
+.assistente__fala--pamola {
+  align-self: flex-start;
+  background: var(--papel); color: var(--tinta);
+  border: 1px solid var(--filete);
+  border-bottom-left-radius: 4px;
+}
+.assistente__fala--pessoa {
+  align-self: flex-end;
+  background: var(--ameixa); color: var(--papel);
+  border-bottom-right-radius: 4px;
+}
+.assistente__digitando { display: inline-flex; gap: 4px; padding: 0.25rem 0; }
+.assistente__digitando span {
+  width: 6px; height: 6px; border-radius: 50%; background: var(--malva);
+  animation: assistente-ponto 0.9s ease-in-out infinite;
+}
+.assistente__digitando span:nth-child(2) { animation-delay: 0.15s; }
+.assistente__digitando span:nth-child(3) { animation-delay: 0.3s; }
+@keyframes assistente-ponto { 0%, 60%, 100% { transform: translateY(0); opacity: 0.5; } 30% { transform: translateY(-4px); opacity: 1; } }
+
+.assistente__perguntas {
+  display: flex; flex-wrap: wrap; gap: 0.4rem;
+  padding: 0.7rem 0.9rem 0.9rem;
+  border-top: 1px solid var(--filete);
+  max-height: 9.5rem; overflow-y: auto;
+}
+.assistente__perguntas button {
+  font: inherit; font-size: 0.85rem;
+  padding: 0.35rem 0.7rem;
+  border: 1px solid var(--filete-forte); border-radius: 999px;
+  background: var(--papel); color: var(--ameixa);
+  cursor: pointer;
+}
+.assistente__perguntas button:hover { background: var(--veu-forte); }
+.assistente__perguntas button:focus-visible { outline: 2px solid var(--ceu); outline-offset: 1px; }
+
+@media (max-width: 40rem) {
+  .assistente { right: 1rem; bottom: 1rem; }
+  .assistente__bolinha { width: 3.6rem; height: 3.6rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .assistente__janela { animation: none; }
+  .assistente__bolinha { transition: none; }
+  .assistente__digitando span { animation: none; opacity: 0.8; }
+}
