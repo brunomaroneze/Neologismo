@@ -25,10 +25,10 @@ from neologismo import facetas as indice_facetas
 from neologismo.models import Neologismo
 from neologismo.serializers import NeologismoSerializer
 
-from . import conteudo
+from . import conteudo, leituras
 from .forms import PerfilForm
 from .limites import excedeu
-from .models import MembroEquipe
+from .models import MembroEquipe, Referencia
 
 POR_PAGINA = 20
 # Na página inicial os cards ficam em 3 colunas: 12 dá 4 linhas cheias.
@@ -315,14 +315,39 @@ def sobre(request):
 
 @require_GET
 def equipe(request):
+    visiveis = list(MembroEquipe.objects.filter(ativo=True))
     return render(request, 'web/equipe.html', {
-        'equipe': MembroEquipe.objects.filter(ativo=True),
+        'integrantes': [m for m in visiveis if m.grupo == MembroEquipe.INTEGRANTE],
+        'ex_integrantes': [m for m in visiveis if m.grupo == MembroEquipe.EX_INTEGRANTE],
     })
+
+
+COLUNAS_LEITURAS = [
+    ('area', 'Área temática'), ('categoria', 'Categoria'), ('autor', 'Autoria'),
+    ('titulo', 'Título'), ('ano', 'Ano'),
+]
 
 
 @require_GET
 def referencias(request):
-    return render(request, 'web/referencias.html', {'referencias': conteudo.REFERENCIAS})
+    consulta = leituras.ler_consulta(request.GET)
+    contexto = {
+        'consulta': consulta,
+        'pagina': leituras.pagina(consulta, request.GET.get('pagina')),
+        'areas': leituras.areas_com_contagem(),
+        'categorias': Referencia.CATEGORIAS,
+        'por_pagina': leituras.POR_PAGINA,
+        'limite_nova': leituras.limite_nova(),
+        'colunas': [
+            {'chave': chave, 'rotulo': rotulo, 'proxima': consulta.proxima_ordem(chave),
+             'sentido': consulta.sentido(chave)}
+            for chave, rotulo in COLUNAS_LEITURAS
+        ],
+    }
+    # Filtros e ordenação com JavaScript trocam só a tabela.
+    if request.GET.get('parcial'):
+        return render(request, 'web/_acervo.html', contexto)
+    return render(request, 'web/referencias.html', contexto)
 
 
 # --- Para buscadores ------------------------------------------------------------

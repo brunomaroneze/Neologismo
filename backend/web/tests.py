@@ -479,7 +479,7 @@ class PainelTests(BaseWeb):
         self.client.login(username='chefe', password=SENHA)
 
         resposta = self.client.post(reverse('web:painel_membro_novo'), {
-            'nome': 'Nova Pesquisadora', 'funcao': 'Graduanda em Letras', 'bio': '', 'ativo': 'on', 'foto': foto,
+            'nome': 'Nova Pesquisadora', 'funcao': 'Graduanda em Letras', 'bio': '', 'grupo': 'integrante', 'ativo': 'on', 'foto': foto,
         })
 
         self.assertRedirects(resposta, reverse('web:painel_equipe'), fetch_redirect_response=False)
@@ -520,6 +520,34 @@ class PainelTests(BaseWeb):
 
         self.client.post(reverse('web:painel_membro_remover', args=[a.pk]))
         self.assertEqual(list(MembroEquipe.objects.values_list('nome', flat=True)), ['Bia'])
+
+    def test_integrantes_e_ex_integrantes(self):
+        from .models import MembroEquipe
+
+        MembroEquipe.objects.all().delete()
+        MembroEquipe.objects.create(nome='Ana Atual', funcao='x', ordem=10)
+        bia = MembroEquipe.objects.create(nome='Bia Antiga', funcao='x', ordem=20)
+        cris = MembroEquipe.objects.create(nome='Cris Atual', funcao='x', ordem=30)
+        self.client.login(username='chefe', password=SENHA)
+
+        self.client.post(reverse('web:painel_membro_grupo', args=[bia.pk]))
+        bia.refresh_from_db()
+        self.assertEqual(bia.grupo, MembroEquipe.EX_INTEGRANTE)
+
+        # Subir Cris troca com Ana, não com a ex-integrante Bia.
+        self.client.post(reverse('web:painel_membro_mover', args=[cris.pk, 'subir']))
+        integrantes = MembroEquipe.objects.filter(grupo=MembroEquipe.INTEGRANTE)
+        self.assertEqual(list(integrantes.values_list('nome', flat=True)), ['Cris Atual', 'Ana Atual'])
+
+        pagina = self.client.get(reverse('web:equipe'))
+        self.assertEqual([m.nome for m in pagina.context['integrantes']], ['Cris Atual', 'Ana Atual'])
+        self.assertEqual([m.nome for m in pagina.context['ex_integrantes']], ['Bia Antiga'])
+        self.assertContains(pagina, 'Ex-integrantes')
+
+        self.client.post(reverse('web:painel_membro_grupo', args=[bia.pk]))
+        bia.refresh_from_db()
+        self.assertEqual(bia.grupo, MembroEquipe.INTEGRANTE)
+        self.assertNotContains(self.client.get(reverse('web:equipe')), 'Ex-integrantes')
 
 
 class PerfilTests(BaseWeb):
@@ -598,3 +626,118 @@ class CriarAdminTests(TestCase):
         Usuario.objects.create_user('ana', email='ana@exemplo.com', password=SENHA)
         with self.assertRaises(CommandError):
             call_command('criar_admin', 'outra', 'ana@exemplo.com')
+
+
+class LeiturasTests(BaseWeb):
+    """Banco de referências: filtros na página pública e cadastro no painel."""
+
+    def setUp(self):
+        super().setUp()
+        from .models import AreaTematica, Referencia
+
+        Referencia.objects.all().delete()
+        AreaTematica.objects.all().delete()
+        self.neologia = AreaTematica.objects.create(nome='Neologia', cor='ameixa')
+        self.lexico = AreaTematica.objects.create(nome='Lexicografia', cor='lilas')
+        self.alves = Referencia.objects.create(
+            area=self.neologia, categoria=Referencia.LIVRO, autoria='ALVES, Ieda Maria',
+            titulo='Neologismo: criação lexical', ano=2007, detalhes='3. ed. São Paulo: Ática',
+        )
+        self.houaiss = Referencia.objects.create(
+            area=self.lexico, categoria=Referencia.DICIONARIO, autoria='HOUAISS, Antônio',
+            titulo='Dicionário Houaiss', ano=2009,
+        )
+        self.artigo = Referencia.objects.create(
+            area=self.neologia, categoria=Referencia.PERIODICO, autoria='SILVA, Ana',
+            titulo='Neologismos na internet', ano=2021, publicado_em='Revista de Letras',
+            url='https://exemplo.org/artigo',
+        )
+
+    def titulos(self, **params):
+        resposta = self.client.get(reverse('web:referencias'), params)
+        self.assertEqual(resposta.status_code, 200)
+        return [r.titulo for r in resposta.context['pagina'].object_list]
+
+    def test_filtros(self):
+        self.assertEqual(len(self.titulos()), 3)
+        self.assertEqual(set(self.titulos(area=self.lexico.pk)), {'Dicionário Houaiss'})
+        self.assertEqual(set(self.titulos(categoria=['livro', 'periodico'])),
+                         {'Neologismo: criação lexical', 'Neologismos na internet'})
+        self.assertEqual(self.titulos(autor='houaiss'), ['Dicionário Houaiss'])
+        self.assertEqual(self.titulos(titulo='criacao'), ['Neologismo: criação lexical'])
+        self.assertEqual(set(self.titulos(ano='2005-2010')), {'Neologismo: criação lexical', 'Dicionário Houaiss'})
+        self.assertEqual(self.titulos(ano='2021'), ['Neologismos na internet'])
+        self.assertEqual(self.titulos(ano='abc'), [])
+        self.assertEqual(self.titulos(q='revista de letras'), ['Neologismos na internet'])
+        # Valores inválidos são ignorados, não quebram a página.
+        self.assertEqual(len(self.titulos(area='999', categoria='xyz', ordem='senha', por_pagina='7')), 3)
+
+    def test_ordenacao_e_paginas(self):
+        self.assertEqual(self.titulos(ordem='ano'), ['Neologismo: criação lexical', 'Dicionário Houaiss', 'Neologismos na internet'])
+        self.assertEqual(self.titulos(ordem='-ano')[0], 'Neologismos na internet')
+        self.assertEqual(self.titulos(ordem='autor')[0], 'Neologismo: criação lexical')
+        self.assertEqual(self.titulos(por_pagina=10, pagina=2), self.titulos(por_pagina=10))  # página além do fim
+
+    def test_parcial_traz_so_a_tabela_e_abnt(self):
+        resposta = self.client.get(reverse('web:referencias'), {'parcial': '1', 'q': 'internet'})
+
+        self.assertNotContains(resposta, '<html')
+        self.assertContains(resposta, 'Neologismos na internet. In: <strong>Revista de Letras</strong>. 2021.')
+        self.assertNotContains(resposta, 'parcial=1')
+
+    def test_selo_de_nova(self):
+        from datetime import timedelta
+
+        from django.utils import timezone
+
+        from .models import Referencia
+
+        Referencia.objects.exclude(pk=self.artigo.pk).update(criada_em=timezone.now() - timedelta(days=90))
+        resposta = self.client.get(reverse('web:referencias'))
+
+        self.assertContains(resposta, 'class="selo-nova"', count=1)
+
+    def test_painel_adicionar_editar_remover(self):
+        from .models import Referencia
+
+        self.client.login(username='moderadora', password=SENHA)
+        self.assertEqual(self.client.get(reverse('web:painel_leituras')).status_code, 200)
+
+        resposta = self.client.post(reverse('web:painel_referencia_nova'), {
+            'area': self.neologia.pk, 'categoria': 'livro', 'autoria': 'BASÍLIO, Margarida.',
+            'titulo': 'Formação e classes de palavras.', 'ano': 2004, 'idioma': 'pt',
+            'publicado_em': '', 'detalhes': 'São Paulo: Contexto', 'url': '',
+        })
+        self.assertRedirects(resposta, reverse('web:painel_leituras'), fetch_redirect_response=False)
+        nova = Referencia.objects.get(autoria='BASÍLIO, Margarida')
+        self.assertEqual(nova.titulo, 'Formação e classes de palavras')
+
+        resposta = self.client.post(reverse('web:painel_referencia', args=[nova.pk]), {
+            'area': self.lexico.pk, 'categoria': 'livro', 'autoria': nova.autoria,
+            'titulo': nova.titulo, 'ano': 3000, 'idioma': 'pt',
+        })
+        self.assertContains(resposta, 'Informe um ano válido')
+
+        self.client.post(reverse('web:painel_referencia_remover', args=[nova.pk]))
+        self.assertFalse(Referencia.objects.filter(pk=nova.pk).exists())
+
+    def test_areas_no_painel(self):
+        from .models import AreaTematica
+
+        self.client.login(username='moderadora', password=SENHA)
+        self.client.post(reverse('web:painel_area_adicionar'), {'nome': 'Ensino', 'cor': 'ceu'})
+        ensino = AreaTematica.objects.get(nome='Ensino')
+
+        # Área com referências não pode sumir.
+        self.client.post(reverse('web:painel_area_remover', args=[self.neologia.pk]))
+        self.assertTrue(AreaTematica.objects.filter(pk=self.neologia.pk).exists())
+
+        self.client.post(reverse('web:painel_area_remover', args=[ensino.pk]))
+        self.assertFalse(AreaTematica.objects.filter(pk=ensino.pk).exists())
+
+    def test_so_a_equipe_cadastra(self):
+        self.client.login(username='autora', password=SENHA)
+
+        self.assertEqual(self.client.get(reverse('web:painel_leituras')).status_code, 403)
+        resposta = self.client.post(reverse('web:painel_referencia_remover', args=[self.alves.pk]))
+        self.assertEqual(resposta.status_code, 403)

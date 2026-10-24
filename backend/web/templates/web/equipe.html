@@ -15,24 +15,21 @@
 
 <div class="fundo-veu">
   <div class="conteiner secao">
-    <ul class="equipe">
-      {% for membro in equipe %}
-        <li class="membro">
-          <div class="membro__foto">
-            {% if membro.foto %}
-              <img src="{{ membro.foto.url }}" alt="Foto de {{ membro.nome }}" width="400" height="400" loading="lazy">
-            {% else %}
-              <span class="membro__iniciais" aria-hidden="true">{{ membro.iniciais }}</span>
-            {% endif %}
-          </div>
-          <div class="membro__texto">
-            <p class="membro__nome">{{ membro.nome }}</p>
-            <p class="membro__funcao">{{ membro.funcao }}</p>
-            {% if membro.bio %}<p class="membro__bio">{{ membro.bio }}</p>{% endif %}
-          </div>
-        </li>
-      {% endfor %}
-    </ul>
+    <section class="grupo-equipe" aria-labelledby="grupo-integrantes">
+      <h2 class="grupo-equipe__titulo" id="grupo-integrantes">Integrantes</h2>
+      <ul class="equipe">
+        {% for membro in integrantes %}{% include 'web/_membro.html' %}{% endfor %}
+      </ul>
+    </section>
+
+    {% if ex_integrantes %}
+    <section class="grupo-equipe" aria-labelledby="grupo-ex">
+      <h2 class="grupo-equipe__titulo" id="grupo-ex">Ex-integrantes</h2>
+      <ul class="equipe equipe--ex">
+        {% for membro in ex_integrantes %}{% include 'web/_membro.html' %}{% endfor %}
+      </ul>
+    </section>
+    {% endif %}
   </div>
 </div>
 

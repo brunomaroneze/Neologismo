@@ -1,0 +1,85 @@
+{% extends 'web/painel/base.html' %}
+{% block titulo_painel %}Indicações de leitura{% endblock %}
+{% block titulo_h1 %}Indicações de leitura{% endblock %}
+{% block painel %}
+<div class="painel__barra">
+  <p class="nota">{{ total }} referência{{ total|pluralize }} no <a href="{% url 'web:referencias' %}">banco de referências</a>. Toda referência nova aparece com o selo “Nova” por 30 dias.</p>
+  <a class="botao" href="{% url 'web:painel_referencia_nova' %}">Adicionar referência</a>
+</div>
+
+<form class="filtro-moderacao" method="get" role="search">
+  <label class="visualmente-oculto" for="filtrar">Filtrar referências</label>
+  <input class="entrada" id="filtrar" type="search" name="q" value="{{ busca }}" placeholder="Filtrar por autoria ou título…">
+</form>
+
+{% if pagina.object_list %}
+<div class="tabela-rolagem cartao">
+  <table class="tabela tabela--responsiva">
+    <thead>
+      <tr><th scope="col">Autoria</th><th scope="col">Título</th><th scope="col">Ano</th><th scope="col">Área</th><th scope="col"><span class="visualmente-oculto">Ações</span></th></tr>
+    </thead>
+    <tbody>
+      {% for ref in pagina.object_list %}
+        <tr id="referencia-{{ ref.pk }}">
+          <td data-rotulo="Autoria">{{ ref.autoria }}</td>
+          <td data-rotulo="Título"><cite>{{ ref.titulo }}</cite><br><small class="nota">{{ ref.get_categoria_display }}</small></td>
+          <td data-rotulo="Ano">{{ ref.ano }}</td>
+          <td data-rotulo="Área"><span class="area area--{{ ref.area.cor }}">{{ ref.area.nome }}</span></td>
+          <td class="tabela__acoes">
+            <a class="botao botao--secundario botao--pequeno" href="{% url 'web:painel_referencia' ref.pk %}">Editar<span class="visualmente-oculto"> {{ ref.titulo }}</span></a>
+            <details class="rejeitar">
+              <summary class="botao botao--discreto botao--pequeno">Remover</summary>
+              <form class="rejeitar__corpo" method="post" action="{% url 'web:painel_referencia_remover' ref.pk %}">
+                {% csrf_token %}
+                <input type="hidden" name="voltar" value="{{ request.get_full_path }}">
+                <p class="conta-texto">Remover “{{ ref.titulo }}” do banco de referências?</p>
+                <div class="acoes">
+                  <button class="botao botao--perigo botao--pequeno" type="submit">Remover</button>
+                  <button class="botao botao--discreto botao--pequeno" type="button" data-fechar-detalhes>Cancelar</button>
+                </div>
+              </form>
+            </details>
+          </td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% include 'web/_paginacao.html' %}
+{% else %}
+  <div class="vazio">
+    <p class="vazio__titulo">{% if busca %}Nada encontrado para “{{ busca }}”{% else %}Nenhuma referência ainda{% endif %}</p>
+    <div class="botoes"><a class="botao" href="{% url 'web:painel_referencia_nova' %}">Adicionar referência</a></div>
+  </div>
+{% endif %}
+
+<section class="cartao areas-painel" id="areas" aria-labelledby="titulo-areas">
+  <h2 class="cartao__titulo" id="titulo-areas">Áreas temáticas</h2>
+  <p class="nota">São os grupos do filtro “Área temática” na página pública. Só dá para remover uma área sem referências.</p>
+  <ul class="areas-painel__lista">
+    {% for area in areas %}
+      <li>
+        <span class="area area--{{ area.cor }}">{{ area.nome }}</span>
+        <span class="nota">{{ area.total }} referência{{ area.total|pluralize }}</span>
+        {% if not area.total %}
+          <form method="post" action="{% url 'web:painel_area_remover' area.pk %}">{% csrf_token %}<button class="botao botao--discreto botao--pequeno" type="submit">Remover<span class="visualmente-oculto"> {{ area.nome }}</span></button></form>
+        {% endif %}
+      </li>
+    {% empty %}
+      <li class="nota">Nenhuma área ainda. Crie a primeira abaixo.</li>
+    {% endfor %}
+  </ul>
+  <form class="areas-painel__nova" method="post" action="{% url 'web:painel_area_adicionar' %}">
+    {% csrf_token %}
+    <div class="campo">
+      <label class="campo__rotulo" for="{{ form_area.nome.id_for_label }}">{{ form_area.nome.label }}</label>
+      {{ form_area.nome }}
+    </div>
+    <div class="campo">
+      <label class="campo__rotulo" for="{{ form_area.cor.id_for_label }}">{{ form_area.cor.label }}</label>
+      {{ form_area.cor }}
+    </div>
+    <button class="botao botao--secundario" type="submit">Criar área</button>
+  </form>
+</section>
+{% endblock %}

@@ -25,8 +25,8 @@ from django.views.decorators.http import require_GET, require_POST
 from neologismo import consultas, moderacao
 from neologismo.models import Neologismo
 
-from .forms import MembroEquipeForm, VerbeteForm
-from .models import MembroEquipe
+from .forms import AreaTematicaForm, MembroEquipeForm, ReferenciaForm, VerbeteForm
+from .models import AreaTematica, MembroEquipe, Referencia
 from .views import POR_PAGINA, _destino_seguro
 
 Usuario = get_user_model()
@@ -343,8 +343,13 @@ def usuario_acao(request, pk, acao):
 @admin_required
 @require_GET
 def equipe(request):
+    membros = list(MembroEquipe.objects.all())
+    grupos = [
+        (valor, rotulo, [m for m in membros if m.grupo == valor])
+        for valor, rotulo in MembroEquipe.GRUPOS
+    ]
     return render(request, 'web/painel/equipe.html', _contexto(
-        request, 'equipe', membros=MembroEquipe.objects.all(),
+        request, 'equipe', grupos=grupos, total=len(membros),
     ))
 
 
@@ -357,7 +362,8 @@ def membro(request, pk=None):
         novo = instancia is None
         membro_salvo = form.save(commit=False)
         if novo:
-            # Novos membros entram no fim da lista.
+            # Novos membros entram no fim da lista (a ordem é contada dentro
+            # de cada grupo, então o fim geral também é o fim do grupo).
             maior = MembroEquipe.objects.aggregate(m=Max('ordem'))['m'] or 0
             membro_salvo.ordem = maior + 10
         membro_salvo.save()
@@ -368,6 +374,21 @@ def membro(request, pk=None):
     return render(request, 'web/painel/membro.html', _contexto(
         request, 'equipe', form=form, membro=instancia,
     ))
+
+
+@admin_required
+@require_POST
+def membro_grupo(request, pk):
+    """Passa um membro de integrante para ex-integrante, ou o contrário."""
+    membro_alvo = get_object_or_404(MembroEquipe, pk=pk)
+    ex = membro_alvo.grupo == MembroEquipe.EX_INTEGRANTE
+    membro_alvo.grupo = MembroEquipe.INTEGRANTE if ex else MembroEquipe.EX_INTEGRANTE
+    # Entra no fim do novo grupo.
+    membro_alvo.ordem = (MembroEquipe.objects.aggregate(m=Max('ordem'))['m'] or 0) + 10
+    membro_alvo.save(update_fields=['grupo', 'ordem'])
+    novo = 'integrante' if ex else 'ex-integrante'
+    messages.success(request, f'{membro_alvo.nome} agora aparece como {novo}.')
+    return redirect(_destino_seguro(request, f"{reverse('web:painel_equipe')}#membro-{pk}"))
 
 
 @admin_required
@@ -387,7 +408,9 @@ def membro_remover(request, pk):
 def membro_mover(request, pk, direcao):
     if direcao not in ('subir', 'descer'):
         raise Http404
-    membros = list(MembroEquipe.objects.all())
+    alvo = get_object_or_404(MembroEquipe, pk=pk)
+    # Sobe e desce dentro do próprio grupo.
+    membros = list(MembroEquipe.objects.filter(grupo=alvo.grupo))
     indice = next((i for i, m in enumerate(membros) if m.pk == pk), None)
     if indice is None:
         raise Http404
@@ -399,6 +422,77 @@ def membro_mover(request, pk, direcao):
             for posicao, item in enumerate(membros, start=1):
                 MembroEquipe.objects.filter(pk=item.pk).update(ordem=posicao * 10)
     return redirect(_destino_seguro(request, f"{reverse('web:painel_equipe')}#membro-{pk}"))
+
+
+# --- Indicações de leitura -----------------------------------------------------
+
+@equipe_required
+def leituras(request):
+    busca = request.GET.get('q', '').strip()
+    qs = Referencia.objects.select_related('area').order_by('autoria', 'ano')
+    if busca:
+        qs = qs.filter(Q(autoria__unaccent__icontains=busca) | Q(titulo__unaccent__icontains=busca))
+    pagina = Paginator(qs, 30).get_page(request.GET.get('pagina'))
+    return render(request, 'web/painel/leituras.html', _contexto(
+        request, 'leituras', pagina=pagina, busca=busca, total=Referencia.objects.count(),
+        areas=AreaTematica.objects.annotate(total=Count('referencias')),
+        form_area=AreaTematicaForm(),
+    ))
+
+
+@equipe_required
+def referencia(request, pk=None):
+    instancia = get_object_or_404(Referencia, pk=pk) if pk else None
+    form = ReferenciaForm(request.POST or None, instance=instancia)
+    if request.method == 'POST' and form.is_valid():
+        salva = form.save()
+        acao = 'adicionada' if instancia is None else 'atualizada'
+        messages.success(request, f'Referência “{salva.titulo}” {acao}.')
+        if instancia is None and request.POST.get('outra'):
+            return redirect('web:painel_referencia_nova')
+        return redirect('web:painel_leituras')
+    return render(request, 'web/painel/referencia.html', _contexto(
+        request, 'leituras', form=form, referencia=instancia,
+        sem_areas=not AreaTematica.objects.exists(),
+    ))
+
+
+@equipe_required
+@require_POST
+def referencia_remover(request, pk):
+    alvo = get_object_or_404(Referencia, pk=pk)
+    titulo = alvo.titulo
+    alvo.delete()
+    messages.success(request, f'Referência “{titulo}” removida.')
+    return redirect(_destino_seguro(request, request.POST.get('voltar'), 'web:painel_leituras'))
+
+
+@equipe_required
+@require_POST
+def area_adicionar(request):
+    form = AreaTematicaForm(request.POST)
+    if form.is_valid():
+        area = form.save()
+        messages.success(request, f'Área “{area.nome}” criada.')
+    else:
+        erros = [e for lista in form.errors.values() for e in lista]
+        messages.error(request, ' '.join(erros) or 'Não foi possível criar a área.')
+    return redirect(f"{reverse('web:painel_leituras')}#areas")
+
+
+@equipe_required
+@require_POST
+def area_remover(request, pk):
+    area = get_object_or_404(AreaTematica, pk=pk)
+    if area.referencias.exists():
+        messages.error(
+            request,
+            f'A área “{area.nome}” ainda tem referências. Mude-as de área antes de remover.',
+        )
+    else:
+        area.delete()
+        messages.success(request, f'Área “{area.nome}” removida.')
+    return redirect(f"{reverse('web:painel_leituras')}#areas")
 
 
 # --- Detector de neologismos ---------------------------------------------------

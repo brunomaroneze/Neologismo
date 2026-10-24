@@ -1,0 +1,34 @@
+{% extends 'web/painel/base.html' %}
+{% block titulo_painel %}{% if referencia %}Editar referência{% else %}Adicionar referência{% endif %}{% endblock %}
+{% block titulo_h1 %}{% if referencia %}Editar referência{% else %}Adicionar referência{% endif %}{% endblock %}
+{% block painel %}
+<p><a class="voltar" href="{% url 'web:painel_leituras' %}">← Voltar às indicações de leitura</a></p>
+
+{% if sem_areas %}
+  <div class="vazio">
+    <p class="vazio__titulo">Crie uma área temática primeiro</p>
+    <p>Toda referência pertence a uma área. Crie a primeira no fim da página de indicações de leitura.</p>
+    <div class="botoes"><a class="botao" href="{% url 'web:painel_leituras' %}#areas">Criar área temática</a></div>
+  </div>
+{% else %}
+<form class="formulario cartao formulario--referencia" method="post" novalidate>
+  {% csrf_token %}
+  {% if form.non_field_errors %}<div class="alerta" role="alert">{{ form.non_field_errors }}</div>{% endif %}
+  <div class="formulario__grade">
+    {% for campo in form %}
+      <div class="campo campo--{{ campo.name }}">
+        <label class="campo__rotulo" for="{{ campo.id_for_label }}">{{ campo.label }}{% if not campo.field.required %} <span class="campo__opcional">(opcional)</span>{% endif %}</label>
+        {{ campo }}
+        {% if campo.help_text %}<p class="campo__ajuda">{{ campo.help_text }}</p>{% endif %}
+        {% for erro in campo.errors %}<p class="campo__erro">{{ erro }}</p>{% endfor %}
+      </div>
+    {% endfor %}
+  </div>
+  <div class="acoes">
+    <button class="botao" type="submit">{% if referencia %}Salvar{% else %}Adicionar{% endif %}</button>
+    {% if not referencia %}<button class="botao botao--secundario" type="submit" name="outra" value="1">Adicionar e cadastrar outra</button>{% endif %}
+    <a href="{% url 'web:painel_leituras' %}">Cancelar</a>
+  </div>
+</form>
+{% endif %}
+{% endblock %}

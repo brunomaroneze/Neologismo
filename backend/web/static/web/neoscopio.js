@@ -407,6 +407,128 @@
     window.addEventListener("pageshow", esconderCarregando);
   }
 
+  // --- Indicações de leitura: filtros sem recarregar a página -----------------
+  // O formulário e os links funcionam sozinhos (o servidor filtra e ordena);
+  // aqui eles só passam a trocar a tabela no lugar, enquanto a pessoa digita.
+  var acervo = document.querySelector("[data-acervo]");
+  var resultados = document.querySelector("[data-acervo-resultados]");
+  if (acervo && resultados) {
+    var semJs = acervo.querySelector("[data-sem-js]");
+    if (semJs) semJs.hidden = true;
+    var imprimir = acervo.querySelector("[data-imprimir]");
+    if (imprimir) {
+      imprimir.hidden = false;
+      imprimir.addEventListener("click", function () { window.print(); });
+    }
+    // A referência ABNT completa sai na impressão.
+    window.addEventListener("beforeprint", function () {
+      resultados.querySelectorAll("details.abnt").forEach(function (d) {
+        if (!d.open) { d.open = true; d.setAttribute("data-aberto-impressao", ""); }
+      });
+    });
+    window.addEventListener("afterprint", function () {
+      resultados.querySelectorAll("[data-aberto-impressao]").forEach(function (d) {
+        d.open = false; d.removeAttribute("data-aberto-impressao");
+      });
+    });
+
+    var limpar = acervo.querySelector("[data-limpar]");
+    var pedido = 0;
+
+    function enderecoDoFormulario() {
+      var url = new URL(acervo.action, location.href);
+      url.hash = "";
+      new FormData(acervo).forEach(function (valor, chave) {
+        if (valor !== "") url.searchParams.append(chave, valor);
+      });
+      return url;
+    }
+
+    // Deixa os campos iguais ao endereço (depois de ordenar, limpar ou voltar).
+    function sincronizar(url) {
+      var p = url.searchParams;
+      acervo.querySelectorAll("input[type=checkbox]").forEach(function (caixa) {
+        caixa.checked = p.getAll(caixa.name).indexOf(caixa.value) !== -1;
+      });
+      ["autor", "titulo", "ano", "q", "ordem"].forEach(function (nome) {
+        var campo = acervo.elements[nome];
+        if (campo && campo !== document.activeElement) campo.value = p.get(nome) || (nome === "ordem" ? "-adicao" : "");
+      });
+      var porPagina = acervo.elements.por_pagina;
+      if (porPagina) porPagina.value = p.get("por_pagina") || "25";
+      if (limpar) {
+        limpar.hidden = !["area", "categoria", "autor", "titulo", "ano", "q"].some(function (nome) {
+          return p.getAll(nome).some(function (v) { return v !== ""; });
+        });
+      }
+    }
+
+    function carregar(url, opcoes) {
+      var alvo = enderecoInterno(url.href);
+      if (!alvo) return;
+      var numero = ++pedido;
+      var parcial = new URL(alvo);
+      parcial.searchParams.set("parcial", "1");
+      resultados.setAttribute("aria-busy", "true");
+      fetch(parcial, { credentials: "same-origin" })
+        .then(function (resposta) {
+          if (!resposta.ok) throw new Error(String(resposta.status));
+          return resposta.text();
+        })
+        .then(function (html) {
+          if (numero !== pedido) return; // chegou depois de um pedido mais novo
+          var molde = document.createElement("template");
+          molde.innerHTML = html;
+          resultados.replaceChildren(molde.content);
+          resultados.removeAttribute("aria-busy");
+          var limpo = new URL(alvo);
+          limpo.hash = "acervo";
+          if (opcoes && opcoes.historico) history.pushState(null, "", limpo);
+          else history.replaceState(null, "", limpo);
+          sincronizar(limpo);
+          if (opcoes && opcoes.rolar) {
+            var topo = resultados.getBoundingClientRect().top + window.scrollY - 90;
+            if (window.scrollY > topo) window.scrollTo({ top: topo });
+          }
+        })
+        .catch(function () {
+          // Sem resposta: navega de verdade, o servidor resolve.
+          location.href = alvo;
+        });
+    }
+
+    var espera;
+    acervo.addEventListener("input", function (evento) {
+      if (evento.target.type === "checkbox" || evento.target.tagName === "SELECT") return;
+      clearTimeout(espera);
+      espera = setTimeout(function () { carregar(enderecoDoFormulario()); }, 300);
+    });
+    acervo.addEventListener("change", function (evento) {
+      if (evento.target.type === "checkbox" || evento.target.tagName === "SELECT") {
+        carregar(enderecoDoFormulario());
+      }
+    });
+    acervo.addEventListener("submit", function (evento) {
+      evento.preventDefault();
+      clearTimeout(espera);
+      carregar(enderecoDoFormulario());
+    });
+
+    // Ordenar, paginar e limpar: links dentro e fora da tabela.
+    document.addEventListener("click", function (evento) {
+      var link = evento.target.closest("a[data-acervo-link], [data-acervo-resultados] .paginacao a");
+      if (!link || evento.metaKey || evento.ctrlKey || evento.shiftKey || evento.button !== 0) return;
+      evento.preventDefault();
+      carregar(new URL(link.href, location.href), { historico: true, rolar: true });
+    }, true);
+
+    window.addEventListener("popstate", function () {
+      if (location.pathname === new URL(acervo.action, location.href).pathname) {
+        carregar(new URL(location.href));
+      }
+    });
+  }
+
   // --- Assistente (Pamola): respostas prontas --------------------------------
   var assistente = document.querySelector("[data-assistente]");
   if (assistente) {
