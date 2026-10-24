@@ -25,8 +25,8 @@ from django.views.decorators.http import require_GET, require_POST
 from neologismo import consultas, moderacao
 from neologismo.models import Neologismo
 
-from .forms import MembroEquipeForm, VerbeteForm
-from .models import MembroEquipe
+from .forms import AreaTematicaForm, MembroEquipeForm, ReferenciaForm, VerbeteForm
+from .models import AreaTematica, MembroEquipe, Referencia
 from .views import POR_PAGINA, _destino_seguro
 
 Usuario = get_user_model()
@@ -422,6 +422,77 @@ def membro_mover(request, pk, direcao):
             for posicao, item in enumerate(membros, start=1):
                 MembroEquipe.objects.filter(pk=item.pk).update(ordem=posicao * 10)
     return redirect(_destino_seguro(request, f"{reverse('web:painel_equipe')}#membro-{pk}"))
+
+
+# --- Indicações de leitura -----------------------------------------------------
+
+@equipe_required
+def leituras(request):
+    busca = request.GET.get('q', '').strip()
+    qs = Referencia.objects.select_related('area').order_by('autoria', 'ano')
+    if busca:
+        qs = qs.filter(Q(autoria__unaccent__icontains=busca) | Q(titulo__unaccent__icontains=busca))
+    pagina = Paginator(qs, 30).get_page(request.GET.get('pagina'))
+    return render(request, 'web/painel/leituras.html', _contexto(
+        request, 'leituras', pagina=pagina, busca=busca, total=Referencia.objects.count(),
+        areas=AreaTematica.objects.annotate(total=Count('referencias')),
+        form_area=AreaTematicaForm(),
+    ))
+
+
+@equipe_required
+def referencia(request, pk=None):
+    instancia = get_object_or_404(Referencia, pk=pk) if pk else None
+    form = ReferenciaForm(request.POST or None, instance=instancia)
+    if request.method == 'POST' and form.is_valid():
+        salva = form.save()
+        acao = 'adicionada' if instancia is None else 'atualizada'
+        messages.success(request, f'Referência “{salva.titulo}” {acao}.')
+        if instancia is None and request.POST.get('outra'):
+            return redirect('web:painel_referencia_nova')
+        return redirect('web:painel_leituras')
+    return render(request, 'web/painel/referencia.html', _contexto(
+        request, 'leituras', form=form, referencia=instancia,
+        sem_areas=not AreaTematica.objects.exists(),
+    ))
+
+
+@equipe_required
+@require_POST
+def referencia_remover(request, pk):
+    alvo = get_object_or_404(Referencia, pk=pk)
+    titulo = alvo.titulo
+    alvo.delete()
+    messages.success(request, f'Referência “{titulo}” removida.')
+    return redirect(_destino_seguro(request, request.POST.get('voltar'), 'web:painel_leituras'))
+
+
+@equipe_required
+@require_POST
+def area_adicionar(request):
+    form = AreaTematicaForm(request.POST)
+    if form.is_valid():
+        area = form.save()
+        messages.success(request, f'Área “{area.nome}” criada.')
+    else:
+        erros = [e for lista in form.errors.values() for e in lista]
+        messages.error(request, ' '.join(erros) or 'Não foi possível criar a área.')
+    return redirect(f"{reverse('web:painel_leituras')}#areas")
+
+
+@equipe_required
+@require_POST
+def area_remover(request, pk):
+    area = get_object_or_404(AreaTematica, pk=pk)
+    if area.referencias.exists():
+        messages.error(
+            request,
+            f'A área “{area.nome}” ainda tem referências. Mude-as de área antes de remover.',
+        )
+    else:
+        area.delete()
+        messages.success(request, f'Área “{area.nome}” removida.')
+    return redirect(f"{reverse('web:painel_leituras')}#areas")
 
 
 # --- Detector de neologismos ---------------------------------------------------

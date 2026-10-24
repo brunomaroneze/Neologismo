@@ -5,7 +5,7 @@ from rest_framework.exceptions import ValidationError as ErroDRF
 from neologismo.models import Neologismo
 from neologismo.serializers import MAX_TAGS, NeologismoSerializer
 
-from .models import MembroEquipe
+from .models import AreaTematica, MembroEquipe, Referencia
 
 TIPOS_FOTO = ('image/jpeg', 'image/png', 'image/webp')
 TAMANHO_MAXIMO_FOTO = 8 * 1024 * 1024
@@ -138,6 +138,50 @@ class PerfilForm(forms.ModelForm):
         model = get_user_model()
         fields = ['first_name', 'last_name']
         labels = {'first_name': 'Nome', 'last_name': 'Sobrenome'}
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for campo in self.fields.values():
+            campo.widget.attrs.setdefault('class', 'entrada')
+
+
+class ReferenciaForm(forms.ModelForm):
+    class Meta:
+        model = Referencia
+        fields = [
+            'area', 'categoria', 'autoria', 'titulo', 'publicado_em', 'detalhes', 'ano', 'idioma',
+            'url',
+        ]
+        labels = {'area': 'Área temática', 'titulo': 'Título', 'url': 'Link'}
+        help_texts = {'url': 'DOI, página da editora ou repositório.'}
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['area'].empty_label = 'Escolha uma área'
+        for campo in self.fields.values():
+            campo.widget.attrs.setdefault('class', 'entrada')
+
+    def clean_ano(self):
+        from django.utils import timezone
+
+        ano = self.cleaned_data['ano']
+        if not 1500 <= ano <= timezone.now().year + 1:
+            raise forms.ValidationError('Informe um ano válido, com quatro dígitos.')
+        return ano
+
+    def clean_autoria(self):
+        return self.cleaned_data['autoria'].strip().rstrip('.')
+
+    def clean_titulo(self):
+        return self.cleaned_data['titulo'].strip().rstrip('.')
+
+
+class AreaTematicaForm(forms.ModelForm):
+    class Meta:
+        model = AreaTematica
+        fields = ['nome', 'cor']
+        labels = {'nome': 'Nova área temática', 'cor': 'Cor'}
+        error_messages = {'nome': {'unique': 'Já existe uma área com esse nome.'}}
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
