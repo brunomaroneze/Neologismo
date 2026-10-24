@@ -17,7 +17,7 @@
 {% block conteudo %}
 <div class="conteiner">
   <article class="verbete">
-    <a class="voltar" href="{% url 'web:inicio' %}">← Voltar ao dicionário</a>
+    <a class="voltar" href="{% url 'web:inicio' %}">← Voltar ao Banco de Neologismos</a>
 
     {% if verbete.status == 'pendente' %}
       <div class="estado"><p><strong>Em moderação.</strong> Só você e a equipe conseguem ver este neologismo até que ele seja aprovado.</p></div>
