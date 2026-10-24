@@ -25,7 +25,6 @@
     {% if ex_integrantes %}
     <section class="grupo-equipe" aria-labelledby="grupo-ex">
       <h2 class="grupo-equipe__titulo" id="grupo-ex">Ex-integrantes</h2>
-      <p class="grupo-equipe__nota">Pessoas que fizeram parte do Neoscópio e ajudaram a construí-lo.</p>
       <ul class="equipe equipe--ex">
         {% for membro in ex_integrantes %}{% include 'web/_membro.html' %}{% endfor %}
       </ul>
