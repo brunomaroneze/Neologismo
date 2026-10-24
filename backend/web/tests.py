@@ -741,3 +741,46 @@ class LeiturasTests(BaseWeb):
         self.assertEqual(self.client.get(reverse('web:painel_leituras')).status_code, 403)
         resposta = self.client.post(reverse('web:painel_referencia_remover', args=[self.alves.pk]))
         self.assertEqual(resposta.status_code, 403)
+
+
+class SincronizarEquipeTests(TestCase):
+    ATUAIS = [
+        'Prof. Ana Maria Ribeiro', 'Fernanda Assef', 'Julia Magnavita', 'Matheus Lima',
+        'Amanda Candido', 'Igor Varejão', 'Karina Marques', 'Pyetra Werneck',
+        'Beatriz Latini - UFMG', 'João Colombo', 'Luis Eduardo', 'Rômulo Ferreira',
+        'João Victor Ifran', 'Bruno Maroneze - UFGD',
+    ]
+
+    def test_reconhece_quem_ja_existe_e_mantem_a_foto(self):
+        from io import StringIO
+
+        from django.core.management import call_command
+
+        from .models import MembroEquipe
+
+        # A migração de dados já cria a equipe; o teste parte do zero.
+        MembroEquipe.objects.all().delete()
+        for ordem, nome in enumerate(self.ATUAIS):
+            MembroEquipe.objects.create(
+                nome=nome, funcao='x', ordem=ordem, foto=f'equipe/{ordem}.jpg', bio=f'bio {ordem}',
+            )
+
+        call_command('sincronizar_equipe', stdout=StringIO())
+
+        self.assertEqual(MembroEquipe.objects.count(), 38)
+        igor = MembroEquipe.objects.get(nome='Igor Mattos dos Santos Varejao')
+        self.assertEqual(igor.foto.name, 'equipe/5.jpg')
+        self.assertEqual(igor.bio, 'bio 5')
+        self.assertEqual(igor.grupo, MembroEquipe.EX_INTEGRANTE)
+        ana = MembroEquipe.objects.get(nome='Ana Maria Ribeiro de Jesus')
+        self.assertEqual((ana.foto.name, ana.ordem), ('equipe/0.jpg', 0))
+        matheus = MembroEquipe.objects.get(nome='Matheus Lima Jardim')
+        self.assertEqual(matheus.foto.name, 'equipe/3.jpg')
+        self.assertEqual(
+            MembroEquipe.objects.filter(grupo=MembroEquipe.INTEGRANTE).count(), 14
+        )
+
+        # Rodar de novo não duplica.
+        call_command('sincronizar_equipe', stdout=StringIO())
+        self.assertEqual(MembroEquipe.objects.count(), 38)
+
