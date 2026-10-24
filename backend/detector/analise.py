@@ -32,6 +32,10 @@ FINAIS_ENCLITICOS = [
     '-o', '-a', '-os', '-as', '-lo', '-la', '-los', '-las', '-no', '-na', '-nos', '-nas',
     '-se', '-lhe', '-lhes', '-me', '-te',
 ]
+# Derivados de nome próprio ("Bolsonarismo", "Lulista") costumam vir com
+# maiúscula e o spaCy os marca como nome de pessoa; com estes sufixos, a
+# palavra é analisada mesmo assim. (-iano fica de fora: Mariana, Adriano...)
+SUFIXOS_DE_DERIVADOS = ('ismo', 'ismos', 'ista', 'istas', 'ização', 'izações')
 HORA = re.compile(r'^\d{1,2}h(\d{2})?(min)?$')
 NAO_LETRA = re.compile(r'[^a-záàâãéêíóôõúüç\-]')
 
@@ -48,6 +52,13 @@ def carregar_nlp():
             _nlp = spacy.load('pt_core_news_sm')
             _nlp.max_length = MAX_CARACTERES * 2
     return _nlp
+
+
+def e_derivado_de_nome(palavra):
+    return any(
+        palavra.endswith(sufixo) and len(palavra) >= len(sufixo) + 4
+        for sufixo in SUFIXOS_DE_DERIVADOS
+    )
 
 
 def formas_para_conferir(palavra, lema):
@@ -108,9 +119,9 @@ def analisar(texto):
         if not palavra or HORA.match(token.text.lower()):
             continue
         total += 1
-        if (
-            len(palavra) < 3
-            or token.pos_ not in CLASSES_CANDIDATAS
+        derivado = e_derivado_de_nome(palavra)
+        if len(palavra) < 3 or not derivado and (
+            token.pos_ not in CLASSES_CANDIDATAS
             or token.ent_type_ in ENTIDADES_IGNORADAS
             # maiúscula no meio da frase: nome próprio que o spaCy não marcou
             or token.text[:1].isupper() and token.i != token.sent.start
@@ -140,7 +151,7 @@ def analisar(texto):
         candidatos[palavra] = Candidato(
             palavra=palavra,
             lema=lema or palavra,
-            classe=CLASSES_CANDIDATAS[token.pos_],
+            classe=CLASSES_CANDIDATAS.get(token.pos_, 'Substantivo'),
             frase=token.sent.text.strip(),
         )
 

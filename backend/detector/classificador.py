@@ -56,6 +56,12 @@ ESTRANGEIROS = {
 }
 FINAIS_PORTUGUESES = ['ão', 'ões']
 
+# Sufixos inequívocos: o treino tem poucos exemplos deles e o modelo errava
+# ("bolsonarismo" saía como composição neoclássica). Com hífen pode haver
+# prefixo também, então aí decide o modelo.
+SUFIXOS_INEQUIVOCOS = ('ismo', 'ismos', 'ista', 'istas', 'ização', 'izações')
+CONFIANCA_DA_REGRA = 0.9
+
 
 def caracteristicas(palavra):
     """Vetor de características explícitas (mesma lógica do original)."""
@@ -139,10 +145,14 @@ class Classificador:
         self._garantir_modelo()
         probabilidades = self._modelo.predict_proba(self._matriz(palavras))
         classes = self._modelo.classes_
-        return [
-            (classes[int(np.argmax(linha))], float(np.max(linha)))
-            for linha in probabilidades
-        ]
+        sugestoes = []
+        for palavra, linha in zip(palavras, probabilidades, strict=True):
+            p = palavra.lower()
+            if '-' not in p and p.endswith(SUFIXOS_INEQUIVOCOS) and len(p) > 6:
+                sugestoes.append(('derivação sufixal', CONFIANCA_DA_REGRA))
+            else:
+                sugestoes.append((classes[int(np.argmax(linha))], float(np.max(linha))))
+        return sugestoes
 
 
 classificador = Classificador()

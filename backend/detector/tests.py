@@ -18,7 +18,7 @@ LEXICO = [
     'tarde', 'passar', 'chefe', 'escrita', 'virar', 'tema', 'governo', 'anunciar',
     'medida', 'medidas', 'influenciador', 'influenciadores', 'falar', 'público', 'precoce',
     'dizer', 'ir', 'fazer', 'amanhã', 'casal', 'famoso', 'mania', 'jovem', 'jovens',
-    'ecológico', 'luto', 'mundo',
+    'ecológico', 'luto', 'mundo', 'dividir', 'país', 'batista',
 ]
 TEXTO = (
     'A emojificação das conversas preocupa linguistas. Maria passou a tarde no Instagram '
@@ -46,6 +46,11 @@ class ClassificadorTests(TestCase):
             self.assertLessEqual(confianca, 1)
         self.assertEqual(sugestoes[0][0], 'composição neoclássica')
 
+    def test_sufixo_ismo_e_derivacao_sufixal(self):
+        for processo, confianca in classificador.sugerir(['bolsonarismo', 'lulista']):
+            self.assertEqual(processo, 'derivação sufixal')
+            self.assertGreaterEqual(confianca, 0.9)
+
 
 class AnaliseTests(TestCase):
     def setUp(self):
@@ -59,6 +64,14 @@ class AnaliseTests(TestCase):
         # Nomes próprios, números, horas e palavras do léxico ficam de fora.
         self.assertFalse(palavras & {'maria', 'instagram', 'joão', 'vitória', '9h30', '25',
                                      'conversas', 'linguistas', 'fazê-lo'})
+
+    def test_derivado_de_nome_com_maiuscula(self):
+        texto = 'O Bolsonarismo e o lulismo dividem o país, disse Mariana Batista.'
+
+        palavras = {c.palavra for c in analisar(texto).candidatos}
+
+        self.assertTrue({'bolsonarismo', 'lulismo'} <= palavras)
+        self.assertFalse(palavras & {'mariana', 'batista'})
 
     def test_marca_os_candidatos_no_texto(self):
         resultado = analisar(TEXTO)
