@@ -3,14 +3,13 @@
 #
 #   docker compose -f docker-compose.prod.yml -f docker-compose.nginx.yml up -d --build
 #
-# O site é renderizado pelo próprio Django (app `web`), então o container do
-# Next.js fica desligado (só sobe com --profile next). O Caddy do compose de
-# produção disputaria as portas 80/443 com o nginx e também fica desligado.
+# O Caddy do compose de produção disputaria as portas 80/443 com o nginx, então
+# fica desligado (só sobe com --profile caddy).
 #
 # O backend é publicado só em 127.0.0.1, em duas portas: 8000 (para onde o
-# nginx manda /api) e 3000 (para onde o nginx mandava o site do Next). Assim
-# uma VPS configurada para o frontend antigo passa a servir o Django sem
-# mexer no nginx. Em instalação nova, use deploy/nginx-neoscopio.conf, que
+# nginx manda /api) e 3000 (para onde o nginx mandava o site do antigo
+# frontend em Next.js). Assim uma VPS configurada para o frontend antigo serve
+# o Django sem mexer no nginx. Em instalação nova, use deploy/nginx-neoscopio.conf, que
 # manda tudo para a 8000.
 
 services:
@@ -18,9 +17,6 @@ services:
     ports:
       - "127.0.0.1:${BACKEND_PORT:-8000}:8000"
       - "127.0.0.1:${FRONTEND_PORT:-3000}:8000"
-
-  frontend:
-    profiles: ["next"]
 
   caddy:
     profiles: ["caddy"]

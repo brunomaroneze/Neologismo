@@ -1,7 +1,9 @@
 import random
+import secrets
 
+from django.conf import settings
 from django.contrib.auth import get_user_model
-from django.core.management.base import BaseCommand
+from django.core.management.base import BaseCommand, CommandError
 
 from neologismo.models import Contexto, Neologismo
 
@@ -165,17 +167,30 @@ class Command(BaseCommand):
         )
         parser.add_argument(
             '--admin-password',
-            default='admin123',
-            help='Senha do usuário admin criado (padrão: admin123).',
+            help='Senha do usuário admin criado. Sem ela, uma senha aleatória é '
+                 'gerada e exibida uma vez.',
+        )
+        parser.add_argument(
+            '--permitir-producao',
+            action='store_true',
+            help='Roda mesmo com DEBUG=False (ex.: homologação). Use com cuidado.',
         )
 
     def handle(self, *args, **options):
+        # Dados falsos e uma conta de administrador não têm o que fazer num
+        # site público por engano.
+        if not settings.DEBUG and not options['permitir_producao']:
+            raise CommandError(
+                'seed_fake_data só roda com DEBUG=True. Para homologação, '
+                'passe --permitir-producao e uma --admin-password forte.'
+            )
+
         if options['flush']:
             total = Neologismo.objects.count()
             Neologismo.objects.all().delete()
             self.stdout.write(self.style.WARNING(f'Removidos {total} neologismos.'))
 
-        admin = self._criar_admin(options['admin_password'])
+        admin = self._criar_admin(options['admin_password'] or secrets.token_urlsafe(12))
         leitores = self._criar_leitores()
 
         criados = 0
@@ -223,8 +238,9 @@ class Command(BaseCommand):
             username='admin',
             defaults={
                 'email': 'admin@neoscopio.local',
+                # Administrador do painel, não superusuário: o Django admin
+                # inteiro não deve depender de uma conta de demonstração.
                 'is_staff': True,
-                'is_superuser': True,
                 # Sem is_admin=True o login devolve is_admin=false e o painel
                 # de moderação nunca aparece no frontend.
                 'is_admin': True,

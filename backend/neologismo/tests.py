@@ -1,12 +1,16 @@
+from io import StringIO
 from smtplib import SMTPException
 from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
 from django.core import mail
 from django.core.cache import cache
-from django.test import override_settings
+from django.core.management import call_command
+from django.core.management.base import CommandError
+from django.test import TestCase, override_settings
 from rest_framework import status
 from rest_framework.test import APITestCase
+from rest_framework.throttling import ScopedRateThrottle
 
 from .models import Neologismo
 
@@ -152,6 +156,33 @@ class PermissaoDeEscritaTests(SemThrottleMixin, APITestCase):
         cls.staff = Usuario.objects.create_user(
             'chefe', password='SenhaForte123', is_staff=True
         )
+
+    def test_anonimo_nao_cria_verbete(self):
+        """Regressão: o POST anônimo chegava ao perform_create e devolvia 500."""
+        resposta = self.client.post('/api/neologismos/', {
+            'titulo': 'Anônimo', 'classe_gramatical': 'Substantivo',
+            'definicao': 'Uma definição suficientemente longa.',
+        }, format='json')
+        self.assertEqual(resposta.status_code, status.HTTP_401_UNAUTHORIZED)
+        self.assertFalse(Neologismo.objects.filter(titulo='Anônimo').exists())
+
+    def test_limite_de_envio_vale_na_api(self):
+        """Regressão: sem ScopedRateThrottle o escopo 'envio' era ignorado."""
+        self.client.force_authenticate(self.autor)
+        corpo = {
+            'classe_gramatical': 'Substantivo',
+            'definicao': 'Uma definição suficientemente longa.',
+        }
+        with patch.dict(ScopedRateThrottle.THROTTLE_RATES, {'envio': '2/hour'}):
+            for n in range(2):
+                resposta = self.client.post(
+                    '/api/neologismos/', {**corpo, 'titulo': f'Envio {n}'}, format='json'
+                )
+                self.assertEqual(resposta.status_code, status.HTTP_201_CREATED)
+            resposta = self.client.post(
+                '/api/neologismos/', {**corpo, 'titulo': 'Envio 3'}, format='json'
+            )
+        self.assertEqual(resposta.status_code, status.HTTP_429_TOO_MANY_REQUESTS)
 
     def test_terceiro_nao_edita_verbete_de_outro(self):
         """Regressão: qualquer logado podia dar PUT/DELETE em verbete alheio."""
@@ -611,3 +642,18 @@ class AvisoDeModeracaoTests(SemThrottleMixin, APITestCase):
         self.assertEqual(resposta.status_code, status.HTTP_200_OK)
         verbete.refresh_from_db()
         self.assertEqual(verbete.status, Neologismo.APROVADO)
+
+
+class SeedTests(TestCase):
+    def test_recusa_rodar_sem_debug(self):
+        with self.assertRaises(CommandError):
+            call_command('seed_fake_data', stdout=StringIO())
+        self.assertFalse(Usuario.objects.filter(username='admin').exists())
+
+    @override_settings(DEBUG=True)
+    def test_admin_de_demonstracao_nao_e_superusuario_nem_usa_senha_fixa(self):
+        call_command('seed_fake_data', stdout=StringIO())
+        admin = Usuario.objects.get(username='admin')
+        self.assertTrue(admin.is_admin)
+        self.assertFalse(admin.is_superuser)
+        self.assertFalse(admin.check_password('admin123'))

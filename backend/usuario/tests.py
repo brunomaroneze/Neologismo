@@ -273,6 +273,18 @@ class RecuperacaoDeSenhaTests(SemThrottleMixin, APITestCase):
         self.assertEqual(resposta.status_code, status.HTTP_200_OK)
         self.assertEqual(len(mail.outbox), 0)
 
+    def test_conta_desativada_depois_do_pedido_nao_troca_a_senha(self):
+        uid, token = self._pedir_link()
+        self.usuario.is_active = False
+        self.usuario.save()
+
+        resposta = self.client.post(self.url_redefinir, {
+            'uid': uid, 'token': token, 'password': 'SenhaNovaMuitoBoa123',
+        }, format='json')
+        self.assertEqual(resposta.status_code, status.HTTP_400_BAD_REQUEST)
+        self.usuario.refresh_from_db()
+        self.assertTrue(self.usuario.check_password('SenhaAntiga123'))
+
     def test_redefinicao_troca_a_senha(self):
         uid, token = self._pedir_link()
 

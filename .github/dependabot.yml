@@ -34,30 +34,6 @@ updates:
       - dependency-name: Django
         update-types: [version-update:semver-major]
 
-  # --- Frontend (npm) ---
-  - package-ecosystem: npm
-    directory: /frontend
-    schedule:
-      interval: weekly
-      day: monday
-      time: '06:00'
-      timezone: America/Sao_Paulo
-    open-pull-requests-limit: 5
-    commit-message:
-      prefix: 'deps(frontend)'
-    groups:
-      frontend-compativeis:
-        patterns: ['*']
-        update-types: [minor, patch]
-    ignore:
-      # React e Next major andam juntos e mudam API: atualização planejada.
-      - dependency-name: next
-        update-types: [version-update:semver-major]
-      - dependency-name: react
-        update-types: [version-update:semver-major]
-      - dependency-name: react-dom
-        update-types: [version-update:semver-major]
-
   # --- Actions usadas nos workflows ---
   - package-ecosystem: github-actions
     directory: /
@@ -76,7 +52,6 @@ updates:
   - package-ecosystem: docker
     directories:
       - /backend
-      - /frontend
     schedule:
       interval: weekly
       day: monday

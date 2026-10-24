@@ -90,8 +90,8 @@ class MembroEquipeForm(forms.ModelForm):
         }
         help_texts = {
             'nome': (
-                'Para indicar outra instituição, use “Nome - SIGLA”, '
-                'como em “Beatriz Latini - UFMG”.'
+                'Para indicar outra instituição, use "Nome - SIGLA", '
+                'como em "Beatriz Latini - UFMG".'
             ),
         }
         widgets = {

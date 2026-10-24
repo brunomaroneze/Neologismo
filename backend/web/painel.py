@@ -447,7 +447,7 @@ def referencia(request, pk=None):
     if request.method == 'POST' and form.is_valid():
         salva = form.save()
         acao = 'adicionada' if instancia is None else 'atualizada'
-        messages.success(request, f'Referência “{salva.titulo}” {acao}.')
+        messages.success(request, f'Referência "{salva.titulo}" {acao}.')
         if instancia is None and request.POST.get('outra'):
             return redirect('web:painel_referencia_nova')
         return redirect('web:painel_leituras')
@@ -463,7 +463,7 @@ def referencia_remover(request, pk):
     alvo = get_object_or_404(Referencia, pk=pk)
     titulo = alvo.titulo
     alvo.delete()
-    messages.success(request, f'Referência “{titulo}” removida.')
+    messages.success(request, f'Referência "{titulo}" removida.')
     return redirect(_destino_seguro(request, request.POST.get('voltar'), 'web:painel_leituras'))
 
 
@@ -473,7 +473,7 @@ def area_adicionar(request):
     form = AreaTematicaForm(request.POST)
     if form.is_valid():
         area = form.save()
-        messages.success(request, f'Área “{area.nome}” criada.')
+        messages.success(request, f'Área "{area.nome}" criada.')
     else:
         erros = [e for lista in form.errors.values() for e in lista]
         messages.error(request, ' '.join(erros) or 'Não foi possível criar a área.')
@@ -487,11 +487,11 @@ def area_remover(request, pk):
     if area.referencias.exists():
         messages.error(
             request,
-            f'A área “{area.nome}” ainda tem referências. Mude-as de área antes de remover.',
+            f'A área "{area.nome}" ainda tem referências. Mude-as de área antes de remover.',
         )
     else:
         area.delete()
-        messages.success(request, f'Área “{area.nome}” removida.')
+        messages.success(request, f'Área "{area.nome}" removida.')
     return redirect(f"{reverse('web:painel_leituras')}#areas")
 
 

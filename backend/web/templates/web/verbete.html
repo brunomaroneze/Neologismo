@@ -42,9 +42,9 @@
       <dl class="ficha">
         <div><dt>Autor</dt><dd>{{ verbete.autor.username }}</dd></div>
         <div><dt>Publicado em</dt><dd><time datetime="{{ verbete.data_criacao|date:'c' }}">{{ verbete.data_criacao|data_curta }}</time></dd></div>
-        {% if verbete.elaborado_por %}<div><dt>Elaborado por</dt><dd>elaborado por {{ verbete.elaborado_por }}</dd></div>{% endif %}
-        {% if verbete.data_registro %}<div><dt>Registrado na fonte em</dt><dd>registrado em <time datetime="{{ verbete.data_registro|date:'c' }}">{{ verbete.data_registro|date:"d/m/Y" }}</time></dd></div>{% endif %}
-        {% if verbete.reativado_em %}<div><dt>Reativado em</dt><dd>reativado em {{ verbete.reativado_em|date:"d/m/Y" }}</dd></div>{% endif %}
+        {% if verbete.elaborado_por %}<div><dt>Elaborado por</dt><dd>{{ verbete.elaborado_por }}</dd></div>{% endif %}
+        {% if verbete.data_registro %}<div><dt>Registrado na fonte em</dt><dd><time datetime="{{ verbete.data_registro|date:'c' }}">{{ verbete.data_registro|date:"d/m/Y" }}</time></dd></div>{% endif %}
+        {% if verbete.reativado_em %}<div><dt>Reativado em</dt><dd>{{ verbete.reativado_em|date:"d/m/Y" }}</dd></div>{% endif %}
       </dl>
 
       <div class="verbete__acoes">
@@ -86,7 +86,7 @@
 <section class="chamada">
   <div class="conteiner chamada__corpo">
     <h2 class="titulo-2">Conhece uma palavra que ainda não está aqui?</h2>
-    <p>O banco de neologismos cresce com quem usa a língua todo dia.</p>
+    <p>Envie a palavra. A equipe revisa e publica no banco.</p>
     <a class="botao" href="{% url 'web:enviar' %}">Enviar um neologismo</a>
   </div>
 </section>

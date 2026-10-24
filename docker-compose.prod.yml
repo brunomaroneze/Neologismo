@@ -3,7 +3,7 @@
 #   docker compose -f docker-compose.prod.yml up -d --build
 #
 # O Caddy é o único serviço exposto à internet (80/443) e obtém o certificado
-# TLS sozinho via Let's Encrypt. Backend, frontend e banco ficam na rede
+# TLS sozinho via Let's Encrypt. Backend e banco ficam na rede
 # interna do Compose, sem portas publicadas no host.
 
 services:
@@ -84,37 +84,11 @@ services:
       retries: 3
       start_period: 40s
 
-  frontend:
-    build:
-      context: ./frontend
-      target: final
-      args:
-        # Embutidos no bundle em tempo de build — precisam vir como args.
-        NEXT_PUBLIC_API_URL: https://${DOMINIO}/api
-        NEXT_PUBLIC_SITE_URL: https://${DOMINIO}
-        NEXT_PUBLIC_SENTRY_DSN: ${SENTRY_DSN_FRONTEND:-}
-        NEXT_PUBLIC_SENTRY_ENVIRONMENT: ${SENTRY_ENVIRONMENT:-production}
-        # Opcionais: presentes, sobem os sourcemaps para o Sentry no build.
-        SENTRY_ORG: ${SENTRY_ORG:-}
-        SENTRY_PROJECT: ${SENTRY_PROJECT:-}
-        SENTRY_AUTH_TOKEN: ${SENTRY_AUTH_TOKEN:-}
-    restart: always
-    environment:
-      # Endereço usado só pelo Next no servidor (sitemap.xml e as OG tags de
-      # cada verbete). Diferente de NEXT_PUBLIC_API_URL, é lido em runtime e
-      # fala direto com o backend pela rede do Compose — o container não
-      # precisa sair para a internet e voltar pelo Caddy só para montar o
-      # preview de um link.
-      API_URL_INTERNA: http://backend:8000/api
-    depends_on:
-      - backend
-
   caddy:
     image: caddy:2-alpine
     restart: always
     depends_on:
       - backend
-      - frontend
     ports:
       - "80:80"
       - "443:443"
