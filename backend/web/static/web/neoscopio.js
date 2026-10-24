@@ -2,7 +2,6 @@
 // formulários e links continuam funcionando por envio e navegação normais.
 (function () {
   "use strict";
-
   // Só aceita endereços do próprio site (evita usar um "javascript:" ou um
   // domínio externo vindo de HTML alterado).
   function enderecoInterno(valor) {

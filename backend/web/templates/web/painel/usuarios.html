@@ -19,21 +19,21 @@
 
 {% if pagina.object_list %}
 <div class="tabela-rolagem cartao cartao--sem-respiro">
-  <table class="tabela">
+  <table class="tabela tabela--responsiva">
     <thead>
       <tr><th scope="col">Usuário</th><th scope="col">E-mail</th><th scope="col">Cadastro</th><th scope="col">Envios</th><th scope="col">Papel</th><th scope="col"><span class="visualmente-oculto">Ações</span></th></tr>
     </thead>
     <tbody>
       {% for conta in pagina.object_list %}
         <tr{% if not conta.is_active %} class="tabela__inativa"{% endif %}>
-          <td><strong>{{ conta.username }}</strong>{% if not conta.is_active %} <span class="situacao situacao--rejeitado">Desativada</span>{% endif %}{% if conta == user %} <span class="nota">(você)</span>{% endif %}</td>
-          <td>
+          <td data-rotulo="Usuário"><strong>{{ conta.username }}</strong>{% if not conta.is_active %} <span class="situacao situacao--rejeitado">Desativada</span>{% endif %}{% if conta == user %} <span class="nota">(você)</span>{% endif %}</td>
+          <td data-rotulo="E-mail">
             {{ conta.email|default:"—" }}
             {% if conta.email %}{% if conta.email_ok %}<span class="situacao situacao--aprovado">Confirmado</span>{% else %}<span class="situacao situacao--pendente">Não confirmado</span>{% endif %}{% endif %}
           </td>
-          <td>{{ conta.date_joined|data_curta }}</td>
-          <td>{{ conta.envios }}</td>
-          <td>
+          <td data-rotulo="Cadastro">{{ conta.date_joined|data_curta }}</td>
+          <td data-rotulo="Envios">{{ conta.envios }}</td>
+          <td data-rotulo="Papel">
             {% if conta == user or conta.is_superuser and not user.is_superuser %}
               {{ conta.papel|capfirst }}
             {% else %}

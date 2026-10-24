@@ -706,7 +706,7 @@ textarea.entrada { min-height: 7rem; resize: vertical; line-height: 1.5; }
 .citacao-form { padding: 1rem; margin-bottom: 0.9rem; background: var(--veu); border-radius: var(--raio); }
 .citacao-form__cabeca { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; font-size: 0.85rem; font-weight: 700; color: var(--tinta-2); }
 .citacao-form__cabeca button { font: inherit; font-weight: 600; background: none; border: 0; color: var(--ameixa); cursor: pointer; }
-.citacao-form__linha { display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; margin-top: 0.6rem; }
+.citacao-form__linha { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.6rem; margin-top: 0.6rem; }
 
 .acoes { display: flex; flex-wrap: wrap; align-items: center; gap: 1rem; margin-top: 1.75rem; }
 
@@ -789,7 +789,7 @@ textarea.entrada { min-height: 7rem; resize: vertical; line-height: 1.5; }
 /* --- Telas menores ------------------------------------------------------------ */
 
 @media (max-width: 1000px) {
-  .destaque__grade { grid-template-columns: 1fr; gap: 2rem; padding-block: 3.5rem 3rem; }
+  .destaque__grade { grid-template-columns: minmax(0, 1fr); gap: 2rem; padding-block: 3.5rem 3rem; }
   .destaque__arte { max-width: 34rem; }
   .grade, .equipe, .blocos { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .resumo { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -804,19 +804,18 @@ textarea.entrada { min-height: 7rem; resize: vertical; line-height: 1.5; }
   .navegacao__links a { padding: 0.6rem 0; border-bottom: 1px solid color-mix(in srgb, var(--lilas) 30%, var(--ameixa)); }
   .navegacao__links a[aria-current="page"] { border-bottom-color: var(--lilas); }
   .sessao { margin-left: 0; flex-wrap: wrap; }
-  .instituicao__linha span:last-child { display: none; }
   .barra { position: static; }
 }
 
 @media (max-width: 640px) {
   .conteiner { padding-inline: 1rem; }
-  .grade, .equipe, .blocos { grid-template-columns: 1fr; }
+  .grade, .equipe, .blocos { grid-template-columns: minmax(0, 1fr); }
   .abertura__corpo { padding-block: 2.5rem 2.25rem; }
   .busca__linha { flex-direction: column; gap: 0.5rem; }
   .busca__campo { border-right: 1px solid var(--filete-forte); border-radius: var(--raio); }
   .busca .botao { border-radius: var(--raio); }
-  .citacao-form__linha { grid-template-columns: 1fr; }
-  .rodape__grade { grid-template-columns: 1fr; gap: 1.75rem; }
+  .citacao-form__linha { grid-template-columns: minmax(0, 1fr); }
+  .rodape__grade { grid-template-columns: minmax(0, 1fr); gap: 1.75rem; }
   .painel-conta__caixa { padding: 1.75rem 1.25rem; }
 }
 
@@ -1043,7 +1042,7 @@ textarea.entrada { min-height: 7rem; resize: vertical; line-height: 1.5; }
 .tabela .situacao { margin-left: 0.35rem; vertical-align: middle; }
 .papel { margin: 0; }
 
-.ficha--coluna { grid-template-columns: 1fr; border-bottom: 0; padding-top: 0.5rem; }
+.ficha--coluna { grid-template-columns: minmax(0, 1fr); border-bottom: 0; padding-top: 0.5rem; }
 
 .membros-painel { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.75rem; }
 .membro-painel {
@@ -1068,8 +1067,8 @@ textarea.entrada { min-height: 7rem; resize: vertical; line-height: 1.5; }
 .membro--previa { box-shadow: none; border: 0; padding: 1rem 0 0; }
 
 @media (max-width: 900px) {
-  .indicadores { grid-template-columns: 1fr; }
-  .painel__grade, .painel__duas-colunas { grid-template-columns: 1fr; }
+  .indicadores { grid-template-columns: minmax(0, 1fr); }
+  .painel__grade, .painel__duas-colunas { grid-template-columns: minmax(0, 1fr); }
   .painel__grade > .cartao:first-child { grid-row: auto; }
   .membro-painel { grid-template-columns: auto minmax(0, 1fr); }
   .membro-painel__acoes { grid-column: 1 / -1; justify-content: flex-start; }
@@ -1102,12 +1101,68 @@ textarea.entrada { min-height: 7rem; resize: vertical; line-height: 1.5; }
   background: linear-gradient(160deg, var(--ameixa), var(--malva));
   color: var(--papel); font-family: var(--serifa); font-size: 1.5rem;
 }
-.perfil__campos { display: grid; grid-template-columns: 1fr 1fr; gap: 0 1rem; }
+.perfil__campos { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 1rem; }
 .perfil__lateral { display: grid; gap: 1.25rem; }
-.indicadores--coluna { grid-template-columns: 1fr; margin: 0; }
+.indicadores--coluna { grid-template-columns: minmax(0, 1fr); margin: 0; }
 .indicadores--coluna .indicador__valor { font-size: 2rem; }
 .perfil__curtidos { padding-bottom: 0; }
 @media (max-width: 900px) {
-  .perfil { grid-template-columns: 1fr; }
-  .perfil__campos { grid-template-columns: 1fr; }
+  .perfil { grid-template-columns: minmax(0, 1fr); }
+  .perfil__campos { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* --- Proteção contra rolagem lateral no celular ------------------------------ */
+/* Itens de grade e flex têm largura mínima "auto" (a do conteúdo): uma
+   ilustração ou um link longo sem quebra empurrava a página para além da tela. */
+.destaque__arte, .destaque__texto, .card, .item, .cartao, .membro { min-width: 0; }
+.card__definicao, .item__definicao, .verbete__definicao, .citacoes p { overflow-wrap: anywhere; }
+
+/* --- Celular: faixa institucional com siglas e equipe em cartões deitados --- */
+.instituicao__curta { display: none; }
+.instituicao abbr { text-decoration: none; }
+@media (max-width: 860px) {
+  .instituicao__longa { display: none; }
+  .instituicao__curta { display: inline; }
+}
+@media (max-width: 640px) {
+  .equipe { gap: 0.75rem; }
+  .membro {
+    flex-direction: row; align-items: center; text-align: left; gap: 1rem;
+    padding: 1rem 1.1rem; border-radius: var(--raio-card);
+  }
+  .membro .membro__foto { width: 5.25rem; height: 5.25rem; padding: 3px; margin: 0; flex-shrink: 0; }
+  .membro .membro__foto img, .membro .membro__iniciais { border-width: 3px; }
+  .membro .membro__iniciais { font-size: 1.5rem; }
+  .membro__nome { font-size: 1.12rem; }
+  .membro__bio { margin-top: 0.4rem; font-size: 0.95rem; max-width: none; }
+}
+.membro__texto { min-width: 0; display: flex; flex-direction: column; align-items: center; }
+@media (max-width: 640px) {
+  .membro__texto { align-items: flex-start; text-align: left; }
+}
+
+/* Tabela do painel: rolagem própria e, no celular, uma linha vira um cartão. */
+.tabela-rolagem { position: relative; }
+@media (max-width: 720px) {
+  .tabela--responsiva thead { display: none; }
+  .tabela--responsiva, .tabela--responsiva tbody { display: block; }
+  .tabela--responsiva tr { display: block; padding: 0.75rem 0; border-bottom: 1px solid var(--filete); }
+  .tabela--responsiva tbody tr:hover { background: none; }
+  .tabela--responsiva td {
+    display: flex; justify-content: space-between; align-items: center; gap: 1rem;
+    padding: 0.35rem 1rem; border: 0; text-align: right; overflow-wrap: anywhere;
+  }
+  .tabela--responsiva td::before {
+    content: attr(data-rotulo);
+    flex-shrink: 0;
+    font-size: 0.72rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--tinta-3); text-align: left;
+  }
+  .tabela--responsiva .tabela__acoes { justify-content: flex-end; white-space: normal; }
+  .tabela--responsiva .tabela__acoes::before { content: none; }
+}
+@media (max-width: 720px) {
+  .tabela--responsiva td { flex-wrap: wrap; justify-content: flex-end; column-gap: 0.5rem; }
+  .tabela--responsiva td::before { margin-right: auto; }
+  .tabela--responsiva .situacao { white-space: nowrap; margin-left: 0; }
 }

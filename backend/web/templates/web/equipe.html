@@ -25,9 +25,11 @@
               <span class="membro__iniciais" aria-hidden="true">{{ membro.iniciais }}</span>
             {% endif %}
           </div>
-          <p class="membro__nome">{{ membro.nome }}</p>
-          <p class="membro__funcao">{{ membro.funcao }}</p>
-          {% if membro.bio %}<p class="membro__bio">{{ membro.bio }}</p>{% endif %}
+          <div class="membro__texto">
+            <p class="membro__nome">{{ membro.nome }}</p>
+            <p class="membro__funcao">{{ membro.funcao }}</p>
+            {% if membro.bio %}<p class="membro__bio">{{ membro.bio }}</p>{% endif %}
+          </div>
         </li>
       {% endfor %}
     </ul>
