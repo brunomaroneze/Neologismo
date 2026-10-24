@@ -343,8 +343,13 @@ def usuario_acao(request, pk, acao):
 @admin_required
 @require_GET
 def equipe(request):
+    membros = list(MembroEquipe.objects.all())
+    grupos = [
+        (valor, rotulo, [m for m in membros if m.grupo == valor])
+        for valor, rotulo in MembroEquipe.GRUPOS
+    ]
     return render(request, 'web/painel/equipe.html', _contexto(
-        request, 'equipe', membros=MembroEquipe.objects.all(),
+        request, 'equipe', grupos=grupos, total=len(membros),
     ))
 
 
@@ -357,7 +362,8 @@ def membro(request, pk=None):
         novo = instancia is None
         membro_salvo = form.save(commit=False)
         if novo:
-            # Novos membros entram no fim da lista.
+            # Novos membros entram no fim da lista (a ordem é contada dentro
+            # de cada grupo, então o fim geral também é o fim do grupo).
             maior = MembroEquipe.objects.aggregate(m=Max('ordem'))['m'] or 0
             membro_salvo.ordem = maior + 10
         membro_salvo.save()
@@ -368,6 +374,21 @@ def membro(request, pk=None):
     return render(request, 'web/painel/membro.html', _contexto(
         request, 'equipe', form=form, membro=instancia,
     ))
+
+
+@admin_required
+@require_POST
+def membro_grupo(request, pk):
+    """Passa um membro de integrante para ex-integrante, ou o contrário."""
+    membro_alvo = get_object_or_404(MembroEquipe, pk=pk)
+    ex = membro_alvo.grupo == MembroEquipe.EX_INTEGRANTE
+    membro_alvo.grupo = MembroEquipe.INTEGRANTE if ex else MembroEquipe.EX_INTEGRANTE
+    # Entra no fim do novo grupo.
+    membro_alvo.ordem = (MembroEquipe.objects.aggregate(m=Max('ordem'))['m'] or 0) + 10
+    membro_alvo.save(update_fields=['grupo', 'ordem'])
+    novo = 'integrante' if ex else 'ex-integrante'
+    messages.success(request, f'{membro_alvo.nome} agora aparece como {novo}.')
+    return redirect(_destino_seguro(request, f"{reverse('web:painel_equipe')}#membro-{pk}"))
 
 
 @admin_required
@@ -387,7 +408,9 @@ def membro_remover(request, pk):
 def membro_mover(request, pk, direcao):
     if direcao not in ('subir', 'descer'):
         raise Http404
-    membros = list(MembroEquipe.objects.all())
+    alvo = get_object_or_404(MembroEquipe, pk=pk)
+    # Sobe e desce dentro do próprio grupo.
+    membros = list(MembroEquipe.objects.filter(grupo=alvo.grupo))
     indice = next((i for i, m in enumerate(membros) if m.pk == pk), None)
     if indice is None:
         raise Http404

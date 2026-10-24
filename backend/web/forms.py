@@ -84,8 +84,10 @@ class MembroEquipeForm(forms.ModelForm):
 
     class Meta:
         model = MembroEquipe
-        fields = ['nome', 'funcao', 'bio', 'ativo']
-        labels = {'nome': 'Nome', 'funcao': 'Função', 'bio': 'Frase de apresentação'}
+        fields = ['nome', 'funcao', 'bio', 'grupo', 'ativo']
+        labels = {
+            'nome': 'Nome', 'funcao': 'Função', 'bio': 'Frase de apresentação', 'grupo': 'Grupo',
+        }
         help_texts = {
             'nome': (
                 'Para indicar outra instituição, use “Nome - SIGLA”, '

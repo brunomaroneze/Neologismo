@@ -479,7 +479,7 @@ class PainelTests(BaseWeb):
         self.client.login(username='chefe', password=SENHA)
 
         resposta = self.client.post(reverse('web:painel_membro_novo'), {
-            'nome': 'Nova Pesquisadora', 'funcao': 'Graduanda em Letras', 'bio': '', 'ativo': 'on', 'foto': foto,
+            'nome': 'Nova Pesquisadora', 'funcao': 'Graduanda em Letras', 'bio': '', 'grupo': 'integrante', 'ativo': 'on', 'foto': foto,
         })
 
         self.assertRedirects(resposta, reverse('web:painel_equipe'), fetch_redirect_response=False)
@@ -520,6 +520,34 @@ class PainelTests(BaseWeb):
 
         self.client.post(reverse('web:painel_membro_remover', args=[a.pk]))
         self.assertEqual(list(MembroEquipe.objects.values_list('nome', flat=True)), ['Bia'])
+
+    def test_integrantes_e_ex_integrantes(self):
+        from .models import MembroEquipe
+
+        MembroEquipe.objects.all().delete()
+        MembroEquipe.objects.create(nome='Ana Atual', funcao='x', ordem=10)
+        bia = MembroEquipe.objects.create(nome='Bia Antiga', funcao='x', ordem=20)
+        cris = MembroEquipe.objects.create(nome='Cris Atual', funcao='x', ordem=30)
+        self.client.login(username='chefe', password=SENHA)
+
+        self.client.post(reverse('web:painel_membro_grupo', args=[bia.pk]))
+        bia.refresh_from_db()
+        self.assertEqual(bia.grupo, MembroEquipe.EX_INTEGRANTE)
+
+        # Subir Cris troca com Ana, não com a ex-integrante Bia.
+        self.client.post(reverse('web:painel_membro_mover', args=[cris.pk, 'subir']))
+        integrantes = MembroEquipe.objects.filter(grupo=MembroEquipe.INTEGRANTE)
+        self.assertEqual(list(integrantes.values_list('nome', flat=True)), ['Cris Atual', 'Ana Atual'])
+
+        pagina = self.client.get(reverse('web:equipe'))
+        self.assertEqual([m.nome for m in pagina.context['integrantes']], ['Cris Atual', 'Ana Atual'])
+        self.assertEqual([m.nome for m in pagina.context['ex_integrantes']], ['Bia Antiga'])
+        self.assertContains(pagina, 'Ex-integrantes')
+
+        self.client.post(reverse('web:painel_membro_grupo', args=[bia.pk]))
+        bia.refresh_from_db()
+        self.assertEqual(bia.grupo, MembroEquipe.INTEGRANTE)
+        self.assertNotContains(self.client.get(reverse('web:equipe')), 'Ex-integrantes')
 
 
 class PerfilTests(BaseWeb):

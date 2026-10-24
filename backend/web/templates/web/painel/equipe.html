@@ -3,40 +3,50 @@
 {% block titulo_h1 %}Equipe{% endblock %}
 {% block painel %}
 <div class="painel__barra">
-  <p class="nota">A ordem aqui é a ordem da página <a href="{% url 'web:equipe' %}">Equipe</a>. Membros ocultos não aparecem no site.</p>
+  <p class="nota">A ordem aqui é a ordem da página <a href="{% url 'web:equipe' %}">Equipe</a>. Membros ocultos não aparecem no site. Ex-integrantes aparecem numa seção própria, abaixo dos integrantes.</p>
   <a class="botao" href="{% url 'web:painel_membro_novo' %}">Adicionar membro</a>
 </div>
 
-{% if membros %}
-<ol class="membros-painel">
-  {% for membro in membros %}
-    <li class="membro-painel{% if not membro.ativo %} membro-painel--oculto{% endif %}" id="membro-{{ membro.pk }}">
-      <div class="membro__foto membro__foto--pequena">
-        {% if membro.foto %}<img src="{{ membro.foto.url }}" alt="" width="80" height="80" loading="lazy">{% else %}<span class="membro__iniciais" aria-hidden="true">{{ membro.iniciais }}</span>{% endif %}
-      </div>
-      <div class="membro-painel__texto">
-        <strong>{{ membro.nome }}</strong>
-        <span>{{ membro.funcao }}{% if not membro.ativo %} · <em>oculto no site</em>{% endif %}</span>
-      </div>
-      <div class="membro-painel__acoes">
-        <form method="post" action="{% url 'web:painel_membro_mover' membro.pk 'subir' %}">{% csrf_token %}<button class="botao botao--discreto botao--pequeno" type="submit" {% if forloop.first %}disabled{% endif %} aria-label="Subir {{ membro.nome }}">↑</button></form>
-        <form method="post" action="{% url 'web:painel_membro_mover' membro.pk 'descer' %}">{% csrf_token %}<button class="botao botao--discreto botao--pequeno" type="submit" {% if forloop.last %}disabled{% endif %} aria-label="Descer {{ membro.nome }}">↓</button></form>
-        <a class="botao botao--secundario botao--pequeno" href="{% url 'web:painel_membro' membro.pk %}">Editar</a>
-        <details class="rejeitar">
-          <summary class="botao botao--discreto botao--pequeno">Remover</summary>
-          <form class="rejeitar__corpo" method="post" action="{% url 'web:painel_membro_remover' membro.pk %}">
-            {% csrf_token %}
-            <p class="conta-texto">Remover {{ membro.nome }} da equipe? A foto também é apagada. Para só esconder do site, use “Editar” e desmarque “visível no site”.</p>
-            <div class="acoes">
-              <button class="botao botao--perigo botao--pequeno" type="submit">Remover definitivamente</button>
-              <button class="botao botao--discreto botao--pequeno" type="button" data-fechar-detalhes>Cancelar</button>
-            </div>
-          </form>
-        </details>
-      </div>
-    </li>
-  {% endfor %}
-</ol>
+{% if total %}
+{% for valor, rotulo, membros in grupos %}
+<section class="grupo-painel" aria-labelledby="grupo-{{ valor }}">
+  <h2 class="titulo-secao" id="grupo-{{ valor }}">{{ rotulo }} <span class="contagem">{{ membros|length }}</span></h2>
+  {% if membros %}
+  <ol class="membros-painel">
+    {% for membro in membros %}
+      <li class="membro-painel{% if not membro.ativo %} membro-painel--oculto{% endif %}" id="membro-{{ membro.pk }}">
+        <div class="membro__foto membro__foto--pequena">
+          {% if membro.foto %}<img src="{{ membro.foto.url }}" alt="" width="80" height="80" loading="lazy">{% else %}<span class="membro__iniciais" aria-hidden="true">{{ membro.iniciais }}</span>{% endif %}
+        </div>
+        <div class="membro-painel__texto">
+          <strong>{{ membro.nome }}</strong>
+          <span>{{ membro.funcao }}{% if not membro.ativo %} · <em>oculto no site</em>{% endif %}</span>
+        </div>
+        <div class="membro-painel__acoes">
+          <form method="post" action="{% url 'web:painel_membro_mover' membro.pk 'subir' %}">{% csrf_token %}<button class="botao botao--discreto botao--pequeno" type="submit" {% if forloop.first %}disabled{% endif %} aria-label="Subir {{ membro.nome }}">↑</button></form>
+          <form method="post" action="{% url 'web:painel_membro_mover' membro.pk 'descer' %}">{% csrf_token %}<button class="botao botao--discreto botao--pequeno" type="submit" {% if forloop.last %}disabled{% endif %} aria-label="Descer {{ membro.nome }}">↓</button></form>
+          <a class="botao botao--secundario botao--pequeno" href="{% url 'web:painel_membro' membro.pk %}">Editar</a>
+          <form method="post" action="{% url 'web:painel_membro_grupo' membro.pk %}">{% csrf_token %}<button class="botao botao--discreto botao--pequeno" type="submit">{% if valor == 'ex-integrante' %}Voltar a integrante{% else %}Tornar ex-integrante{% endif %}</button></form>
+          <details class="rejeitar">
+            <summary class="botao botao--discreto botao--pequeno">Remover</summary>
+            <form class="rejeitar__corpo" method="post" action="{% url 'web:painel_membro_remover' membro.pk %}">
+              {% csrf_token %}
+              <p class="conta-texto">Remover {{ membro.nome }} da equipe? A foto também é apagada. Para manter a pessoa na página como ex-integrante, use “Tornar ex-integrante”.</p>
+              <div class="acoes">
+                <button class="botao botao--perigo botao--pequeno" type="submit">Remover definitivamente</button>
+                <button class="botao botao--discreto botao--pequeno" type="button" data-fechar-detalhes>Cancelar</button>
+              </div>
+            </form>
+          </details>
+        </div>
+      </li>
+    {% endfor %}
+  </ol>
+  {% else %}
+    <p class="nota">Ninguém neste grupo.</p>
+  {% endif %}
+</section>
+{% endfor %}
 {% else %}
   <div class="vazio"><p class="vazio__titulo">Ninguém na equipe ainda</p><div class="botoes"><a class="botao" href="{% url 'web:painel_membro_novo' %}">Adicionar membro</a></div></div>
 {% endif %}

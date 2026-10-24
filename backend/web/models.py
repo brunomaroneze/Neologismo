@@ -24,10 +24,18 @@ def caminho_foto(membro, nome_arquivo):
 class MembroEquipe(models.Model):
     """Pessoa listada na página Equipe, gerida pelo painel do administrador."""
 
+    INTEGRANTE = 'integrante'
+    EX_INTEGRANTE = 'ex-integrante'
+    GRUPOS = [
+        (INTEGRANTE, 'Integrantes'),
+        (EX_INTEGRANTE, 'Ex-integrantes'),
+    ]
+
     nome = models.CharField(max_length=120)
     funcao = models.CharField('função', max_length=120, help_text='Ex.: Graduanda em Letras')
     bio = models.TextField(blank=True, max_length=300)
     foto = models.ImageField(upload_to=caminho_foto, blank=True)
+    grupo = models.CharField(max_length=20, choices=GRUPOS, default=INTEGRANTE, db_index=True)
     ordem = models.PositiveIntegerField(default=0, db_index=True)
     ativo = models.BooleanField('visível no site', default=True)
     criado_em = models.DateTimeField(auto_now_add=True)

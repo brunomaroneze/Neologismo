@@ -1288,3 +1288,27 @@ textarea.entrada { min-height: 7rem; resize: vertical; line-height: 1.5; }
   .assistente__bolinha { transition: none; }
   .assistente__digitando span { animation: none; opacity: 0.8; }
 }
+
+/* --- Equipe em grupos (integrantes / ex-integrantes) ------------------------------- */
+
+.grupo-equipe + .grupo-equipe { margin-top: 4rem; }
+.grupo-equipe__titulo {
+  display: flex; align-items: center; gap: 1rem;
+  font-family: var(--serifa); font-weight: 500; font-size: 1.75rem;
+  color: var(--ameixa); margin: 0 0 1.75rem;
+}
+.grupo-equipe__titulo::after { content: ""; flex: 1; height: 1px; background: var(--filete-forte); }
+.grupo-equipe__nota { margin: -1rem 0 1.75rem; color: var(--tinta-3); }
+.grupo-equipe__titulo + .equipe { margin-top: 0; }
+
+.grupo-painel + .grupo-painel { margin-top: 2.5rem; }
+.titulo-secao {
+  display: flex; align-items: center; gap: 0.6rem;
+  font-family: var(--serifa); font-weight: 600; font-size: 1.3rem;
+  margin: 0 0 1rem; color: var(--tinta);
+}
+.contagem {
+  font-family: var(--sans); font-size: 0.8rem; font-weight: 700;
+  padding: 0.1rem 0.55rem; border-radius: 999px;
+  background: var(--veu-forte); color: var(--ameixa);
+}

@@ -315,8 +315,10 @@ def sobre(request):
 
 @require_GET
 def equipe(request):
+    visiveis = list(MembroEquipe.objects.filter(ativo=True))
     return render(request, 'web/equipe.html', {
-        'equipe': MembroEquipe.objects.filter(ativo=True),
+        'integrantes': [m for m in visiveis if m.grupo == MembroEquipe.INTEGRANTE],
+        'ex_integrantes': [m for m in visiveis if m.grupo == MembroEquipe.EX_INTEGRANTE],
     })
 
 

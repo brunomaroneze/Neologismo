@@ -34,6 +34,8 @@ urlpatterns = [
     path('admin-painel/equipe/<int:pk>', painel.membro, name='painel_membro'),
     path('admin-painel/equipe/<int:pk>/remover', painel.membro_remover,
          name='painel_membro_remover'),
+    path('admin-painel/equipe/<int:pk>/grupo', painel.membro_grupo,
+         name='painel_membro_grupo'),
     path('admin-painel/equipe/<int:pk>/<str:direcao>', painel.membro_mover,
          name='painel_membro_mover'),
 

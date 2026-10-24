@@ -1,0 +1,14 @@
+<li class="membro">
+  <div class="membro__foto">
+    {% if membro.foto %}
+      <img src="{{ membro.foto.url }}" alt="Foto de {{ membro.nome }}" width="400" height="400" loading="lazy">
+    {% else %}
+      <span class="membro__iniciais" aria-hidden="true">{{ membro.iniciais }}</span>
+    {% endif %}
+  </div>
+  <div class="membro__texto">
+    <p class="membro__nome">{{ membro.nome }}</p>
+    <p class="membro__funcao">{{ membro.funcao }}</p>
+    {% if membro.bio %}<p class="membro__bio">{{ membro.bio }}</p>{% endif %}
+  </div>
+</li>
