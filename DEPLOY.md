@@ -1,14 +1,13 @@
 # Deploy — VPS única com Docker Compose
 
-Este guia sobe o Neoscópio inteiro (Postgres + Django + Next + HTTPS) em uma
+Este guia sobe o Neoscópio inteiro (Postgres + Django + HTTPS) em uma
 máquina só. O Caddy é o único serviço exposto à internet e cuida do
 certificado TLS sozinho.
 
 ```
-internet ──▶ Caddy :80/:443 ──┬──▶ backend:8000   (/api, /admin, /static, /media)
-                              └──▶ frontend:3000  (todo o resto)
-                                       │
-                                     db:5432       (rede interna, sem porta no host)
+internet ──▶ Caddy :80/:443 ──▶ backend:8000   (site, /api, /admin, /static, /media)
+                                      │
+                                    db:5432       (rede interna, sem porta no host)
 ```
 
 ## 1. Pré-requisitos
@@ -73,7 +72,7 @@ para não subir um site com configuração pela metade.
 docker compose -f docker-compose.prod.yml up -d --build
 ```
 
-O primeiro start leva alguns minutos (build das duas imagens + emissão do
+O primeiro start leva alguns minutos (build da imagem do backend + emissão do
 certificado). Acompanhe:
 
 ```bash
@@ -97,7 +96,7 @@ docker compose -f docker-compose.prod.yml exec backend \
 ```
 
 > **Importante:** `createsuperuser` cria a conta com `is_staff` e
-> `is_superuser`, mas **não** com `is_admin` — e é `is_admin` que o frontend
+> `is_superuser`, mas **não** com `is_admin` — e é `is_admin` que o site
 > usa para liberar o painel de moderação. Promova a conta depois:
 
 ```bash
@@ -234,30 +233,12 @@ processo de formação sugerido e a frase de contexto. Adaptado de
 Opcional, e desligado por padrão: sem DSN o SDK fica inerte e nada sai da
 aplicação.
 
-Crie dois projetos no Sentry — um Django e um Next.js — e preencha:
+Crie um projeto Django no Sentry e preencha:
 
 ```bash
 SENTRY_DSN_BACKEND=https://...    # privado, só o container vê
-SENTRY_DSN_FRONTEND=https://...   # vai para o bundle público (é o normal)
 SENTRY_ENVIRONMENT=production
 ```
-
-O DSN do frontend ser público é o funcionamento esperado do Sentry no
-navegador: um DSN só permite enviar eventos, não ler nada.
-
-Para os stack traces apontarem para o seu código em vez do bundle minificado,
-adicione as três variáveis de sourcemap e **rebuilde o frontend**:
-
-```bash
-SENTRY_ORG=sua-org
-SENTRY_PROJECT=neoscopio-frontend
-SENTRY_AUTH_TOKEN=<token com permissão de release>
-
-docker compose -f docker-compose.prod.yml up -d --build frontend
-```
-
-Os sourcemaps são enviados ao Sentry e **apagados do bundle público** — sem
-isso, o código-fonte original ficaria servido junto com o site.
 
 O que fica de fora de propósito: `traces_sample_rate` é `0.0` (só erros, sem
 tracing), replay de sessão está desligado, e `send_default_pii` é `False` — os
@@ -324,13 +305,12 @@ push na main/develop  ->  Qualidade  ->  Publicar imagens  ->  Deploy na VPS  ->
 ```
 
 1. **Qualidade** — chama o `ci.yml` inteiro: lint, 82 testes do backend com
-   cobertura, tipos, lint e testes do frontend, build do Next, auditoria de
-   CVE e validação dos arquivos de Compose. Qualquer falha aqui para a
+   cobertura, auditoria de CVE e validação dos arquivos de Compose. Qualquer falha aqui para a
    pipeline antes de ela tocar a VPS.
-2. **Publicar imagens** — constrói backend e frontend e publica no GitHub
+2. **Publicar imagens** — constrói o backend e publica no GitHub
    Container Registry (`ghcr.io`), com a tag `sha-<commit>`.
 3. **Deploy na VPS** — entra por SSH, sincroniza a configuração com o commit,
-   baixa as imagens e sobe. As migrações rodam no entrypoint do backend, como
+   baixa a imagem e sobe. As migrações rodam no entrypoint do backend, como
    em qualquer start.
 4. **Verificação** — de fora, pela internet: `/api/health/` com banco
    acessível, a Home respondendo 200 e o `sitemap.xml` com URLs.
@@ -382,8 +362,6 @@ quiser que todo deploy espere uma aprovação sua.
 | `SSH_USER` | `deploy` |
 | `SSH_PRIVATE_KEY` | conteúdo de `~/.ssh/neoscopio_deploy` (a chave **privada**, inteira, com as linhas `BEGIN`/`END`) |
 | `SSH_HOST_KEY` | a saída do `ssh-keyscan` acima |
-| `SENTRY_DSN_FRONTEND` | opcional — DSN do projeto de frontend |
-| `SENTRY_AUTH_TOKEN` | opcional — para subir os sourcemaps |
 
 **Variables** (mesma tela, aba Variables — não são segredo, aparecem no log):
 
@@ -393,10 +371,8 @@ quiser que todo deploy espere uma aprovação sua.
 | `CAMINHO_PROJETO` | caminho do repositório na VPS, ex. `/home/deploy/neoscopio` |
 | `SSH_PORT` | opcional, padrão `22` |
 | `COMPOSE_EXTRA` | opcional. `docker-compose.nginx.yml` quando a VPS usa nginx em vez do Caddy (seção 12) |
-| `SENTRY_ORG` / `SENTRY_PROJECT` | opcionais, junto do token acima |
 
-`DOMINIO` é variable e não secret porque ele é embutido no bundle do frontend
-em tempo de build: está no HTML de qualquer forma.
+`DOMINIO` é variable e não secret porque aparece no HTML de qualquer forma.
 
 Falta algum dos obrigatórios? O primeiro passo do job de deploy para e diz
 exatamente qual — ele não tenta conectar sem isso.
@@ -406,7 +382,7 @@ exatamente qual — ele não tenta conectar sem isso.
 - **Automático:** todo push na `main` ou na `develop`. Hoje as duas publicam
   no mesmo `DOMINIO` (o ambiente de teste); quando existir um servidor de
   produção separado, a `main` precisa de variáveis próprias.
-- **Versão marcada:** uma tag `v*` (ex. `v1.2.0`) também publica as imagens
+- **Versão marcada:** uma tag `v*` (ex. `v1.2.0`) também publica a imagem
   como `1.2.0`, `1.2` e `latest`.
 - **À mão:** aba **Actions > Entrega > Run workflow**, escolhendo o branch ou
   a tag. A opção *"Só publicar as imagens"* constrói sem mexer na VPS.
@@ -419,7 +395,6 @@ anterior — não precisa esperar build nenhum:
 ```bash
 # Na VPS, com o commit que funcionava
 export IMAGEM_BACKEND=ghcr.io/brunomaroneze/neologismo-backend:sha-<commit>
-export IMAGEM_FRONTEND=ghcr.io/brunomaroneze/neologismo-frontend:sha-<commit>
 
 docker compose -f docker-compose.prod.yml -f docker-compose.deploy.yml up -d
 ```
@@ -451,13 +426,11 @@ certificado renovando normalmente, suba para `31536000` (1 ano).
 | `backend` nunca fica `healthy` | Veja `logs backend`; geralmente é `DATABASE_URL` ou migração falhando |
 | `DisallowedHost` no log | `DOMINIO` no `.env` não bate com o domínio acessado |
 | Erro de CORS no navegador | Idem: `CORS_ALLOWED_ORIGINS` é derivado de `DOMINIO` |
-| Frontend chamando `localhost:8000` | A imagem foi buildada sem o build-arg. Rebuild com `--build` |
 | Admin sem CSS | `collectstatic` falhou no start — veja `logs backend` |
 | Rate limit mais frouxo que o configurado | A tabela de cache não foi criada. Rode `exec backend python manage.py createcachetable` |
 | E-mail não chega | `EMAIL_HOST` vazio, ou domínio sem SPF/DKIM (caiu em spam) |
 | Migração falha em `CREATE EXTENSION unaccent` | O usuário do Postgres não pode instalar extensões. Na imagem oficial ele pode; em Postgres gerenciado, habilite `unaccent` pelo painel antes do `migrate` |
 | Busca voltou a diferenciar acento | A migração `0008_unaccent` não rodou. Confirme com `exec backend python manage.py showmigrations neologismo` |
-| `sitemap.xml` vazio com o site no ar | O frontend não alcança o backend internamente. Confira `API_URL_INTERNA` no compose e `exec frontend wget -qO- http://backend:8000/api/health/` |
 | Filtros da Home desatualizados | Cache de facetas. É invalidado a cada escrita; para forçar, `exec backend python manage.py shell -c "from django.core.cache import cache; cache.clear()"` |
 
 ```bash
@@ -476,7 +449,7 @@ docker compose -f docker-compose.prod.yml exec backend \
 
 Se a VPS já roda um nginx atendendo outros sites nas portas 80/443, o Caddy
 não pode subir. Use o override `docker-compose.nginx.yml`, que desliga o Caddy
-e publica backend e frontend só em `127.0.0.1`:
+e publica o backend só em `127.0.0.1`:
 
 ```bash
 docker compose -f docker-compose.prod.yml -f docker-compose.nginx.yml up -d --build
@@ -484,12 +457,11 @@ docker compose -f docker-compose.prod.yml -f docker-compose.nginx.yml up -d --bu
 
 - O `.env` continua precisando de `EMAIL_ACME` preenchido (qualquer e-mail):
   o compose de produção valida a variável mesmo com o Caddy desligado.
-- No nginx, use o modelo `deploy/nginx-neoscopio.conf`: `/api`, `/admin` e
-  `/static` vão para `127.0.0.1:8000`, o resto para `127.0.0.1:3000`.
-- **Não rode o `docker-compose.yml` de desenvolvimento em produção.** Com
-  `npm run dev` atrás de um domínio, o Next 16 bloqueia os recursos de dev
-  (`/_next/hmr`) para origens fora de `allowedDevOrigins`, a página nunca é
-  hidratada e os cards ficam carregando para sempre — sem nenhuma chamada à API.
+- No nginx, use o modelo `deploy/nginx-neoscopio.conf`, que manda tudo para
+  `127.0.0.1:8000`. O override também publica o backend na `127.0.0.1:3000`,
+  para um nginx ainda configurado para o antigo frontend em Next.js.
+- **Não rode o `docker-compose.yml` de desenvolvimento em produção.** Ele usa o
+  `runserver` com `DEBUG=True`.
 
 ## 13. O que ainda não está coberto
 

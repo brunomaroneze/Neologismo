@@ -39,7 +39,7 @@ jobs:
           - linguagem: python
             caminho: backend
           - linguagem: javascript-typescript
-            caminho: frontend
+            caminho: backend
 
     steps:
       - uses: actions/checkout@v5
