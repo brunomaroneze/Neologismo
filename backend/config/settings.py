@@ -61,6 +61,27 @@ if not SECRET_KEY:
             'Gere uma com: python -c "import secrets; print(secrets.token_urlsafe(64))"'
         )
 
+# Valores que já foram publicados neste repositório (exemplos, compose de
+# desenvolvimento, documentação). Qualquer um deles em produção deixa forjar
+# links de redefinição de senha e de confirmação de e-mail.
+CHAVES_PUBLICAS = {
+    'chave-de-desenvolvimento-nao-use-em-producao',
+    'django-insecure-chave-apenas-para-desenvolvimento',
+    'chave-de-ci',
+    'chave-de-ci-sem-valor-em-producao',
+    'dev',
+}
+if not DEBUG and (
+    SECRET_KEY in CHAVES_PUBLICAS
+    or SECRET_KEY.startswith('django-insecure-')
+    or len(SECRET_KEY) < 50
+    or len(set(SECRET_KEY)) < 5
+):
+    raise ImproperlyConfigured(
+        'SECRET_KEY fraca ou de exemplo com DEBUG=False. '
+        'Gere uma com: python -c "import secrets; print(secrets.token_urlsafe(64))"'
+    )
+
 ALLOWED_HOSTS = env_list('ALLOWED_HOSTS', '127.0.0.1,localhost' if DEBUG else '')
 if not DEBUG and not ALLOWED_HOSTS:
     raise ImproperlyConfigured(

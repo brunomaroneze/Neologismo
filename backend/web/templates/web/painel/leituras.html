@@ -3,7 +3,7 @@
 {% block titulo_h1 %}Indicações de leitura{% endblock %}
 {% block painel %}
 <div class="painel__barra">
-  <p class="nota">{{ total }} referência{{ total|pluralize }} no <a href="{% url 'web:referencias' %}">banco de referências</a>. Toda referência nova aparece com o selo “Nova” por 30 dias.</p>
+  <p class="nota">{{ total }} referência{{ total|pluralize }} no <a href="{% url 'web:referencias' %}">banco de referências</a>. Toda referência nova aparece com o selo "Nova" por 30 dias.</p>
   <a class="botao" href="{% url 'web:painel_referencia_nova' %}">Adicionar referência</a>
 </div>
 
@@ -32,7 +32,7 @@
               <form class="rejeitar__corpo" method="post" action="{% url 'web:painel_referencia_remover' ref.pk %}">
                 {% csrf_token %}
                 <input type="hidden" name="voltar" value="{{ request.get_full_path }}">
-                <p class="conta-texto">Remover “{{ ref.titulo }}” do banco de referências?</p>
+                <p class="conta-texto">Remover "{{ ref.titulo }}" do banco de referências?</p>
                 <div class="acoes">
                   <button class="botao botao--perigo botao--pequeno" type="submit">Remover</button>
                   <button class="botao botao--discreto botao--pequeno" type="button" data-fechar-detalhes>Cancelar</button>
@@ -48,14 +48,14 @@
 {% include 'web/_paginacao.html' %}
 {% else %}
   <div class="vazio">
-    <p class="vazio__titulo">{% if busca %}Nada encontrado para “{{ busca }}”{% else %}Nenhuma referência ainda{% endif %}</p>
+    <p class="vazio__titulo">{% if busca %}Nada encontrado para "{{ busca }}"{% else %}Nenhuma referência ainda{% endif %}</p>
     <div class="botoes"><a class="botao" href="{% url 'web:painel_referencia_nova' %}">Adicionar referência</a></div>
   </div>
 {% endif %}
 
 <section class="cartao areas-painel" id="areas" aria-labelledby="titulo-areas">
   <h2 class="cartao__titulo" id="titulo-areas">Áreas temáticas</h2>
-  <p class="nota">São os grupos do filtro “Área temática” na página pública. Só dá para remover uma área sem referências.</p>
+  <p class="nota">São os grupos do filtro "Área temática" na página pública. Só dá para remover uma área que não tenha referências.</p>
   <ul class="areas-painel__lista">
     {% for area in areas %}
       <li>

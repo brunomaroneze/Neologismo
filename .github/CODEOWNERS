@@ -13,7 +13,6 @@
 /Caddyfile              @brunomaroneze
 /DEPLOY.md              @brunomaroneze
 /backend/Dockerfile     @brunomaroneze
-/frontend/Dockerfile    @brunomaroneze
 
 # Configuração do Django: é onde moram segurança, CORS e throttle.
 /backend/config/settings.py  @brunomaroneze

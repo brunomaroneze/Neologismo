@@ -120,7 +120,9 @@ class RedefinirSenhaSerializer(serializers.Serializer):
         # UserAttributeSimilarityValidator precisa da instância.
         try:
             pk = urlsafe_base64_decode(dados['uid']).decode()
-            usuario = Usuario.objects.get(pk=pk)
+            # Conta desativada pelo painel não troca a senha, mesmo com um
+            # link pedido antes da desativação.
+            usuario = Usuario.objects.get(pk=pk, is_active=True)
         except (TypeError, ValueError, OverflowError, Usuario.DoesNotExist) as erro:
             # `from erro` preserva a causa no traceback: um uid corrompido e
             # um usuário apagado chegam aqui pelo mesmo caminho, e no log a
