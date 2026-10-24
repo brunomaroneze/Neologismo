@@ -1,21 +1,19 @@
 """Limite de tentativas para os formulários do site.
 
-A API tem os throttles do DRF; os formulários HTML não passam por eles. Sem
-isto, o login do site seria uma porta para força bruta que contorna o limite
-de 10/min do /api/login/. Usa o mesmo cache do throttle do DRF (tabela no
-Postgres em produção), então o limite vale para todos os workers do gunicorn.
+A API tem os throttles do DRF; os formulários HTML do site não passam por
+eles. Sem isto, curtir e enviar verbetes pelo site não teriam limite. Usa o
+mesmo cache do throttle do DRF (tabela no Postgres em produção), então o
+limite vale para todos os workers do gunicorn.
 """
 
 from django.core.cache import cache
 
 # escopo: (tentativas, janela em segundos) — os mesmos valores da API.
+# Login, cadastro e senha ficam com os limites do próprio allauth
+# (ACCOUNT_RATE_LIMITS); aqui só o que é do site.
 LIMITES = {
-    'login': (10, 60),
-    'cadastro': (10, 3600),
     'envio': (30, 3600),
     'curtida': (120, 60),
-    'recuperar_senha': (5, 3600),
-    'redefinir_senha': (20, 3600),
 }
 
 
