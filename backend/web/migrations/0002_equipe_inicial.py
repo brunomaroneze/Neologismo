@@ -24,7 +24,7 @@ EQUIPE = [
     ('João Colombo', 'Graduando em Letras', 'Aspirante a ex-carrossel.'),
     ('Luis Eduardo', 'Graduando em Ciência da Computação', ''),
     ('Rômulo Ferreira', 'Graduando em Letras', 'Ama criar listas de reprodução no Spotify e pseudo crítico de cinema.'),
-    ('João Victor Ifran', 'Desenvolvedor full stack', 'Responsável pela arquitetura do projeto, integração entre frontend e API e pela experiência de uso da plataforma.'),
+    ('João Victor Ifran', 'Desenvolvedor full stack', 'Backend e Charlie Brown Jr. Yeeee!'),
     ('Bruno Maroneze - UFGD', 'professor', ''),
 ]
 
