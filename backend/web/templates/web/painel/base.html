@@ -11,6 +11,7 @@
     <nav class="abas painel__abas" aria-label="Seções do painel">
       <a href="{% url 'web:moderacao' %}" {% if aba == 'inicio' %}aria-current="page"{% endif %}>Visão geral</a>
       <a href="{% url 'web:painel_verbetes' %}" {% if aba == 'verbetes' %}aria-current="page"{% endif %}>Neologismos</a>
+      <a href="{% url 'web:painel_detector' %}" {% if aba == 'detector' %}aria-current="page"{% endif %}>Detector</a>
       {% if pode_administrar %}
         <a href="{% url 'web:painel_usuarios' %}" {% if aba == 'usuarios' %}aria-current="page"{% endif %}>Usuários</a>
         <a href="{% url 'web:painel_equipe' %}" {% if aba == 'equipe' %}aria-current="page"{% endif %}>Equipe</a>

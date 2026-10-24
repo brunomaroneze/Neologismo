@@ -209,6 +209,26 @@ precisa confirmar nada. O Facebook não garante isso: o site pede a confirmaçã
 pelo próprio e-mail. Uma conta social com o mesmo e-mail de uma conta existente
 entra nessa conta, em vez de criar outra.
 
+## 5.2. Detector de neologismos
+
+O painel tem a aba **Detector**: a equipe cola um texto e o sistema aponta as
+palavras que não estão no léxico de referência, com classe gramatical,
+processo de formação sugerido e a frase de contexto. Adaptado de
+[neologism_detector](https://github.com/brunomaroneze/neologism_detector).
+
+- **Léxico:** ≈480 mil palavras em `backend/detector/dados/lexico.txt.gz`,
+  carregadas no banco pelo `entrypoint.sh` no primeiro start
+  (`importar_lexico --se-vazio`, ≈15 s). Para recarregar:
+  `python manage.py importar_lexico`.
+- **spaCy:** o modelo `pt_core_news_sm` está em `requirements-modelos.txt`
+  (fora do `requirements.txt` porque não vem do PyPI e o pip-audit não o
+  audita). Ele é carregado no primeiro uso de cada worker (≈2 s, ≈150 MB).
+- **Classificador:** é treinado no próprio servidor, no primeiro uso, com
+  `dados/treino.csv` mais os neologismos aprovados que têm processo de
+  formação, e refeito a cada 6 horas.
+- **Falsos positivos:** "Não é neologismo" guarda a palavra em
+  `PalavraIgnorada`, e ela some das próximas análises.
+
 ## 6. Monitoramento de erros (Sentry)
 
 Opcional, e desligado por padrão: sem DSN o SDK fica inerte e nada sai da

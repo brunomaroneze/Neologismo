@@ -399,3 +399,90 @@ def membro_mover(request, pk, direcao):
             for posicao, item in enumerate(membros, start=1):
                 MembroEquipe.objects.filter(pk=item.pk).update(ordem=posicao * 10)
     return redirect(_destino_seguro(request, f"{reverse('web:painel_equipe')}#membro-{pk}"))
+
+
+# --- Detector de neologismos ---------------------------------------------------
+
+CHAVE_TEXTO = 'detector_texto'
+CHAVE_FONTE = 'detector_fonte'
+
+
+@equipe_required
+def detector(request):
+    from detector.analise import MAX_CARACTERES, analisar
+
+    if request.method == 'POST':
+        texto = request.POST.get('texto', '').strip()
+        fonte = request.POST.get('fonte', '').strip()[:200]
+        if not texto:
+            messages.info(request, 'Cole um texto para analisar.')
+            return redirect('web:painel_detector')
+        if len(texto) > MAX_CARACTERES:
+            messages.info(
+                request,
+                f'O texto tem {len(texto)} caracteres; '
+                f'foram analisados os primeiros {MAX_CARACTERES}.',
+            )
+        # Guardado na sessão: ao marcar uma palavra como "não é neologismo" a
+        # página é refeita com a mesma análise, sem colar o texto de novo.
+        request.session[CHAVE_TEXTO] = texto[:MAX_CARACTERES]
+        request.session[CHAVE_FONTE] = fonte
+        return redirect(f"{reverse('web:painel_detector')}?resultado=1")
+
+    texto = request.session.get(CHAVE_TEXTO, '') if request.GET.get('resultado') else ''
+    resultado = analisar(texto) if texto else None
+    return render(request, 'web/painel/detector.html', _contexto(
+        request, 'detector',
+        texto=texto,
+        fonte=request.session.get(CHAVE_FONTE, '') if texto else '',
+        resultado=resultado,
+        max_caracteres=MAX_CARACTERES,
+    ))
+
+
+@equipe_required
+@require_POST
+def detector_ignorar(request):
+    from detector.models import PalavraIgnorada
+
+    palavra = request.POST.get('palavra', '').strip().lower()[:100]
+    if palavra:
+        PalavraIgnorada.objects.get_or_create(
+            palavra=palavra, defaults={'marcada_por': request.user},
+        )
+        messages.success(request, f'"{palavra}" não vai mais aparecer como candidato.')
+    return redirect(f"{reverse('web:painel_detector')}?resultado=1#candidatos")
+
+
+@equipe_required
+def detector_registrar(request):
+    """Cria o neologismo a partir de um candidato, com a frase como abonação."""
+    from neologismo.models import Contexto
+
+    dados_iniciais = {
+        'titulo': request.GET.get('palavra', ''),
+        'classe_gramatical': request.GET.get('classe', ''),
+        'tipologia': request.GET.get('processo', ''),
+    }
+    frase = request.POST.get('citacao', request.GET.get('frase', '')).strip()
+    fonte = request.POST.get('fonte', request.GET.get('fonte', '')).strip()[:200]
+    form = VerbeteForm(request.POST or None, initial=dados_iniciais)
+
+    if request.method == 'POST' and form.is_valid():
+        with transaction.atomic():
+            novo = form.save(commit=False)
+            novo.autor = request.user
+            novo.status = Neologismo.PENDENTE
+            novo.save()
+            if frase:
+                Contexto.objects.create(neologismo=novo, citacao=frase, fonte=fonte)
+            if 'aprovar' in request.POST:
+                moderacao.aprovar(novo, request.user)
+                messages.success(request, f'"{novo.titulo}" foi registrado e publicado.')
+            else:
+                messages.success(request, f'"{novo.titulo}" foi registrado e aguarda moderação.')
+        return redirect(f"{reverse('web:painel_detector')}?resultado=1#candidatos")
+
+    return render(request, 'web/painel/detector_registrar.html', _contexto(
+        request, 'detector', form=form, frase=frase, fonte=fonte,
+    ))

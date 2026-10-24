@@ -1,0 +1,67 @@
+{% extends 'web/painel/base.html' %}
+{% block titulo_painel %}Detector{% endblock %}
+{% block titulo_h1 %}Detector de neologismos{% endblock %}
+{% block painel %}
+<form class="cartao detector__form" method="post" novalidate>
+  {% csrf_token %}
+  <p class="conta-texto">Cole um texto — notícia, post, transcrição — para encontrar palavras que não estão no léxico de referência (≈480 mil formas). Os candidatos aparecem destacados, com a classe gramatical e uma sugestão de processo de formação.</p>
+  <div class="campo">
+    <label class="campo__rotulo" for="texto">Texto</label>
+    <textarea class="entrada" id="texto" name="texto" rows="9" maxlength="{{ max_caracteres }}" required placeholder="Cole aqui o texto a analisar…">{{ texto }}</textarea>
+    <p class="campo__ajuda">Até {{ max_caracteres|floatformat:"0g" }} caracteres por análise.</p>
+  </div>
+  <div class="campo">
+    <label class="campo__rotulo" for="fonte">Fonte <span class="campo__opcional">(opcional)</span></label>
+    <input class="entrada" id="fonte" name="fonte" maxlength="200" value="{{ fonte }}" placeholder="Ex.: Folha de S.Paulo, 12 mar. 2026">
+    <p class="campo__ajuda">Vai junto como fonte da abonação quando você registrar um candidato.</p>
+  </div>
+  <div class="acoes"><button class="botao" type="submit">Analisar texto</button></div>
+</form>
+
+{% if resultado %}
+  <section class="secao detector__resultado" id="candidatos" aria-labelledby="titulo-candidatos">
+    <div class="painel__barra">
+      <h2 class="titulo-2" id="titulo-candidatos">{{ resultado.candidatos|length }} candidato{{ resultado.candidatos|length|pluralize }}</h2>
+      <p class="nota">{{ resultado.total_palavras }} palavras analisadas · {{ resultado.novos|length }} ainda fora do banco</p>
+    </div>
+
+    <div class="cartao detector__texto" aria-label="Texto analisado, com os candidatos destacados">{% for trecho, chave in resultado.trechos %}{% if chave %}<mark class="detector__marca" title="Candidato a neologismo">{{ trecho }}</mark>{% else %}{{ trecho }}{% endif %}{% endfor %}</div>
+
+    {% if resultado.candidatos %}
+      <ul class="lista detector__lista">
+        {% for c in resultado.candidatos %}
+          <li class="item{% if c.registrado %} item--registrado{% endif %}">
+            <div class="item__topo">
+              <h3 class="item__titulo">{{ c.palavra }}</h3>
+              {% if c.registrado %}
+                <a class="situacao situacao--aprovado" href="{% url 'web:verbete' c.registrado.pk %}">Já registrado</a>
+              {% endif %}
+            </div>
+            <p class="item__meta">
+              {{ c.classe }}{% if c.lema and c.lema != c.palavra %} · lema: {{ c.lema }}{% endif %}
+              {% if c.ocorrencias > 1 %} · {{ c.ocorrencias }} ocorrências{% endif %}
+            </p>
+            <p class="detector__processo">
+              Processo sugerido: <strong>{{ c.processo }}</strong>
+              <span class="detector__confianca{% if c.confianca < 0.5 %} detector__confianca--baixa{% endif %}" title="Confiança do classificador">{{ c.confianca_pct }}%</span>
+            </p>
+            <blockquote class="citacao"><p>{{ c.frase }}</p></blockquote>
+            {% if not c.registrado %}
+              <div class="item__acoes">
+                <a class="botao botao--pequeno" href="{% url 'web:painel_detector_registrar' %}?palavra={{ c.palavra|urlencode }}&amp;classe={{ c.classe|urlencode }}&amp;processo={{ c.processo|urlencode }}&amp;frase={{ c.frase|urlencode }}&amp;fonte={{ fonte|urlencode }}">Registrar</a>
+                <form method="post" action="{% url 'web:painel_detector_ignorar' %}">
+                  {% csrf_token %}<input type="hidden" name="palavra" value="{{ c.palavra }}">
+                  <button class="botao botao--discreto botao--pequeno" type="submit">Não é neologismo</button>
+                </form>
+              </div>
+            {% endif %}
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <div class="vazio"><p class="vazio__titulo">Nenhum candidato encontrado</p><p>Todas as palavras do texto estão no léxico de referência.</p></div>
+    {% endif %}
+    <p class="nota">A sugestão de processo vem de um classificador treinado com os neologismos já classificados pela equipe; abaixo de 50% de confiança, vale conferir com atenção.</p>
+  </section>
+{% endif %}
+{% endblock %}

@@ -10,8 +10,8 @@ RUN python -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
 WORKDIR /app
-COPY requirements.txt .
-RUN pip install --upgrade pip && pip install -r requirements.txt
+COPY requirements.txt requirements-modelos.txt ./
+RUN pip install --upgrade pip && pip install -r requirements.txt -r requirements-modelos.txt
 
 
 # --- Estágio 2: imagem final ------------------------------------------------
