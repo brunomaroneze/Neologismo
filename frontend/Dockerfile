@@ -1,12 +1,12 @@
 # --- Estágio 1: dependências ------------------------------------------------
-FROM node:25-alpine AS dependencias
+FROM node:26-alpine AS dependencias
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
 
 
 # --- Estágio 2: build -------------------------------------------------------
-FROM node:25-alpine AS build
+FROM node:26-alpine AS build
 WORKDIR /app
 
 COPY --from=dependencias /app/node_modules ./node_modules
@@ -24,7 +24,7 @@ RUN npm run build
 
 
 # --- Estágio 3: runtime -----------------------------------------------------
-FROM node:25-alpine AS final
+FROM node:26-alpine AS final
 WORKDIR /app
 
 ENV NODE_ENV=production \
