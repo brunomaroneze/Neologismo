@@ -1,4 +1,4 @@
-asgiref==3.12.1
+asgiref==3.13.0
 attrs==26.1.0
 dj-database-url==3.1.2
 django-cors-headers==4.9.0
@@ -16,7 +16,7 @@ python-dotenv==1.2.4
 PyYAML==6.0.3
 referencing==0.37.0
 rpds-py==2026.9.1
-sentry-sdk[django]==2.72.0
+sentry-sdk[django]==2.73.0
 sqlparse==0.6.0
 uritemplate==4.2.0
 whitenoise==6.12.0
