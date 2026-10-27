@@ -61,7 +61,7 @@ class Command(BaseCommand):
                     tipologia=dados['tipologia'],
                     # Igual à planilha: o site antigo não tinha definição, e as
                     # tags seguem a tipologia, como no resto do acervo.
-                    definicao='Definição não disponível na fonte original.',
+                    definicao=Neologismo.DEFINICAO_AUSENTE,
                     contexto_uso=contextos[0]['citacao'] if contextos else '',
                     tags=[dados['tipologia']] if dados['tipologia'] else [],
                 )

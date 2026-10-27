@@ -9,7 +9,7 @@
     <h3 class="card__titulo" id="card-{{ verbete.pk }}"><a href="{% url 'web:verbete' verbete.pk %}">{{ verbete.titulo|lower }}</a></h3>
     {% if verbete.tipologia %}<p class="card__tipologia">{{ verbete.tipologia }}</p>{% endif %}
 
-    <p class="card__definicao">{{ verbete.definicao }}</p>
+    {% if verbete.tem_definicao %}<p class="card__definicao">{{ verbete.definicao }}</p>{% endif %}
 
     {% if verbete.contexto_uso %}
       <blockquote class="citacao">

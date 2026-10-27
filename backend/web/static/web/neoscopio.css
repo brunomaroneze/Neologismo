@@ -808,6 +808,9 @@ textarea.entrada { min-height: 7rem; resize: vertical; line-height: 1.5; }
 }
 
 @media (max-width: 640px) {
+  /* No celular o destaque fica só com o texto: a arte empilhada embaixo
+     empurra a busca para longe e não acrescenta informação. */
+  .destaque__arte { display: none; }
   .conteiner { padding-inline: 1rem; }
   .grade, .equipe, .blocos { grid-template-columns: minmax(0, 1fr); }
   .abertura__corpo { padding-block: 2.5rem 2.25rem; }
