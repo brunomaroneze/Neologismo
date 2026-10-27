@@ -1,0 +1,13 @@
+{% extends "allauth/layouts/base.html" %}
+{% comment %}Configurações da conta: as mesmas abas do perfil e o conteúdo num cartão.{% endcomment %}
+{% block body %}
+<div class="fundo-veu">
+  <div class="conteiner secao conta-gestao">
+    <span class="rotulo">Sua conta</span>
+    {% include 'web/_abas_conta.html' %}
+    <div class="painel-conta__caixa conta-allauth conta-gestao__caixa">
+      {% block content %}{% endblock content %}
+    </div>
+  </div>
+</div>
+{% endblock body %}

@@ -1,0 +1,21 @@
+{% load allauth %}
+{% if attrs.type == "checkbox" or attrs.type == "radio" %}
+  <div class="campo campo--marcar">
+    <label class="marcar" for="{{ attrs.id }}">
+      <input type="{{ attrs.type }}" {% if attrs.name %}name="{{ attrs.name }}"{% endif %} {% if attrs.id %}id="{{ attrs.id }}"{% endif %} {% if attrs.value is not None %}value="{{ attrs.value }}"{% endif %} {% if attrs.checked %}checked{% endif %} {% if attrs.disabled %}disabled{% endif %} {% if attrs.required %}required{% endif %}>
+      <span>{% slot label %}{% endslot %}</span>
+    </label>
+    {% if slots.help_text %}<div class="campo__ajuda">{% slot help_text %}{% endslot %}</div>{% endif %}
+  </div>
+{% else %}
+  <div class="campo">
+    <label class="campo__rotulo" for="{{ attrs.id }}">{% slot label %}{% endslot %}</label>
+    {% if attrs.type == "textarea" %}
+      <textarea class="entrada" {% if attrs.name %}name="{{ attrs.name }}"{% endif %} {% if attrs.id %}id="{{ attrs.id }}"{% endif %} {% if attrs.rows %}rows="{{ attrs.rows }}"{% endif %} {% if attrs.required %}required{% endif %} {% if attrs.disabled %}disabled{% endif %} {% if attrs.readonly %}readonly{% endif %} {% if attrs.placeholder %}placeholder="{{ attrs.placeholder }}"{% endif %}>{% slot value %}{% endslot %}</textarea>
+    {% else %}
+      <input class="entrada" type="{{ attrs.type }}" {% if attrs.name %}name="{{ attrs.name }}"{% endif %} {% if attrs.id %}id="{{ attrs.id }}"{% endif %} {% if attrs.value is not None %}value="{{ attrs.value }}"{% endif %} {% if attrs.required %}required{% endif %} {% if attrs.disabled %}disabled{% endif %} {% if attrs.readonly %}readonly{% endif %} {% if attrs.placeholder %}placeholder="{{ attrs.placeholder }}"{% endif %} {% if attrs.autocomplete %}autocomplete="{{ attrs.autocomplete }}"{% endif %}>
+    {% endif %}
+    {% if slots.help_text %}<div class="campo__ajuda">{% slot help_text %}{% endslot %}</div>{% endif %}
+    {% for erro in attrs.errors %}<p class="campo__erro">{{ erro }}</p>{% endfor %}
+  </div>
+{% endif %}

@@ -5,12 +5,16 @@ from rest_framework import status as http_status
 from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
-from rest_framework.permissions import IsAdminUser, IsAuthenticated
+from rest_framework.permissions import IsAdminUser, IsAuthenticated, IsAuthenticatedOrReadOnly
 from rest_framework.response import Response
+from rest_framework.throttling import (
+    AnonRateThrottle,
+    ScopedRateThrottle,
+    UserRateThrottle,
+)
 
-from . import consultas
+from . import consultas, moderacao
 from . import facetas as indice_facetas
-from . import moderacao
 from .models import Neologismo
 from .permissions import DonoOuStaff
 from .serializers import (
@@ -20,10 +24,17 @@ from .serializers import (
     RejeicaoSerializer,
 )
 
+
 class NeologismoViewSet(viewsets.ModelViewSet):
     queryset = Neologismo.objects.all()
     serializer_class = NeologismoSerializer
-    permission_classes = [DonoOuStaff]
+    # Declarar permission_classes substitui o padrão do DRF: sem o
+    # IsAuthenticatedOrReadOnly aqui, um POST anônimo chegava ao
+    # perform_create e estourava 500 ao gravar com AnonymousUser.
+    permission_classes = [IsAuthenticatedOrReadOnly, DonoOuStaff]
+    # O throttle_scope definido em get_throttles só vale com ScopedRateThrottle
+    # na lista; sem ele os limites de envio e curtida não eram aplicados.
+    throttle_classes = [AnonRateThrottle, UserRateThrottle, ScopedRateThrottle]
 
     def get_serializer_class(self):
         # O painel admin precisa dos campos internos; o público, não.

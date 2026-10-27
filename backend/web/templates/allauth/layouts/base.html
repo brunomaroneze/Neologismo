@@ -1,0 +1,9 @@
+{% extends 'web/base.html' %}
+{% comment %}
+Ponte entre as telas de conta do django-allauth e o layout do site: os blocos
+do allauth (head_title, extra_head, body, content) vivem dentro dos blocos do
+base do site.
+{% endcomment %}
+{% block titulo %}{% block head_title %}{% endblock head_title %} — Neoscópio{% endblock %}
+{% block meta %}<meta name="robots" content="noindex">{% block extra_head %}{% endblock extra_head %}{% endblock %}
+{% block conteudo %}{% block body %}{% block content %}{% endblock content %}{% endblock body %}{% block extra_body %}{% endblock extra_body %}{% endblock %}

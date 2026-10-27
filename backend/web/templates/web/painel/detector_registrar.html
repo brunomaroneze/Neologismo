@@ -1,0 +1,39 @@
+{% extends 'web/painel/base.html' %}
+{% block titulo_painel %}Registrar neologismo{% endblock %}
+{% block titulo_h1 %}Registrar neologismo{% endblock %}
+{% block painel %}
+<div class="painel__duas-colunas">
+  <form class="formulario cartao" method="post" novalidate>
+    {% csrf_token %}
+    {% if form.non_field_errors %}<p class="aviso aviso--error" role="alert">{{ form.non_field_errors|join:" " }}</p>{% endif %}
+    {% for campo in form %}
+      <div class="campo">
+        <label class="campo__rotulo" for="{{ campo.id_for_label }}">{{ campo.label }}</label>
+        {{ campo }}
+        {% if campo.help_text %}<p class="campo__ajuda">{{ campo.help_text }}</p>{% endif %}
+        {% for erro in campo.errors %}<p class="campo__erro">{{ erro }}</p>{% endfor %}
+      </div>
+    {% endfor %}
+    <fieldset class="grupo-campos">
+      <legend>Abonação</legend>
+      <div class="campo">
+        <label class="campo__rotulo" for="citacao">Trecho</label>
+        <textarea class="entrada" id="citacao" name="citacao" rows="3">{{ frase }}</textarea>
+      </div>
+      <div class="campo">
+        <label class="campo__rotulo" for="fonte">Fonte</label>
+        <input class="entrada" id="fonte" name="fonte" maxlength="200" value="{{ fonte }}">
+      </div>
+    </fieldset>
+    <div class="acoes">
+      <button class="botao" type="submit" name="aprovar" value="1">Registrar e publicar</button>
+      <button class="botao botao--secundario" type="submit">Registrar como pendente</button>
+      <a href="{% url 'web:painel_detector' %}?resultado=1#candidatos">Voltar à análise</a>
+    </div>
+  </form>
+  <aside class="cartao">
+    <h2 class="cartao__titulo">Do detector</h2>
+    <p class="conta-texto">A palavra, a classe e o processo vieram da análise automática. Confira antes de publicar. A definição é obrigatória.</p>
+  </aside>
+</div>
+{% endblock %}

@@ -8,26 +8,93 @@
     <div class="abertura__corpo">
       <span class="rotulo">Fontes do projeto</span>
       <h1 class="titulo-1">Referências bibliográficas</h1>
-      <p class="lead">Obras, dicionários e materiais que embasam o trabalho de registro e curadoria dos neologismos no Neoscópio. As referências seguem o padrão ABNT.</p>
+      <p class="lead">Obras, dicionários e outros materiais que a equipe usa para registrar e revisar os neologismos. As referências seguem a ABNT.</p>
     </div>
   </div>
 </section>
 
-<div class="conteiner secao">
-  <ul class="referencias">
-    {% for ref in referencias %}
-      <li>
-        {{ ref.autoria }} <i>{{ ref.titulo }}</i> {{ ref.publicacao }}
-        {% if ref.url %}<br><a href="{{ ref.url }}" target="_blank" rel="noopener noreferrer">Acessar fonte</a>{% endif %}
-      </li>
-    {% endfor %}
-  </ul>
+<div class="conteiner secao" id="acervo">
+  <h2 class="titulo-2 acervo__titulo">Banco de referências</h2>
+
+  <form class="acervo" method="get" action="{% url 'web:referencias' %}#acervo" data-acervo>
+    <div class="acervo__filtros">
+      <fieldset class="faceta">
+        <legend class="faceta__rotulo">Área temática</legend>
+        <ul class="faceta__opcoes">
+          {% for area in areas %}
+            <li>
+              <label class="marcar">
+                <input type="checkbox" name="area" value="{{ area.pk }}" {% if area.pk|stringformat:"s" in consulta.areas %}checked{% endif %}>
+                <span><span class="area-ponto area-ponto--{{ area.cor }}" aria-hidden="true"></span>{{ area.nome }} <span class="faceta__total">{{ area.total }}</span></span>
+              </label>
+            </li>
+          {% endfor %}
+        </ul>
+      </fieldset>
+
+      <fieldset class="faceta">
+        <legend class="faceta__rotulo">Categoria</legend>
+        <ul class="faceta__opcoes">
+          {% for valor, rotulo in categorias %}
+            <li>
+              <label class="marcar">
+                <input type="checkbox" name="categoria" value="{{ valor }}" {% if valor in consulta.categorias %}checked{% endif %}>
+                <span>{{ rotulo }}</span>
+              </label>
+            </li>
+          {% endfor %}
+        </ul>
+      </fieldset>
+
+      <div class="faceta faceta--campos">
+        <div class="campo">
+          <label class="faceta__rotulo" for="filtro-autor">Autoria</label>
+          <input class="entrada" type="text" id="filtro-autor" name="autor" value="{{ consulta.autor }}" placeholder="Sobrenome ou nome" autocomplete="off">
+        </div>
+        <div class="campo">
+          <label class="faceta__rotulo" for="filtro-titulo">Título</label>
+          <input class="entrada" type="text" id="filtro-titulo" name="titulo" value="{{ consulta.titulo }}" placeholder="Palavra do título" autocomplete="off">
+        </div>
+        <div class="campo">
+          <label class="faceta__rotulo" for="filtro-ano">Ano</label>
+          <input class="entrada" type="text" id="filtro-ano" name="ano" value="{{ consulta.ano }}" placeholder="2009 ou 2000-2010" inputmode="numeric" autocomplete="off" aria-describedby="filtro-ano-ajuda">
+          <p class="campo__ajuda" id="filtro-ano-ajuda">Um ano ou um intervalo.</p>
+        </div>
+        <div class="acervo__acoes">
+          <button class="botao" type="submit" data-sem-js>Filtrar</button>
+          <a class="acervo__limpar" href="{% url 'web:referencias' %}#acervo" data-acervo-link {% if not consulta.filtrando %}hidden{% endif %} data-limpar>Limpar filtros</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="acervo__barra">
+      <label class="acervo__mostrar">
+        Mostrar
+        <select name="por_pagina">
+          {% for n in por_pagina %}<option value="{{ n }}" {% if n == consulta.por_pagina %}selected{% endif %}>{{ n }}</option>{% endfor %}
+        </select>
+        registros
+      </label>
+      <div class="acervo__barra-direita">
+        <label class="acervo__busca">
+          <span>Buscar</span>
+          <input type="search" name="q" value="{{ consulta.busca }}" placeholder="Autoria, título, editora…" autocomplete="off">
+        </label>
+        <button class="botao botao--discreto botao--pequeno" type="button" data-imprimir hidden>Imprimir ou salvar PDF</button>
+      </div>
+    </div>
+    <input type="hidden" name="ordem" value="{{ consulta.ordem }}" data-acervo-ordem>
+  </form>
+
+  <div class="acervo__resultados" data-acervo-resultados aria-live="polite">
+    {% include 'web/_acervo.html' %}
+  </div>
 </div>
 
 <section class="chamada">
   <div class="conteiner chamada__corpo">
-    <h2 class="titulo-2">Conhece outra fonte relevante?</h2>
-    <p>O acervo de referências também cresce com a comunidade. Contribua com novas palavras e ajude a mapear o português do nosso tempo.</p>
+    <h2 class="titulo-2">Conhece uma palavra nova?</h2>
+    <p>As referências são escolhidas pela equipe, mas qualquer pessoa com conta pode enviar uma palavra para o banco.</p>
     <div class="botoes">
       <a class="botao" href="{% url 'web:enviar' %}">Enviar uma palavra</a>
       <a class="botao botao--secundario" href="{% url 'web:sobre' %}">Sobre o projeto</a>

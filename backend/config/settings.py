@@ -61,6 +61,27 @@ if not SECRET_KEY:
             'Gere uma com: python -c "import secrets; print(secrets.token_urlsafe(64))"'
         )
 
+# Valores que já foram publicados neste repositório (exemplos, compose de
+# desenvolvimento, documentação). Qualquer um deles em produção deixa forjar
+# links de redefinição de senha e de confirmação de e-mail.
+CHAVES_PUBLICAS = {
+    'chave-de-desenvolvimento-nao-use-em-producao',
+    'django-insecure-chave-apenas-para-desenvolvimento',
+    'chave-de-ci',
+    'chave-de-ci-sem-valor-em-producao',
+    'dev',
+}
+if not DEBUG and (
+    SECRET_KEY in CHAVES_PUBLICAS
+    or SECRET_KEY.startswith('django-insecure-')
+    or len(SECRET_KEY) < 50
+    or len(set(SECRET_KEY)) < 5
+):
+    raise ImproperlyConfigured(
+        'SECRET_KEY fraca ou de exemplo com DEBUG=False. '
+        'Gere uma com: python -c "import secrets; print(secrets.token_urlsafe(64))"'
+    )
+
 ALLOWED_HOSTS = env_list('ALLOWED_HOSTS', '127.0.0.1,localhost' if DEBUG else '')
 if not DEBUG and not ALLOWED_HOSTS:
     raise ImproperlyConfigured(
@@ -91,11 +112,20 @@ INSTALLED_APPS = [
     'neologismo',
     'usuario',
     'web',
+    'detector',
     'drf_spectacular',
+
+    # contas: cadastro, login social, confirmação de e-mail e senha
+    'allauth',
+    'allauth.account',
+    'allauth.socialaccount',
+    'allauth.socialaccount.providers.google',
+    'allauth.socialaccount.providers.facebook',
 ]
 
 # Páginas que exigem conta mandam para o login do site, não o do admin.
-LOGIN_URL = 'web:login'
+LOGIN_URL = 'account_login'
+LOGIN_REDIRECT_URL = '/'
 
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
@@ -104,6 +134,7 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'allauth.account.middleware.AccountMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
@@ -202,7 +233,7 @@ STORAGES = {
     },
 }
 
-MEDIA_URL = 'media/'
+MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
 
@@ -405,6 +436,67 @@ else:
         if DEBUG
         else 'django.core.mail.backends.dummy.EmailBackend'
     )
+
+# --- Contas (django-allauth) -------------------------------------------------
+#
+# O site usa sessão em cookie HttpOnly, não JWT: o JavaScript da página não
+# alcança a credencial, a sessão é revogada no logout e na troca de senha, e o
+# CSRF do Django protege os formulários. Os tokens da API continuam valendo
+# só para a API.
+
+AUTHENTICATION_BACKENDS = [
+    'django.contrib.auth.backends.ModelBackend',
+    'allauth.account.auth_backends.AuthenticationBackend',
+]
+
+ACCOUNT_LOGIN_METHODS = {'username', 'email'}
+ACCOUNT_SIGNUP_FIELDS = ['username*', 'email*', 'password1*', 'password2*']
+ACCOUNT_USERNAME_MIN_LENGTH = 3
+ACCOUNT_UNIQUE_EMAIL = True
+# A conta só entra depois de confirmar o e-mail. O link de confirmação pede um
+# clique (não confirma no GET), para antivírus de e-mail que abrem os links
+# sozinhos não confirmarem a conta no lugar da pessoa.
+ACCOUNT_EMAIL_VERIFICATION = 'mandatory'
+ACCOUNT_CONFIRM_EMAIL_ON_GET = False
+ACCOUNT_LOGIN_ON_EMAIL_CONFIRMATION = True
+ACCOUNT_LOGOUT_REDIRECT_URL = '/'
+ACCOUNT_EMAIL_SUBJECT_PREFIX = '[Neoscópio] '
+ACCOUNT_DEFAULT_HTTP_PROTOCOL = 'http' if DEBUG else 'https'
+# Os limites de tentativa (login, cadastro, reenvio de e-mail) usam o cache,
+# que em produção é a tabela no Postgres compartilhada pelos workers.
+
+# Login social. Cada provedor só aparece na tela quando as credenciais estão no
+# .env (veja DEPLOY.md). Conta social com e-mail já verificado pelo provedor
+# entra na conta existente com o mesmo e-mail em vez de criar outra.
+SOCIALACCOUNT_EMAIL_AUTHENTICATION = True
+SOCIALACCOUNT_EMAIL_AUTHENTICATION_AUTO_CONNECT = True
+SOCIALACCOUNT_STORE_TOKENS = False
+SOCIALACCOUNT_PROVIDERS = {}
+if os.getenv('GOOGLE_CLIENT_ID') and os.getenv('GOOGLE_CLIENT_SECRET'):
+    SOCIALACCOUNT_PROVIDERS['google'] = {
+        'APPS': [{
+            'client_id': os.getenv('GOOGLE_CLIENT_ID'),
+            'secret': os.getenv('GOOGLE_CLIENT_SECRET'),
+        }],
+        'SCOPE': ['profile', 'email'],
+        'AUTH_PARAMS': {'access_type': 'online', 'prompt': 'select_account'},
+        'OAUTH_PKCE_ENABLED': True,
+        # O Google só entrega e-mails que ele mesmo verificou.
+        'VERIFIED_EMAIL': True,
+    }
+if os.getenv('FACEBOOK_APP_ID') and os.getenv('FACEBOOK_APP_SECRET'):
+    SOCIALACCOUNT_PROVIDERS['facebook'] = {
+        'APPS': [{
+            'client_id': os.getenv('FACEBOOK_APP_ID'),
+            'secret': os.getenv('FACEBOOK_APP_SECRET'),
+        }],
+        'METHOD': 'oauth2',
+        'SCOPE': ['email', 'public_profile'],
+        'FIELDS': ['id', 'email', 'name', 'first_name', 'last_name'],
+        # O Facebook não garante que o e-mail foi confirmado: pedimos a
+        # confirmação pelo nosso próprio e-mail.
+        'VERIFIED_EMAIL': False,
+    }
 
 # Validade do link de redefinição de senha, em segundos (padrão: 2 horas).
 PASSWORD_RESET_TIMEOUT = env_int('PASSWORD_RESET_TIMEOUT', 60 * 60 * 2)

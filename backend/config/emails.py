@@ -56,7 +56,7 @@ def enviar_email(assunto, template, contexto, destinatarios):
 
 def avisar_verbete_aprovado(neologismo):
     return enviar_email(
-        assunto=f'Seu verbete "{neologismo.titulo}" foi publicado',
+        assunto=f'Seu neologismo "{neologismo.titulo}" foi publicado',
         template='emails/verbete_aprovado.html',
         contexto={
             'neologismo': neologismo,
@@ -68,7 +68,7 @@ def avisar_verbete_aprovado(neologismo):
 
 def avisar_verbete_rejeitado(neologismo):
     return enviar_email(
-        assunto=f'Sobre o verbete "{neologismo.titulo}"',
+        assunto=f'Sobre o neologismo "{neologismo.titulo}"',
         template='emails/verbete_rejeitado.html',
         contexto={
             'neologismo': neologismo,

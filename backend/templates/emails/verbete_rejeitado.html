@@ -1,12 +1,12 @@
 {% extends "emails/base_email.html" %}
 
-{% block titulo %}Sobre o seu verbete{% endblock %}
+{% block titulo %}Sobre o seu neologismo{% endblock %}
 
 {% block conteudo %}
   <p style="margin:0 0 16px;">Olá, {{ neologismo.autor.username }}.</p>
 
   <p style="margin:0 0 16px;">
-    O verbete <strong>{{ neologismo.titulo|lower }}</strong> não foi publicado
+    O neologismo <strong>{{ neologismo.titulo|lower }}</strong> não foi publicado
     desta vez. O motivo registrado pela equipe:
   </p>
 
@@ -19,8 +19,8 @@
   </table>
 
   <p style="margin:0 0 24px;">
-    Isso não é uma porta fechada: se der para ajustar a definição ou anexar
-    uma citação com fonte, vale enviar de novo.
+    Dá para tentar outra vez: se você conseguir ajustar a definição ou anexar
+    uma citação com fonte, envie de novo.
   </p>
 
   <table role="presentation" cellpadding="0" cellspacing="0">

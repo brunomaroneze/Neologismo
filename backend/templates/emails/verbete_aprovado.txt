@@ -1,9 +1,9 @@
 Olá, {{ neologismo.autor.username }}.
 
-O verbete "{{ neologismo.titulo|lower }}" passou pela moderação e já está no
+O neologismo "{{ neologismo.titulo|lower }}" passou pela moderação e já está no
 banco público.
 
-Ver o verbete:
+Ver o neologismo:
 {{ url_verbete }}
 
 Obrigado por ajudar a registrar o português que se fala de verdade.

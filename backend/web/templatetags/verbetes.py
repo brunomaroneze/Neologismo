@@ -60,6 +60,12 @@ def data_curta(valor):
     return formatar_data(valor, r'd \d\e b. \d\e Y').lower()
 
 
+@register.filter
+def sem_ponto(texto):
+    """Tira o ponto final, para a pontuação da ABNT não sair dobrada."""
+    return str(texto).strip().rstrip('.')
+
+
 @register.simple_tag
 def paginas(pagina):
     """Números para a paginação: 1 … 4 5 [6] 7 8 … 12.
@@ -78,6 +84,8 @@ def consulta(context, **alteracoes):
     primeira página, a menos que a própria `pagina` seja a alteração.
     """
     params = context['request'].GET.copy()
+    # `parcial` é só do pedido feito pelo JavaScript, nunca vai para links.
+    params.pop('parcial', None)
     if 'pagina' not in alteracoes:
         params.pop('pagina', None)
     for chave, valor in alteracoes.items():

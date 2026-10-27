@@ -50,6 +50,10 @@ class Neologismo(models.Model):
         help_text='Lista de strings. Ex: ["Internetês", "Anglicismo"]',
     )
 
+    # Texto gravado nos verbetes importados da planilha e do site antigo,
+    # que não tinham definição. Não é exibido nos cards.
+    DEFINICAO_AUSENTE = 'Definição não disponível na fonte original.'
+
     # --- Moderação ---
 
     PENDENTE = 'pendente'
@@ -136,6 +140,10 @@ class Neologismo(models.Model):
         if not self.slug and self.titulo:
             self.slug = slugify(self.titulo)[:70]
         super().save(*args, **kwargs)
+
+    @property
+    def tem_definicao(self):
+        return self.definicao != self.DEFINICAO_AUSENTE
 
     @property
     def total_likes(self):

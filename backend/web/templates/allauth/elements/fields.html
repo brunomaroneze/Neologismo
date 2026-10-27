@@ -1,0 +1,23 @@
+{% comment %}
+Campos de um formulário do allauth, um a um, com rótulo visível, ajuda e erros
+no padrão do site (o as_p padrão não permite estilizar nem dá rótulos aos
+campos marcados como unlabeled).
+{% endcomment %}
+{% for erro in attrs.form.non_field_errors %}<p class="aviso aviso--error" role="alert">{{ erro }}</p>{% endfor %}
+{% for campo in attrs.form %}
+  {% if campo.is_hidden %}
+    {{ campo }}
+  {% elif campo.widget_type == 'checkbox' %}
+    <div class="campo campo--marcar">
+      <label class="marcar">{{ campo }} <span>{{ campo.label }}</span></label>
+      {% for erro in campo.errors %}<p class="campo__erro">{{ erro }}</p>{% endfor %}
+    </div>
+  {% else %}
+    <div class="campo">
+      <label class="campo__rotulo" for="{{ campo.id_for_label }}">{{ campo.label }}</label>
+      {{ campo }}
+      {% if campo.help_text %}<div class="campo__ajuda">{{ campo.help_text|safe }}</div>{% endif %}
+      {% for erro in campo.errors %}<p class="campo__erro">{{ erro }}</p>{% endfor %}
+    </div>
+  {% endif %}
+{% endfor %}

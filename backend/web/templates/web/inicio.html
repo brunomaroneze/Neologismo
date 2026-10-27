@@ -39,7 +39,7 @@
 
   <div class="resultados">
     <p class="resultados__total" aria-live="polite">
-      <strong>{{ pagina.paginator.count }}</strong> {% if pagina.paginator.count == 1 %}verbete{% else %}verbetes{% endif %}{% if tem_filtro %} para os filtros atuais{% endif %}
+      <strong>{{ pagina.paginator.count }}</strong> {% if pagina.paginator.count == 1 %}neologismo{% else %}neologismos{% endif %}{% if tem_filtro %} para os filtros atuais{% endif %}
     </p>
     <div class="resultados__acoes">
       {% if tem_filtro %}<a href="{% url 'web:inicio' %}#explorar">Limpar filtros</a>{% endif %}
@@ -70,7 +70,7 @@
     {% endif %}
   {% else %}
     <div class="vazio">
-      <p class="vazio__titulo">Nenhum verbete encontrado</p>
+      <p class="vazio__titulo">Nenhum neologismo encontrado</p>
       <p>{% if tem_filtro %}Tente outra palavra ou remova os filtros.{% else %}A base ainda está vazia. Que tal enviar a primeira palavra?{% endif %}</p>
       <div class="botoes">
         {% if tem_filtro %}

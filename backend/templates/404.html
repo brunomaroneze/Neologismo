@@ -1,7 +1,7 @@
 {% extends 'web/base.html' %}
 {% block titulo %}Página não encontrada — Neoscópio{% endblock %}
 {% block conteudo %}
-<div class="conteiner painel-conta">
+<div class="fundo-veu"><div class="conteiner painel-conta">
   <div class="painel-conta__caixa">
     <span class="rotulo">Página não encontrada</span>
     <h1 class="titulo-1">Essa página não existe</h1>
@@ -11,5 +11,5 @@
       <a class="botao botao--secundario" href="{% url 'web:enviar' %}">Enviar um neologismo</a>
     </div>
   </div>
-</div>
+</div></div>
 {% endblock %}

@@ -1,14 +1,13 @@
 # Deploy — VPS única com Docker Compose
 
-Este guia sobe o Neoscópio inteiro (Postgres + Django + Next + HTTPS) em uma
+Este guia sobe o Neoscópio inteiro (Postgres + Django + HTTPS) em uma
 máquina só. O Caddy é o único serviço exposto à internet e cuida do
 certificado TLS sozinho.
 
 ```
-internet ──▶ Caddy :80/:443 ──┬──▶ backend:8000   (/api, /admin, /static, /media)
-                              └──▶ frontend:3000  (todo o resto)
-                                       │
-                                     db:5432       (rede interna, sem porta no host)
+internet ──▶ Caddy :80/:443 ──▶ backend:8000   (site, /api, /admin, /static, /media)
+                                      │
+                                    db:5432       (rede interna, sem porta no host)
 ```
 
 ## 1. Pré-requisitos
@@ -73,7 +72,7 @@ para não subir um site com configuração pela metade.
 docker compose -f docker-compose.prod.yml up -d --build
 ```
 
-O primeiro start leva alguns minutos (build das duas imagens + emissão do
+O primeiro start leva alguns minutos (build da imagem do backend + emissão do
 certificado). Acompanhe:
 
 ```bash
@@ -97,7 +96,7 @@ docker compose -f docker-compose.prod.yml exec backend \
 ```
 
 > **Importante:** `createsuperuser` cria a conta com `is_staff` e
-> `is_superuser`, mas **não** com `is_admin` — e é `is_admin` que o frontend
+> `is_superuser`, mas **não** com `is_admin` — e é `is_admin` que o site
 > usa para liberar o painel de moderação. Promova a conta depois:
 
 ```bash
@@ -105,28 +104,51 @@ docker compose -f docker-compose.prod.yml exec backend python manage.py shell -c
   "from django.contrib.auth import get_user_model; U=get_user_model(); u=U.objects.get(username='SEU_USUARIO'); u.is_admin=True; u.save(); print('promovido')"
 ```
 
-Para popular a base com verbetes de demonstração (**apenas em homologação**):
+Para popular a base com verbetes de demonstração (**apenas em homologação**).
+Com `DEBUG=False` o comando se recusa a rodar sem `--permitir-producao`, e a
+conta `admin` que ele cria fica com uma senha aleatória, mostrada uma vez na
+saída:
 
 ```bash
 docker compose -f docker-compose.prod.yml exec backend \
-  python manage.py seed_fake_data
+  python manage.py seed_fake_data --permitir-producao
 ```
 
 ## 5. E-mail transacional
 
-O site usa e-mail para duas coisas: **recuperação de senha** e **aviso ao
-autor** quando o verbete dele é aprovado ou rejeitado.
+O site usa e-mail para **confirmar a conta no cadastro** (obrigatório),
+**recuperação de senha** e **aviso ao autor** quando o verbete dele é aprovado
+ou rejeitado.
 
-Sem `EMAIL_HOST` preenchido o site **não quebra** — o Django passa a descartar
-os envios em silêncio. O efeito prático é que ninguém consegue recuperar a
-senha e nenhum aviso de moderação chega. É um estado válido para homologação,
-não para produção.
+Sem `EMAIL_HOST` preenchido o Django descarta os envios em silêncio. Como a
+confirmação de e-mail é obrigatória, **ninguém consegue concluir o cadastro**
+nesse estado. Enquanto o e-mail não estiver configurado, um administrador pode
+confirmar contas à mão em **Painel → Usuários → Confirmar e-mail**.
 
-### Escolhendo um provedor
+### Gmail com senha de app (configuração atual)
 
-Não use SMTP de Gmail pessoal: limite baixo e bloqueio quase garantido.
-Serviços transacionais têm plano gratuito suficiente para este projeto
-(Resend, Brevo, SendGrid, Amazon SES). Preencha no `.env`:
+1. Na conta Google que vai enviar, ative a **verificação em duas etapas**.
+2. Em <https://myaccount.google.com/apppasswords>, crie uma senha de app
+   chamada "Neoscópio" e copie as 16 letras (sem os espaços).
+3. No `.env` da VPS:
+
+```bash
+EMAIL_HOST=smtp.gmail.com
+EMAIL_PORT=587
+EMAIL_USE_TLS=True
+EMAIL_HOST_USER=sua.conta@gmail.com
+EMAIL_HOST_PASSWORD=abcdefghijklmnop
+DEFAULT_FROM_EMAIL=Neoscópio <sua.conta@gmail.com>
+```
+
+Limites do Gmail: cerca de 500 e-mails por dia, e o remetente precisa ser o
+próprio endereço do Gmail. Se o volume crescer, ou para enviar como
+`@neoscopio.com.br`, troque por um serviço transacional (abaixo).
+
+### Serviço transacional (alternativa)
+
+Resend, Brevo, SendGrid e Amazon SES têm plano gratuito suficiente para este
+projeto e permitem remetente no domínio do site. Preencha no `.env`:
 
 ```bash
 EMAIL_HOST=smtp.resend.com
@@ -158,35 +180,68 @@ container (e para o Sentry, se configurado). Para investigar:
 docker compose -f docker-compose.prod.yml logs backend | grep -i "Falha ao enviar"
 ```
 
+## 5.1. Login com Google e Facebook
+
+Os botões "Continuar com Google" e "Continuar com Facebook" só aparecem quando
+as credenciais do provedor estão no `.env`. Depois de preencher, recrie o
+backend (`... up -d backend`).
+
+**Google** — <https://console.cloud.google.com/apis/credentials>
+
+1. Crie um projeto, configure a **tela de consentimento OAuth** (tipo
+   "Externo", nome "Neoscópio", e-mail de suporte, domínio do site) e publique.
+2. *Criar credenciais → ID do cliente OAuth → Aplicativo da Web*.
+3. **URI de redirecionamento autorizado:**
+   `https://SEU-DOMINIO/conta/google/login/callback/`
+4. Copie para o `.env`: `GOOGLE_CLIENT_ID` e `GOOGLE_CLIENT_SECRET`.
+
+**Facebook** — <https://developers.facebook.com/apps>
+
+1. *Criar app → Autenticar e solicitar dados dos usuários com o Login do
+   Facebook*.
+2. Em *Login do Facebook → Configurações*, **URI de redirecionamento do OAuth
+   válido:** `https://SEU-DOMINIO/conta/facebook/login/callback/`
+3. Em *Configurações do app → Básico*, preencha a URL da política de
+   privacidade e coloque o app em modo **Ao vivo**.
+4. Copie para o `.env`: `FACEBOOK_APP_ID` (ID do app) e `FACEBOOK_APP_SECRET`
+   (chave secreta).
+
+O Google entrega e-mails já verificados, então quem entra pelo Google não
+precisa confirmar nada. O Facebook não garante isso: o site pede a confirmação
+pelo próprio e-mail. Uma conta social com o mesmo e-mail de uma conta existente
+entra nessa conta, em vez de criar outra.
+
+## 5.2. Detector de neologismos
+
+O painel tem a aba **Detector**: a equipe cola um texto e o sistema aponta as
+palavras que não estão no léxico de referência, com classe gramatical,
+processo de formação sugerido e a frase de contexto. Adaptado de
+[neologism_detector](https://github.com/brunomaroneze/neologism_detector).
+
+- **Léxico:** ≈480 mil palavras em `backend/detector/dados/lexico.txt.gz`,
+  carregadas no banco pelo `entrypoint.sh` no primeiro start
+  (`importar_lexico --se-vazio`, ≈15 s). Para recarregar:
+  `python manage.py importar_lexico`.
+- **spaCy:** o modelo `pt_core_news_sm` está em `requirements-modelos.txt`
+  (fora do `requirements.txt` porque não vem do PyPI e o pip-audit não o
+  audita). Ele é carregado no primeiro uso de cada worker (≈2 s, ≈150 MB).
+- **Classificador:** é treinado no próprio servidor, no primeiro uso, com
+  `dados/treino.csv` mais os neologismos aprovados que têm processo de
+  formação, e refeito a cada 6 horas.
+- **Falsos positivos:** "Não é neologismo" guarda a palavra em
+  `PalavraIgnorada`, e ela some das próximas análises.
+
 ## 6. Monitoramento de erros (Sentry)
 
 Opcional, e desligado por padrão: sem DSN o SDK fica inerte e nada sai da
 aplicação.
 
-Crie dois projetos no Sentry — um Django e um Next.js — e preencha:
+Crie um projeto Django no Sentry e preencha:
 
 ```bash
 SENTRY_DSN_BACKEND=https://...    # privado, só o container vê
-SENTRY_DSN_FRONTEND=https://...   # vai para o bundle público (é o normal)
 SENTRY_ENVIRONMENT=production
 ```
-
-O DSN do frontend ser público é o funcionamento esperado do Sentry no
-navegador: um DSN só permite enviar eventos, não ler nada.
-
-Para os stack traces apontarem para o seu código em vez do bundle minificado,
-adicione as três variáveis de sourcemap e **rebuilde o frontend**:
-
-```bash
-SENTRY_ORG=sua-org
-SENTRY_PROJECT=neoscopio-frontend
-SENTRY_AUTH_TOKEN=<token com permissão de release>
-
-docker compose -f docker-compose.prod.yml up -d --build frontend
-```
-
-Os sourcemaps são enviados ao Sentry e **apagados do bundle público** — sem
-isso, o código-fonte original ficaria servido junto com o site.
 
 O que fica de fora de propósito: `traces_sample_rate` é `0.0` (só erros, sem
 tracing), replay de sessão está desligado, e `send_default_pii` é `False` — os
@@ -253,13 +308,12 @@ push na main/develop  ->  Qualidade  ->  Publicar imagens  ->  Deploy na VPS  ->
 ```
 
 1. **Qualidade** — chama o `ci.yml` inteiro: lint, 82 testes do backend com
-   cobertura, tipos, lint e testes do frontend, build do Next, auditoria de
-   CVE e validação dos arquivos de Compose. Qualquer falha aqui para a
+   cobertura, auditoria de CVE e validação dos arquivos de Compose. Qualquer falha aqui para a
    pipeline antes de ela tocar a VPS.
-2. **Publicar imagens** — constrói backend e frontend e publica no GitHub
+2. **Publicar imagens** — constrói o backend e publica no GitHub
    Container Registry (`ghcr.io`), com a tag `sha-<commit>`.
 3. **Deploy na VPS** — entra por SSH, sincroniza a configuração com o commit,
-   baixa as imagens e sobe. As migrações rodam no entrypoint do backend, como
+   baixa a imagem e sobe. As migrações rodam no entrypoint do backend, como
    em qualquer start.
 4. **Verificação** — de fora, pela internet: `/api/health/` com banco
    acessível, a Home respondendo 200 e o `sitemap.xml` com URLs.
@@ -311,8 +365,6 @@ quiser que todo deploy espere uma aprovação sua.
 | `SSH_USER` | `deploy` |
 | `SSH_PRIVATE_KEY` | conteúdo de `~/.ssh/neoscopio_deploy` (a chave **privada**, inteira, com as linhas `BEGIN`/`END`) |
 | `SSH_HOST_KEY` | a saída do `ssh-keyscan` acima |
-| `SENTRY_DSN_FRONTEND` | opcional — DSN do projeto de frontend |
-| `SENTRY_AUTH_TOKEN` | opcional — para subir os sourcemaps |
 
 **Variables** (mesma tela, aba Variables — não são segredo, aparecem no log):
 
@@ -322,10 +374,8 @@ quiser que todo deploy espere uma aprovação sua.
 | `CAMINHO_PROJETO` | caminho do repositório na VPS, ex. `/home/deploy/neoscopio` |
 | `SSH_PORT` | opcional, padrão `22` |
 | `COMPOSE_EXTRA` | opcional. `docker-compose.nginx.yml` quando a VPS usa nginx em vez do Caddy (seção 12) |
-| `SENTRY_ORG` / `SENTRY_PROJECT` | opcionais, junto do token acima |
 
-`DOMINIO` é variable e não secret porque ele é embutido no bundle do frontend
-em tempo de build: está no HTML de qualquer forma.
+`DOMINIO` é variable e não secret porque aparece no HTML de qualquer forma.
 
 Falta algum dos obrigatórios? O primeiro passo do job de deploy para e diz
 exatamente qual — ele não tenta conectar sem isso.
@@ -335,7 +385,7 @@ exatamente qual — ele não tenta conectar sem isso.
 - **Automático:** todo push na `main` ou na `develop`. Hoje as duas publicam
   no mesmo `DOMINIO` (o ambiente de teste); quando existir um servidor de
   produção separado, a `main` precisa de variáveis próprias.
-- **Versão marcada:** uma tag `v*` (ex. `v1.2.0`) também publica as imagens
+- **Versão marcada:** uma tag `v*` (ex. `v1.2.0`) também publica a imagem
   como `1.2.0`, `1.2` e `latest`.
 - **À mão:** aba **Actions > Entrega > Run workflow**, escolhendo o branch ou
   a tag. A opção *"Só publicar as imagens"* constrói sem mexer na VPS.
@@ -348,7 +398,6 @@ anterior — não precisa esperar build nenhum:
 ```bash
 # Na VPS, com o commit que funcionava
 export IMAGEM_BACKEND=ghcr.io/brunomaroneze/neologismo-backend:sha-<commit>
-export IMAGEM_FRONTEND=ghcr.io/brunomaroneze/neologismo-frontend:sha-<commit>
 
 docker compose -f docker-compose.prod.yml -f docker-compose.deploy.yml up -d
 ```
@@ -380,13 +429,11 @@ certificado renovando normalmente, suba para `31536000` (1 ano).
 | `backend` nunca fica `healthy` | Veja `logs backend`; geralmente é `DATABASE_URL` ou migração falhando |
 | `DisallowedHost` no log | `DOMINIO` no `.env` não bate com o domínio acessado |
 | Erro de CORS no navegador | Idem: `CORS_ALLOWED_ORIGINS` é derivado de `DOMINIO` |
-| Frontend chamando `localhost:8000` | A imagem foi buildada sem o build-arg. Rebuild com `--build` |
 | Admin sem CSS | `collectstatic` falhou no start — veja `logs backend` |
 | Rate limit mais frouxo que o configurado | A tabela de cache não foi criada. Rode `exec backend python manage.py createcachetable` |
 | E-mail não chega | `EMAIL_HOST` vazio, ou domínio sem SPF/DKIM (caiu em spam) |
 | Migração falha em `CREATE EXTENSION unaccent` | O usuário do Postgres não pode instalar extensões. Na imagem oficial ele pode; em Postgres gerenciado, habilite `unaccent` pelo painel antes do `migrate` |
 | Busca voltou a diferenciar acento | A migração `0008_unaccent` não rodou. Confirme com `exec backend python manage.py showmigrations neologismo` |
-| `sitemap.xml` vazio com o site no ar | O frontend não alcança o backend internamente. Confira `API_URL_INTERNA` no compose e `exec frontend wget -qO- http://backend:8000/api/health/` |
 | Filtros da Home desatualizados | Cache de facetas. É invalidado a cada escrita; para forçar, `exec backend python manage.py shell -c "from django.core.cache import cache; cache.clear()"` |
 
 ```bash
@@ -405,7 +452,7 @@ docker compose -f docker-compose.prod.yml exec backend \
 
 Se a VPS já roda um nginx atendendo outros sites nas portas 80/443, o Caddy
 não pode subir. Use o override `docker-compose.nginx.yml`, que desliga o Caddy
-e publica backend e frontend só em `127.0.0.1`:
+e publica o backend só em `127.0.0.1`:
 
 ```bash
 docker compose -f docker-compose.prod.yml -f docker-compose.nginx.yml up -d --build
@@ -413,12 +460,11 @@ docker compose -f docker-compose.prod.yml -f docker-compose.nginx.yml up -d --bu
 
 - O `.env` continua precisando de `EMAIL_ACME` preenchido (qualquer e-mail):
   o compose de produção valida a variável mesmo com o Caddy desligado.
-- No nginx, use o modelo `deploy/nginx-neoscopio.conf`: `/api`, `/admin` e
-  `/static` vão para `127.0.0.1:8000`, o resto para `127.0.0.1:3000`.
-- **Não rode o `docker-compose.yml` de desenvolvimento em produção.** Com
-  `npm run dev` atrás de um domínio, o Next 16 bloqueia os recursos de dev
-  (`/_next/hmr`) para origens fora de `allowedDevOrigins`, a página nunca é
-  hidratada e os cards ficam carregando para sempre — sem nenhuma chamada à API.
+- No nginx, use o modelo `deploy/nginx-neoscopio.conf`, que manda tudo para
+  `127.0.0.1:8000`. O override também publica o backend na `127.0.0.1:3000`,
+  para um nginx ainda configurado para o antigo frontend em Next.js.
+- **Não rode o `docker-compose.yml` de desenvolvimento em produção.** Ele usa o
+  `runserver` com `DEBUG=True`.
 
 ## 13. O que ainda não está coberto
 

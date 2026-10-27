@@ -1,0 +1,158 @@
+{
+  "integrante": [
+    {
+      "nome": "Ana Maria Ribeiro de Jesus",
+      "funcao": "Professora coordenadora"
+    },
+    {
+      "nome": "Bruno Oliveira Maroneze",
+      "funcao": "Professor (UFGD)"
+    },
+    {
+      "nome": "Ana Leticia Salazar Ribeiro",
+      "funcao": "Mestranda em Linguística"
+    },
+    {
+      "nome": "Augusto Vinicius Alves de Sá",
+      "funcao": "Graduando em Letras"
+    },
+    {
+      "nome": "Gabriela Garcia Tavares",
+      "funcao": "Graduada em Letras"
+    },
+    {
+      "nome": "Julia Damascena Magnavita",
+      "funcao": "Mestranda em Linguística"
+    },
+    {
+      "nome": "Julia de Carvalho Lyra Ribeiro",
+      "funcao": "Graduada em Letras"
+    },
+    {
+      "nome": "João Victor Candido Ifran",
+      "funcao": "Graduando em Engenharia de Computação"
+    },
+    {
+      "nome": "Larissa Duarte Santos Pinto",
+      "funcao": "Mestranda em Linguística"
+    },
+    {
+      "nome": "Marcus Lourical Neves Filho",
+      "funcao": "Graduando em Ciência da Computação"
+    },
+    {
+      "nome": "Matheus Lima Jardim",
+      "funcao": "Graduado em Letras"
+    },
+    {
+      "nome": "Romulo Ferreira dos Santos",
+      "funcao": "Graduando em Letras"
+    },
+    {
+      "nome": "Vinicius Willian Ramires",
+      "funcao": "Graduando em Engenharia de Computação"
+    },
+    {
+      "nome": "Vitor Hugo Lozano Dauzacker",
+      "funcao": "Graduando em Engenharia de Computação"
+    }
+  ],
+  "ex-integrante": [
+    {
+      "nome": "Amanda Campos Cândido",
+      "funcao": "Graduada em Letras"
+    },
+    {
+      "nome": "Beatriz Latini Gomes Neta",
+      "funcao": "Doutora em Letras (UFMG)"
+    },
+    {
+      "nome": "Danilo Erler Lima",
+      "funcao": "Graduado em Ciência da Computação"
+    },
+    {
+      "nome": "Débora Rosário Ghiotti",
+      "funcao": "Graduada em Ciência da Computação"
+    },
+    {
+      "nome": "Fernanda Zambon Pretti Assef",
+      "funcao": "Graduada em Letras"
+    },
+    {
+      "nome": "Geideane Rodrigues Teixeira",
+      "funcao": "Mestranda em Linguística"
+    },
+    {
+      "nome": "Guilherme Silveira Gomes Brotto",
+      "funcao": "Graduado em Ciência da Computação"
+    },
+    {
+      "nome": "Igor Mattos dos Santos Varejao",
+      "funcao": "Graduado em Ciência da Computação"
+    },
+    {
+      "nome": "Isadora de Alvarenga Monteiro",
+      "funcao": "Graduada em Letras"
+    },
+    {
+      "nome": "Joao Pedro Colombo de Nardi",
+      "funcao": "Graduado em Letras"
+    },
+    {
+      "nome": "Joao Pedro Pereira Loss",
+      "funcao": "Graduado em Ciência da Computação"
+    },
+    {
+      "nome": "Johann Jakob Schmitz Bastos",
+      "funcao": "Graduado em Ciência da Computação"
+    },
+    {
+      "nome": "Karina da Conceição Marques",
+      "funcao": "Graduada em Letras"
+    },
+    {
+      "nome": "Luis Eduardo Freire da Camara",
+      "funcao": "Graduado em Ciência da Computação"
+    },
+    {
+      "nome": "Marlon Moratti do Amaral",
+      "funcao": "Graduado em Ciência da Computação"
+    },
+    {
+      "nome": "Matheus Saick de Martin",
+      "funcao": "Graduado em Ciência da Computação"
+    },
+    {
+      "nome": "Miguel Almeida Carlini",
+      "funcao": "Graduado em Ciência da Computação"
+    },
+    {
+      "nome": "Miguel Vieira Machado Pim",
+      "funcao": "Graduado em Ciência da Computação"
+    },
+    {
+      "nome": "Nilo Garcia Monteiro",
+      "funcao": "Graduado em Ciência da Computação"
+    },
+    {
+      "nome": "Pedro Igor Gomes de Morais",
+      "funcao": "Graduado em Ciência da Computação"
+    },
+    {
+      "nome": "Pyetra Pimentel Werneck",
+      "funcao": "Graduada em Letras"
+    },
+    {
+      "nome": "Renzo Henrique Guzzo Leão",
+      "funcao": "Graduado em Ciência da Computação"
+    },
+    {
+      "nome": "Vitor Berger Bonella",
+      "funcao": "Graduado em Ciência da Computação"
+    },
+    {
+      "nome": "Vitória Dutra Ferreira",
+      "funcao": "Graduada em Letras"
+    }
+  ]
+}

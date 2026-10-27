@@ -1,5 +1,4 @@
 {% extends 'web/base.html' %}
-{% load static %}
 
 {% block titulo %}Equipe — Neoscópio{% endblock %}
 
@@ -7,38 +6,37 @@
 <section class="abertura">
   <div class="conteiner">
     <div class="abertura__corpo">
-      <span class="rotulo">Quem faz acontecer</span>
+      <span class="rotulo">Quem faz o Neoscópio</span>
       <h1 class="titulo-1">Nossa equipe</h1>
-      <p class="lead">O Neoscópio é construído por um time apaixonado pela língua portuguesa e pela forma como ela se reinventa todos os dias. Conheça quem está por trás do projeto.</p>
+      <p class="lead">Professores, pesquisadores e estudantes da UFES e da UFGD. São eles que mantêm o banco e revisam as palavras enviadas.</p>
     </div>
   </div>
 </section>
 
 <div class="fundo-veu">
   <div class="conteiner secao">
-    <ul class="equipe">
-      {% for membro in equipe %}
-        <li class="membro">
-          <div class="membro__foto">
-            {% if membro.foto %}
-              <img src="{% static membro.foto %}" alt="Foto de {{ membro.nome }}" width="400" height="400" loading="lazy">
-            {% else %}
-              <span class="membro__iniciais" aria-hidden="true">{{ membro.iniciais }}</span>
-            {% endif %}
-          </div>
-          <p class="membro__nome">{{ membro.nome }}</p>
-          <p class="membro__funcao">{{ membro.funcao }}</p>
-          {% if membro.bio %}<p class="membro__bio">{{ membro.bio }}</p>{% endif %}
-        </li>
-      {% endfor %}
-    </ul>
+    <section class="grupo-equipe" aria-labelledby="grupo-integrantes">
+      <h2 class="grupo-equipe__titulo" id="grupo-integrantes">Integrantes</h2>
+      <ul class="equipe">
+        {% for membro in integrantes %}{% include 'web/_membro.html' %}{% endfor %}
+      </ul>
+    </section>
+
+    {% if ex_integrantes %}
+    <section class="grupo-equipe" aria-labelledby="grupo-ex">
+      <h2 class="grupo-equipe__titulo" id="grupo-ex">Ex-integrantes</h2>
+      <ul class="equipe equipe--ex">
+        {% for membro in ex_integrantes %}{% include 'web/_membro.html' %}{% endfor %}
+      </ul>
+    </section>
+    {% endif %}
   </div>
 </div>
 
 <section class="chamada">
   <div class="conteiner chamada__corpo">
-    <h2 class="titulo-2">Quer fazer parte?</h2>
-    <p>O Neoscópio cresce com a colaboração da comunidade. Contribua com novas palavras e ajude a mapear o português do nosso tempo.</p>
+    <h2 class="titulo-2">Quer contribuir?</h2>
+    <p>Não precisa estar na equipe: qualquer pessoa com conta pode enviar uma palavra nova.</p>
     <div class="botoes">
       <a class="botao" href="{% url 'web:enviar' %}">Enviar uma palavra</a>
       <a class="botao botao--secundario" href="{% url 'web:sobre' %}">Sobre o projeto</a>

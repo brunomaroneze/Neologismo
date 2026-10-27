@@ -2,6 +2,16 @@
 // formulários e links continuam funcionando por envio e navegação normais.
 (function () {
   "use strict";
+  // Só aceita endereços do próprio site (evita usar um "javascript:" ou um
+  // domínio externo vindo de HTML alterado).
+  function enderecoInterno(valor) {
+    try {
+      var url = new URL(valor, location.href);
+      return url.origin === location.origin ? url.href : null;
+    } catch (erro) {
+      return null;
+    }
+  }
 
   function csrf(form) {
     var campo = form.querySelector("input[name=csrfmiddlewaretoken]");
@@ -98,8 +108,9 @@
           var primeiroNovo = molde.content.querySelector("li");
           grade.appendChild(molde.content);
           carregarMais.removeAttribute("aria-busy");
-          if (proxima) {
-            carregarMais.href = proxima.getAttribute("data-proxima") + "#explorar";
+          var destino = proxima && enderecoInterno(proxima.getAttribute("data-proxima") + "#explorar");
+          if (destino) {
+            carregarMais.href = destino;
           } else {
             carregarMais.hidden = true;
           }
@@ -108,7 +119,10 @@
           var link = primeiroNovo && primeiroNovo.querySelector(".card__titulo a");
           if (link) link.focus({ preventScroll: true });
         })
-        .catch(function () { location.href = carregarMais.href; });
+        .catch(function () {
+          var destino = enderecoInterno(carregarMais.href);
+          if (destino) location.href = destino;
+        });
     });
 
     if (verMenos) {
@@ -311,6 +325,52 @@
     detalhes.querySelector("summary").focus();
   });
 
+  // --- Painel: seletores que se aplicam ao escolher ----------------------------
+  document.querySelectorAll("select[data-autoenvio-campo]").forEach(function (select) {
+    select.addEventListener("change", function () { select.form.requestSubmit(); });
+  });
+
+  // --- Painel: ações em lote -----------------------------------------------------
+  var formLote = document.querySelector("[data-lote]");
+  if (formLote) {
+    var itensLote = document.querySelectorAll("[data-lote-item]");
+    var marcarTodos = formLote.querySelector("[data-marcar-todos]");
+    var contagemLote = formLote.querySelector("[data-lote-contagem]");
+    var atualizarLote = function () {
+      var marcados = Array.prototype.filter.call(itensLote, function (c) { return c.checked; }).length;
+      contagemLote.textContent = marcados === 0 ? "Nenhum marcado" : marcados === 1 ? "1 marcado" : marcados + " marcados";
+      marcarTodos.checked = marcados > 0 && marcados === itensLote.length;
+      marcarTodos.indeterminate = marcados > 0 && marcados < itensLote.length;
+      formLote.querySelectorAll("button[name=acao]").forEach(function (b) { b.disabled = marcados === 0; });
+    };
+    marcarTodos.addEventListener("change", function () {
+      itensLote.forEach(function (c) { c.checked = marcarTodos.checked; });
+      atualizarLote();
+    });
+    itensLote.forEach(function (c) { c.addEventListener("change", atualizarLote); });
+    atualizarLote();
+  }
+
+  // --- Painel: prévia do membro da equipe ---------------------------------------
+  document.querySelectorAll("[data-previa]").forEach(function (alvo) {
+    var campo = document.getElementById(alvo.getAttribute("data-previa"));
+    if (!campo) return;
+    var padrao = alvo.textContent;
+    campo.addEventListener("input", function () { alvo.textContent = campo.value || padrao; });
+  });
+  var campoFoto = document.getElementById("id_foto");
+  var previaFoto = document.querySelector("[data-previa-foto]");
+  if (campoFoto && previaFoto) {
+    campoFoto.addEventListener("change", function () {
+      var arquivo = campoFoto.files && campoFoto.files[0];
+      if (!arquivo) return;
+      previaFoto.src = URL.createObjectURL(arquivo);
+      previaFoto.hidden = false;
+      var iniciais = document.querySelector("[data-previa-iniciais]");
+      if (iniciais) iniciais.hidden = true;
+    });
+  }
+
   // --- Carregamento entre páginas ------------------------------------------------
   // O frasco só aparece se a próxima página demorar: em navegação rápida ele
   // nem chega a piscar. Fica por último para enxergar o preventDefault dos
@@ -345,6 +405,187 @@
 
     // Voltar pelo histórico restaura a página do cache já com o frasco visível.
     window.addEventListener("pageshow", esconderCarregando);
+  }
+
+  // --- Indicações de leitura: filtros sem recarregar a página -----------------
+  // O formulário e os links funcionam sozinhos (o servidor filtra e ordena);
+  // aqui eles só passam a trocar a tabela no lugar, enquanto a pessoa digita.
+  var acervo = document.querySelector("[data-acervo]");
+  var resultados = document.querySelector("[data-acervo-resultados]");
+  if (acervo && resultados) {
+    var semJs = acervo.querySelector("[data-sem-js]");
+    if (semJs) semJs.hidden = true;
+    var imprimir = acervo.querySelector("[data-imprimir]");
+    if (imprimir) {
+      imprimir.hidden = false;
+      imprimir.addEventListener("click", function () { window.print(); });
+    }
+    // A referência ABNT completa sai na impressão.
+    window.addEventListener("beforeprint", function () {
+      resultados.querySelectorAll("details.abnt").forEach(function (d) {
+        if (!d.open) { d.open = true; d.setAttribute("data-aberto-impressao", ""); }
+      });
+    });
+    window.addEventListener("afterprint", function () {
+      resultados.querySelectorAll("[data-aberto-impressao]").forEach(function (d) {
+        d.open = false; d.removeAttribute("data-aberto-impressao");
+      });
+    });
+
+    var limpar = acervo.querySelector("[data-limpar]");
+    var pedido = 0;
+
+    function enderecoDoFormulario() {
+      var url = new URL(acervo.action, location.href);
+      url.hash = "";
+      new FormData(acervo).forEach(function (valor, chave) {
+        if (valor !== "") url.searchParams.append(chave, valor);
+      });
+      return url;
+    }
+
+    // Deixa os campos iguais ao endereço (depois de ordenar, limpar ou voltar).
+    function sincronizar(url) {
+      var p = url.searchParams;
+      acervo.querySelectorAll("input[type=checkbox]").forEach(function (caixa) {
+        caixa.checked = p.getAll(caixa.name).indexOf(caixa.value) !== -1;
+      });
+      ["autor", "titulo", "ano", "q", "ordem"].forEach(function (nome) {
+        var campo = acervo.elements[nome];
+        if (campo && campo !== document.activeElement) campo.value = p.get(nome) || (nome === "ordem" ? "-adicao" : "");
+      });
+      var porPagina = acervo.elements.por_pagina;
+      if (porPagina) porPagina.value = p.get("por_pagina") || "25";
+      if (limpar) {
+        limpar.hidden = !["area", "categoria", "autor", "titulo", "ano", "q"].some(function (nome) {
+          return p.getAll(nome).some(function (v) { return v !== ""; });
+        });
+      }
+    }
+
+    function carregar(url, opcoes) {
+      var alvo = enderecoInterno(url.href);
+      if (!alvo) return;
+      var numero = ++pedido;
+      var parcial = new URL(alvo);
+      parcial.searchParams.set("parcial", "1");
+      resultados.setAttribute("aria-busy", "true");
+      fetch(parcial, { credentials: "same-origin" })
+        .then(function (resposta) {
+          if (!resposta.ok) throw new Error(String(resposta.status));
+          return resposta.text();
+        })
+        .then(function (html) {
+          if (numero !== pedido) return; // chegou depois de um pedido mais novo
+          var molde = document.createElement("template");
+          molde.innerHTML = html;
+          resultados.replaceChildren(molde.content);
+          resultados.removeAttribute("aria-busy");
+          var limpo = new URL(alvo);
+          limpo.hash = "acervo";
+          if (opcoes && opcoes.historico) history.pushState(null, "", limpo);
+          else history.replaceState(null, "", limpo);
+          sincronizar(limpo);
+          if (opcoes && opcoes.rolar) {
+            var topo = resultados.getBoundingClientRect().top + window.scrollY - 90;
+            if (window.scrollY > topo) window.scrollTo({ top: topo });
+          }
+        })
+        .catch(function () {
+          // Sem resposta: navega de verdade, o servidor resolve.
+          location.href = alvo;
+        });
+    }
+
+    var espera;
+    acervo.addEventListener("input", function (evento) {
+      if (evento.target.type === "checkbox" || evento.target.tagName === "SELECT") return;
+      clearTimeout(espera);
+      espera = setTimeout(function () { carregar(enderecoDoFormulario()); }, 300);
+    });
+    acervo.addEventListener("change", function (evento) {
+      if (evento.target.type === "checkbox" || evento.target.tagName === "SELECT") {
+        carregar(enderecoDoFormulario());
+      }
+    });
+    acervo.addEventListener("submit", function (evento) {
+      evento.preventDefault();
+      clearTimeout(espera);
+      carregar(enderecoDoFormulario());
+    });
+
+    // Ordenar, paginar e limpar: links dentro e fora da tabela.
+    document.addEventListener("click", function (evento) {
+      var link = evento.target.closest("a[data-acervo-link], [data-acervo-resultados] .paginacao a");
+      if (!link || evento.metaKey || evento.ctrlKey || evento.shiftKey || evento.button !== 0) return;
+      evento.preventDefault();
+      carregar(new URL(link.href, location.href), { historico: true, rolar: true });
+    }, true);
+
+    window.addEventListener("popstate", function () {
+      if (location.pathname === new URL(acervo.action, location.href).pathname) {
+        carregar(new URL(location.href));
+      }
+    });
+  }
+
+  // --- Assistente (Pamola): respostas prontas --------------------------------
+  var assistente = document.querySelector("[data-assistente]");
+  if (assistente) {
+    var abrir = assistente.querySelector("[data-assistente-abrir]");
+    var janela = assistente.querySelector(".assistente__janela");
+    var conversa = assistente.querySelector("[data-assistente-conversa]");
+    var calma = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    assistente.hidden = false;
+
+    function alternarAssistente(aberto) {
+      janela.hidden = !aberto;
+      abrir.setAttribute("aria-expanded", aberto ? "true" : "false");
+      if (aberto) {
+        var primeira = janela.querySelector("[data-pergunta]");
+        if (primeira) primeira.focus();
+      }
+    }
+
+    function fala(quem) {
+      var bolha = document.createElement("div");
+      bolha.className = "assistente__fala assistente__fala--" + quem;
+      conversa.appendChild(bolha);
+      conversa.scrollTop = conversa.scrollHeight;
+      return bolha;
+    }
+
+    abrir.addEventListener("click", function () {
+      alternarAssistente(janela.hidden);
+    });
+    assistente.querySelector("[data-assistente-fechar]").addEventListener("click", function () {
+      alternarAssistente(false);
+      abrir.focus();
+    });
+    document.addEventListener("keydown", function (evento) {
+      if (evento.key === "Escape" && !janela.hidden) {
+        alternarAssistente(false);
+        abrir.focus();
+      }
+    });
+
+    assistente.querySelectorAll("[data-pergunta]").forEach(function (botao) {
+      botao.addEventListener("click", function () {
+        var modelo = assistente.querySelector('template[data-resposta="' + botao.getAttribute("data-pergunta") + '"]');
+        if (!modelo) return;
+        var pergunta = document.createElement("p");
+        pergunta.textContent = botao.textContent;
+        fala("pessoa").appendChild(pergunta);
+
+        var resposta = fala("pamola");
+        resposta.innerHTML = '<span class="assistente__digitando" aria-hidden="true"><span></span><span></span><span></span></span>';
+        setTimeout(function () {
+          resposta.textContent = "";
+          resposta.appendChild(modelo.content.cloneNode(true));
+          conversa.scrollTop = resposta.offsetTop - conversa.offsetTop - 8;
+        }, calma ? 0 : 550);
+      });
+    });
   }
 
   // --- Foco no resumo de erros depois de um envio com problemas ----------------

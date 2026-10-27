@@ -1,0 +1,5 @@
+# Modelos de linguagem que não estão no PyPI (o pip-audit não os audita, por
+# isso ficam fora do requirements.txt). Instalados pela imagem e pela CI.
+#
+# Modelo de português do spaCy, usado pelo detector de neologismos.
+pt_core_news_sm @ https://github.com/explosion/spacy-models/releases/download/pt_core_news_sm-3.8.0/pt_core_news_sm-3.8.0-py3-none-any.whl#sha256=c304fa04db3af73cd08a250feacf560506e15a2ec2469bd1b09f06847f6b455c

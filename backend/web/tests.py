@@ -1,11 +1,9 @@
+from allauth.account.models import EmailAddress, EmailConfirmationHMAC
 from django.contrib.auth import get_user_model
-from django.contrib.auth.tokens import default_token_generator
 from django.core import mail
 from django.core.cache import cache
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.urls import reverse
-from django.utils.encoding import force_bytes
-from django.utils.http import urlsafe_base64_encode
 
 from neologismo.models import Contexto, Neologismo
 
@@ -127,13 +125,23 @@ class ConsultaTests(BaseWeb):
                 self.assertEqual(self.client.get(reverse(nome)).status_code, 200)
 
 
+class AssistenteTests(BaseWeb):
+    def test_respostas_prontas_em_todas_as_paginas(self):
+        for nome in ('web:inicio', 'web:sobre', 'web:equipe'):
+            resposta = self.client.get(reverse(nome))
+
+            self.assertContains(resposta, 'data-assistente-abrir')
+            self.assertContains(resposta, 'data-resposta="aprovacao"')
+            self.assertContains(resposta, 'pamola-96.png')
+
+
 class CurtirTests(BaseWeb):
     def test_curtir_exige_login(self):
         verbete = criar_verbete(self.autor, 'Tankar')
 
         resposta = self.client.post(reverse('web:curtir', args=[verbete.pk]))
 
-        self.assertRedirects(resposta, f"{reverse('web:login')}?next={reverse('web:curtir', args=[verbete.pk])}", fetch_redirect_response=False)
+        self.assertRedirects(resposta, f"{reverse('account_login')}?next={reverse('web:curtir', args=[verbete.pk])}", fetch_redirect_response=False)
         self.assertEqual(verbete.likes.count(), 0)
 
     def test_curtir_alterna_e_responde_json(self):
@@ -207,7 +215,7 @@ class EnvioTests(BaseWeb):
         self.assertContains(self.client.get(reverse('web:enviar')), 'Entre para enviar')
 
         resposta = self.client.post(reverse('web:enviar'), {'titulo': 'X'})
-        self.assertRedirects(resposta, f"{reverse('web:login')}?next={reverse('web:enviar')}", fetch_redirect_response=False)
+        self.assertRedirects(resposta, f"{reverse('account_login')}?next={reverse('web:enviar')}", fetch_redirect_response=False)
         self.assertFalse(Neologismo.objects.exists())
 
     def test_meus_envios_mostra_motivo_da_rejeicao(self):
@@ -223,6 +231,7 @@ class ModeracaoTests(BaseWeb):
     def test_usuario_comum_recebe_403(self):
         self.client.login(username='autora', password=SENHA)
         self.assertEqual(self.client.get(reverse('web:moderacao')).status_code, 403)
+        self.assertEqual(self.client.get(reverse('web:painel_verbetes')).status_code, 403)
 
     def test_aprovar_publica_e_avisa_o_autor(self):
         verbete = criar_verbete(self.autor, 'Novo', Neologismo.PENDENTE)
@@ -265,61 +274,513 @@ class ModeracaoTests(BaseWeb):
 
 
 class ContaTests(BaseWeb):
-    def test_login_e_logout(self):
-        resposta = self.client.post(reverse('web:login'), {'username': 'autora', 'password': SENHA, 'next': '/enviar'})
-        self.assertRedirects(resposta, '/enviar', fetch_redirect_response=False)
+    """Contas pelo django-allauth: confirmação de e-mail obrigatória."""
 
-        self.client.post(reverse('web:logout'))
-        self.assertNotIn('_auth_user_id', self.client.session)
+    def setUp(self):
+        super().setUp()
+        # Contas criadas direto no banco (fora do fluxo do allauth) já entram
+        # com o e-mail confirmado, para os demais testes poderem logar.
+        for usuario in (self.autor, self.equipe):
+            EmailAddress.objects.create(user=usuario, email=usuario.email, primary=True, verified=True)
 
-    def test_login_errado_nao_diz_qual_campo_falhou(self):
-        resposta = self.client.post(reverse('web:login'), {'username': 'autora', 'password': 'errada'})
-        self.assertContains(resposta, 'Usuário ou senha inválidos.')
-
-    def test_login_bloqueia_forca_bruta(self):
-        for _ in range(10):
-            self.client.post(reverse('web:login'), {'username': 'autora', 'password': 'errada'})
-
-        resposta = self.client.post(reverse('web:login'), {'username': 'autora', 'password': SENHA})
-
-        self.assertContains(resposta, 'Muitas tentativas')
-        self.assertNotIn('_auth_user_id', self.client.session)
-
-    def test_cadastro_cria_conta_e_entra(self):
-        resposta = self.client.post(reverse('web:cadastro'), {
+    def cadastrar(self, **extra):
+        dados = {
             'username': 'nova', 'email': 'nova@exemplo.com',
-            'password': SENHA, 'password_confirmacao': SENHA,
-        })
+            'password1': SENHA, 'password2': SENHA,
+        }
+        dados.update(extra)
+        return self.client.post(reverse('account_signup'), dados)
 
-        self.assertRedirects(resposta, reverse('web:inicio'), fetch_redirect_response=False)
-        self.assertTrue(Usuario.objects.filter(username='nova').exists())
-        self.assertIn('_auth_user_id', self.client.session)
+    def test_cadastro_envia_confirmacao_e_nao_entra_antes(self):
+        resposta = self.cadastrar()
 
-    def test_cadastro_rejeita_usuario_repetido_sem_diferenciar_caixa(self):
-        resposta = self.client.post(reverse('web:cadastro'), {
-            'username': 'AUTORA', 'email': '', 'password': SENHA, 'password_confirmacao': SENHA,
-        })
-        self.assertContains(resposta, 'já está em uso')
+        self.assertRedirects(resposta, reverse('account_email_verification_sent'), fetch_redirect_response=False)
+        self.assertNotIn('_auth_user_id', self.client.session)
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertIn('nova@exemplo.com', mail.outbox[0].to)
+
+        # Tentar entrar antes de confirmar reenvia a confirmação e não loga.
+        self.client.post(reverse('account_login'), {'login': 'nova', 'password': SENHA})
+        self.assertNotIn('_auth_user_id', self.client.session)
+
+    def test_confirmar_email_libera_a_conta(self):
+        self.cadastrar()
+        endereco = EmailAddress.objects.get(email='nova@exemplo.com')
+        chave = EmailConfirmationHMAC(endereco).key
+
+        # O GET só mostra o botão de confirmar (antivírus abrem links sozinhos).
+        self.client.get(reverse('account_confirm_email', args=[chave]))
+        endereco.refresh_from_db()
+        self.assertFalse(endereco.verified)
+
+        self.client.post(reverse('account_confirm_email', args=[chave]))
+        endereco.refresh_from_db()
+        self.assertTrue(endereco.verified)
+
+    def test_login_por_usuario_ou_email_e_logout(self):
+        for identificador in ('autora', 'autora@exemplo.com'):
+            with self.subTest(identificador=identificador):
+                self.client.logout()
+                resposta = self.client.post(reverse('account_login'), {'login': identificador, 'password': SENHA})
+                self.assertRedirects(resposta, '/', fetch_redirect_response=False)
+                self.assertIn('_auth_user_id', self.client.session)
+
+        self.client.post(reverse('account_logout'))
+        self.assertNotIn('_auth_user_id', self.client.session)
+
+    def test_cadastro_com_email_existente_nao_revela_nem_duplica(self):
+        """Quem tenta cadastrar um e-mail alheio vê a mesma tela de sempre;
+        o dono do e-mail recebe um aviso. A página não serve para descobrir
+        quem tem conta."""
+        resposta = self.cadastrar(username='outra', email='AUTORA@exemplo.com')
+
+        self.assertRedirects(resposta, reverse('account_email_verification_sent'), fetch_redirect_response=False)
+        self.assertFalse(Usuario.objects.filter(username='outra').exists())
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertIn('autora@exemplo.com', [e.lower() for e in mail.outbox[0].to])
+
+    def test_enderecos_antigos_redirecionam(self):
+        for antigo, novo in (
+            ('/login?next=/enviar', '/conta/login/?next=%2Fenviar'),
+            ('/cadastro', '/conta/signup/'),
+            ('/recuperar-senha', '/conta/password/reset/'),
+            ('/redefinir-senha/abc/def', '/conta/password/reset/'),
+        ):
+            with self.subTest(antigo=antigo):
+                self.assertRedirects(self.client.get(antigo), novo, fetch_redirect_response=False)
+
+    def test_botoes_sociais_so_com_credenciais(self):
+        with override_settings(SOCIALACCOUNT_PROVIDERS={}):
+            self.assertNotContains(self.client.get(reverse('account_login')), 'Continuar com')
+        com_google = {'google': {'APPS': [{'client_id': 'x', 'secret': 'y'}]}}
+        with override_settings(SOCIALACCOUNT_PROVIDERS=com_google):
+            resposta = self.client.get(reverse('account_login'))
+            self.assertContains(resposta, 'Continuar com Google')
+            self.assertNotContains(resposta, 'Continuar com Facebook')
 
     def test_recuperar_senha_nao_revela_se_o_email_existe(self):
-        existe = self.client.post(reverse('web:recuperar_senha'), {'email': 'autora@exemplo.com'})
-        nao_existe = self.client.post(reverse('web:recuperar_senha'), {'email': 'ninguem@exemplo.com'})
+        existe = self.client.post(reverse('account_reset_password'), {'email': 'autora@exemplo.com'})
+        nao_existe = self.client.post(reverse('account_reset_password'), {'email': 'ninguem@exemplo.com'})
 
-        self.assertContains(existe, 'Se existe uma conta')
-        self.assertContains(nao_existe, 'Se existe uma conta')
-        self.assertEqual(len(mail.outbox), 1)
-        self.assertIn('/redefinir-senha/', mail.outbox[0].body)
+        self.assertRedirects(existe, reverse('account_reset_password_done'), fetch_redirect_response=False)
+        self.assertRedirects(nao_existe, reverse('account_reset_password_done'), fetch_redirect_response=False)
 
-    def test_redefinir_senha_pelo_link(self):
-        uid = urlsafe_base64_encode(force_bytes(self.autor.pk))
-        token = default_token_generator.make_token(self.autor)
-        url = reverse('web:redefinir_senha', args=[uid, token])
+
+class PainelTests(BaseWeb):
+    """Painel do administrador: moderação, usuários e equipe."""
+
+    def setUp(self):
+        super().setUp()
+        self.admin = Usuario.objects.create_user('chefe', email='chefe@exemplo.com', password=SENHA, is_admin=True)
+
+    def test_moderador_ve_verbetes_mas_nao_usuarios_nem_equipe(self):
+        self.client.login(username='moderadora', password=SENHA)
+        self.assertEqual(self.client.get(reverse('web:moderacao')).status_code, 200)
+        self.assertEqual(self.client.get(reverse('web:painel_verbetes')).status_code, 200)
+        self.assertEqual(self.client.get(reverse('web:painel_usuarios')).status_code, 403)
+        self.assertEqual(self.client.get(reverse('web:painel_equipe')).status_code, 403)
+
+    def test_aprovar_em_lote(self):
+        a = criar_verbete(self.autor, 'Um', Neologismo.PENDENTE)
+        b = criar_verbete(self.autor, 'Dois', Neologismo.PENDENTE)
+        criar_verbete(self.autor, 'Tres', Neologismo.PENDENTE)
+        self.client.login(username='moderadora', password=SENHA)
+
+        self.client.post(reverse('web:painel_lote'), {'acao': 'aprovar', 'ids': [a.pk, b.pk]})
+
+        self.assertEqual(
+            dict(Neologismo.objects.values_list('titulo', 'status')),
+            {'Um': 'aprovado', 'Dois': 'aprovado', 'Tres': 'pendente'},
+        )
+        self.assertEqual(len(mail.outbox), 2)
+
+    def test_rejeitar_em_lote_exige_motivo(self):
+        a = criar_verbete(self.autor, 'Um', Neologismo.PENDENTE)
+        self.client.login(username='moderadora', password=SENHA)
+
+        self.client.post(reverse('web:painel_lote'), {'acao': 'rejeitar', 'ids': [a.pk], 'motivo': ''})
+        a.refresh_from_db()
+        self.assertEqual(a.status, Neologismo.PENDENTE)
+
+        self.client.post(reverse('web:painel_lote'), {'acao': 'rejeitar', 'ids': [a.pk], 'motivo': 'Falta abonação com fonte.'})
+        a.refresh_from_db()
+        self.assertEqual(a.status, Neologismo.REJEITADO)
+        self.assertEqual(a.motivo_rejeicao, 'Falta abonação com fonte.')
+
+    def test_editar_e_aprovar(self):
+        verbete = criar_verbete(self.autor, 'Biscoiter', Neologismo.PENDENTE)
+        self.client.login(username='moderadora', password=SENHA)
+
+        resposta = self.client.post(reverse('web:painel_editar_verbete', args=[verbete.pk]), {
+            'titulo': 'Biscoitar', 'classe_gramatical': 'Verbo intransitivo', 'tipologia': 'derivação sufixal',
+            'definicao': 'Buscar elogios nas redes sociais.', 'contexto_uso': '', 'elaborado_por': '',
+            'tags': 'Internetês, Gíria', 'aprovar': '1',
+        })
+
+        self.assertEqual(resposta.status_code, 302)
+        verbete.refresh_from_db()
+        self.assertEqual(verbete.titulo, 'Biscoitar')
+        self.assertEqual(verbete.tags, ['Internetês', 'Gíria'])
+        self.assertEqual(verbete.status, Neologismo.APROVADO)
+
+    def test_editar_valida_como_o_envio(self):
+        verbete = criar_verbete(self.autor, 'Algo', Neologismo.PENDENTE)
+        self.client.login(username='moderadora', password=SENHA)
+
+        resposta = self.client.post(reverse('web:painel_editar_verbete', args=[verbete.pk]), {
+            'titulo': 'Algo', 'classe_gramatical': 'Verbo', 'definicao': 'curta', 'tags': '',
+        })
+
+        self.assertContains(resposta, 'Descreva o significado com ao menos 10 caracteres.')
+
+    def test_admin_muda_papel_e_nao_mexe_na_propria_conta(self):
+        self.client.login(username='chefe', password=SENHA)
+
+        self.client.post(reverse('web:painel_usuario_acao', args=[self.autor.pk, 'papel']), {'papel': 'moderador'})
+        self.autor.refresh_from_db()
+        self.assertTrue(self.autor.is_staff)
+        self.assertFalse(self.autor.is_admin)
+
+        self.client.post(reverse('web:painel_usuario_acao', args=[self.admin.pk, 'papel']), {'papel': 'leitor'})
+        self.admin.refresh_from_db()
+        self.assertTrue(self.admin.is_admin)
+
+    def test_rebaixar_administrador_tira_o_acesso_de_moderacao(self):
+        outro = Usuario.objects.create_user('outro', password=SENHA, is_admin=True)
+        self.client.login(username='chefe', password=SENHA)
+
+        self.client.post(reverse('web:painel_usuario_acao', args=[outro.pk, 'papel']), {'papel': 'leitor'})
+
+        outro.refresh_from_db()
+        self.assertFalse(outro.is_admin)
+        self.assertFalse(outro.is_staff)
+
+    def test_desativar_e_confirmar_email(self):
+        self.client.login(username='chefe', password=SENHA)
+
+        self.client.post(reverse('web:painel_usuario_acao', args=[self.autor.pk, 'confirmar-email']))
+        self.assertTrue(EmailAddress.objects.filter(user=self.autor, verified=True).exists())
+
+        self.client.post(reverse('web:painel_usuario_acao', args=[self.autor.pk, 'desativar']))
+        self.autor.refresh_from_db()
+        self.assertFalse(self.autor.is_active)
+
+    def test_adicionar_membro_com_foto_reduz_para_400(self):
+        from io import BytesIO
+
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        from PIL import Image
+
+        from .models import MembroEquipe
+
+        bruta = BytesIO()
+        Image.new('RGB', (1200, 800), (102, 0, 102)).save(bruta, 'PNG')
+        foto = SimpleUploadedFile('retrato.png', bruta.getvalue(), content_type='image/png')
+        self.client.login(username='chefe', password=SENHA)
+
+        resposta = self.client.post(reverse('web:painel_membro_novo'), {
+            'nome': 'Nova Pesquisadora', 'funcao': 'Graduanda em Letras', 'bio': '', 'grupo': 'integrante', 'ativo': 'on', 'foto': foto,
+        })
+
+        self.assertRedirects(resposta, reverse('web:painel_equipe'), fetch_redirect_response=False)
+        membro = MembroEquipe.objects.get(nome='Nova Pesquisadora')
+        try:
+            with Image.open(membro.foto.path) as salva:
+                self.assertEqual(salva.size, (400, 400))
+                self.assertEqual(salva.format, 'JPEG')
+            self.assertContains(self.client.get(reverse('web:equipe')), 'Nova Pesquisadora')
+        finally:
+            membro.foto.delete(save=False)
+
+    def test_foto_que_nao_e_imagem_e_recusada(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+
+        from .models import MembroEquipe
+
+        falsa = SimpleUploadedFile('foto.jpg', b'<?php echo 1; ?>', content_type='image/jpeg')
+        self.client.login(username='chefe', password=SENHA)
+
+        resposta = self.client.post(reverse('web:painel_membro_novo'), {
+            'nome': 'Teste', 'funcao': 'Teste', 'ativo': 'on', 'foto': falsa,
+        })
+
+        self.assertEqual(resposta.status_code, 200)
+        self.assertFalse(MembroEquipe.objects.filter(nome='Teste').exists())
+
+    def test_reordenar_e_remover_membro(self):
+        from .models import MembroEquipe
+
+        MembroEquipe.objects.all().delete()
+        a = MembroEquipe.objects.create(nome='Ana', funcao='x', ordem=10)
+        b = MembroEquipe.objects.create(nome='Bia', funcao='x', ordem=20)
+        self.client.login(username='chefe', password=SENHA)
+
+        self.client.post(reverse('web:painel_membro_mover', args=[b.pk, 'subir']))
+        self.assertEqual(list(MembroEquipe.objects.values_list('nome', flat=True)), ['Bia', 'Ana'])
+
+        self.client.post(reverse('web:painel_membro_remover', args=[a.pk]))
+        self.assertEqual(list(MembroEquipe.objects.values_list('nome', flat=True)), ['Bia'])
+
+    def test_integrantes_e_ex_integrantes(self):
+        from .models import MembroEquipe
+
+        MembroEquipe.objects.all().delete()
+        MembroEquipe.objects.create(nome='Ana Atual', funcao='x', ordem=10)
+        bia = MembroEquipe.objects.create(nome='Bia Antiga', funcao='x', ordem=20)
+        cris = MembroEquipe.objects.create(nome='Cris Atual', funcao='x', ordem=30)
+        self.client.login(username='chefe', password=SENHA)
+
+        self.client.post(reverse('web:painel_membro_grupo', args=[bia.pk]))
+        bia.refresh_from_db()
+        self.assertEqual(bia.grupo, MembroEquipe.EX_INTEGRANTE)
+
+        # Subir Cris troca com Ana, não com a ex-integrante Bia.
+        self.client.post(reverse('web:painel_membro_mover', args=[cris.pk, 'subir']))
+        integrantes = MembroEquipe.objects.filter(grupo=MembroEquipe.INTEGRANTE)
+        self.assertEqual(list(integrantes.values_list('nome', flat=True)), ['Cris Atual', 'Ana Atual'])
+
+        pagina = self.client.get(reverse('web:equipe'))
+        self.assertEqual([m.nome for m in pagina.context['integrantes']], ['Cris Atual', 'Ana Atual'])
+        self.assertEqual([m.nome for m in pagina.context['ex_integrantes']], ['Bia Antiga'])
+        self.assertContains(pagina, 'Ex-integrantes')
+
+        self.client.post(reverse('web:painel_membro_grupo', args=[bia.pk]))
+        bia.refresh_from_db()
+        self.assertEqual(bia.grupo, MembroEquipe.INTEGRANTE)
+        self.assertNotContains(self.client.get(reverse('web:equipe')), 'Ex-integrantes')
+
+
+class PerfilTests(BaseWeb):
+    def setUp(self):
+        super().setUp()
+        EmailAddress.objects.create(user=self.autor, email=self.autor.email, primary=True, verified=True)
+
+    def test_perfil_exige_login(self):
+        resposta = self.client.get(reverse('web:perfil'))
+        self.assertEqual(resposta.status_code, 302)
+
+    def test_atualiza_nome_e_mostra_resumo(self):
+        verbete = criar_verbete(self.autor, 'Publicado')
+        verbete.likes.add(self.equipe)
+        criar_verbete(self.autor, 'Pendente', Neologismo.PENDENTE)
+        self.client.login(username='autora', password=SENHA)
+
+        resposta = self.client.get(reverse('web:perfil'))
+        self.assertEqual(resposta.context['enviados'], 2)
+        self.assertEqual(resposta.context['publicados'], 1)
+        self.assertEqual(resposta.context['curtidas_recebidas'], 1)
+
+        self.client.post(reverse('web:perfil'), {'first_name': 'Ana', 'last_name': 'Souza'})
+        self.autor.refresh_from_db()
+        self.assertEqual(self.autor.get_full_name(), 'Ana Souza')
+
+    def test_lista_os_verbetes_curtidos(self):
+        curtido = criar_verbete(self.equipe, 'Curtido')
+        criar_verbete(self.equipe, 'Outro')
+        curtido.likes.add(self.autor)
+        self.client.login(username='autora', password=SENHA)
+
+        resposta = self.client.get(reverse('web:perfil'))
+
+        self.assertEqual([v.titulo for v in resposta.context['curtidos']], ['Curtido'])
+
+    def test_alterar_senha(self):
+        self.client.login(username='autora', password=SENHA)
         nova = 'OutraSenhaForte456'
 
-        resposta = self.client.post(url, {'password': nova, 'password_confirmacao': nova})
+        resposta = self.client.post(reverse('account_change_password'), {
+            'oldpassword': SENHA, 'password1': nova, 'password2': nova,
+        })
 
-        self.assertRedirects(resposta, reverse('web:inicio'), fetch_redirect_response=False)
+        self.assertEqual(resposta.status_code, 302)
         self.autor.refresh_from_db()
         self.assertTrue(self.autor.check_password(nova))
-        # O link é de uso único.
-        self.assertContains(self.client.get(url), 'Este link já foi usado ou passou da validade.')
+
+
+class CriarAdminTests(TestCase):
+    def test_cria_admin_sem_senha_com_email_confirmado_e_link(self):
+        from io import StringIO
+
+        from django.core.management import call_command
+
+        saida = StringIO()
+        call_command('criar_admin', 'bruno', 'Bruno@Exemplo.com', '--nome', 'Bruno Maroneze', stdout=saida)
+
+        usuario = Usuario.objects.get(username='bruno')
+        self.assertTrue(usuario.is_admin)
+        self.assertTrue(usuario.is_staff)
+        self.assertFalse(usuario.has_usable_password())
+        self.assertEqual(usuario.get_full_name(), 'Bruno Maroneze')
+        self.assertTrue(EmailAddress.objects.filter(user=usuario, email='bruno@exemplo.com', verified=True).exists())
+
+        link = saida.getvalue().strip().splitlines()[-1]
+        self.assertIn('/conta/password/reset/key/', link)
+        caminho = link.split('://', 1)[1].split('/', 1)[1]
+        resposta = self.client.get('/' + caminho, follow=True)
+        self.assertContains(resposta, 'name="password1"')
+
+    def test_nao_rouba_email_de_outra_conta(self):
+        from django.core.management import call_command
+        from django.core.management.base import CommandError
+
+        Usuario.objects.create_user('ana', email='ana@exemplo.com', password=SENHA)
+        with self.assertRaises(CommandError):
+            call_command('criar_admin', 'outra', 'ana@exemplo.com')
+
+
+class LeiturasTests(BaseWeb):
+    """Banco de referências: filtros na página pública e cadastro no painel."""
+
+    def setUp(self):
+        super().setUp()
+        from .models import AreaTematica, Referencia
+
+        Referencia.objects.all().delete()
+        AreaTematica.objects.all().delete()
+        self.neologia = AreaTematica.objects.create(nome='Neologia', cor='ameixa')
+        self.lexico = AreaTematica.objects.create(nome='Lexicografia', cor='lilas')
+        self.alves = Referencia.objects.create(
+            area=self.neologia, categoria=Referencia.LIVRO, autoria='ALVES, Ieda Maria',
+            titulo='Neologismo: criação lexical', ano=2007, detalhes='3. ed. São Paulo: Ática',
+        )
+        self.houaiss = Referencia.objects.create(
+            area=self.lexico, categoria=Referencia.DICIONARIO, autoria='HOUAISS, Antônio',
+            titulo='Dicionário Houaiss', ano=2009,
+        )
+        self.artigo = Referencia.objects.create(
+            area=self.neologia, categoria=Referencia.PERIODICO, autoria='SILVA, Ana',
+            titulo='Neologismos na internet', ano=2021, publicado_em='Revista de Letras',
+            url='https://exemplo.org/artigo',
+        )
+
+    def titulos(self, **params):
+        resposta = self.client.get(reverse('web:referencias'), params)
+        self.assertEqual(resposta.status_code, 200)
+        return [r.titulo for r in resposta.context['pagina'].object_list]
+
+    def test_filtros(self):
+        self.assertEqual(len(self.titulos()), 3)
+        self.assertEqual(set(self.titulos(area=self.lexico.pk)), {'Dicionário Houaiss'})
+        self.assertEqual(set(self.titulos(categoria=['livro', 'periodico'])),
+                         {'Neologismo: criação lexical', 'Neologismos na internet'})
+        self.assertEqual(self.titulos(autor='houaiss'), ['Dicionário Houaiss'])
+        self.assertEqual(self.titulos(titulo='criacao'), ['Neologismo: criação lexical'])
+        self.assertEqual(set(self.titulos(ano='2005-2010')), {'Neologismo: criação lexical', 'Dicionário Houaiss'})
+        self.assertEqual(self.titulos(ano='2021'), ['Neologismos na internet'])
+        self.assertEqual(self.titulos(ano='abc'), [])
+        self.assertEqual(self.titulos(q='revista de letras'), ['Neologismos na internet'])
+        # Valores inválidos são ignorados, não quebram a página.
+        self.assertEqual(len(self.titulos(area='999', categoria='xyz', ordem='senha', por_pagina='7')), 3)
+
+    def test_ordenacao_e_paginas(self):
+        self.assertEqual(self.titulos(ordem='ano'), ['Neologismo: criação lexical', 'Dicionário Houaiss', 'Neologismos na internet'])
+        self.assertEqual(self.titulos(ordem='-ano')[0], 'Neologismos na internet')
+        self.assertEqual(self.titulos(ordem='autor')[0], 'Neologismo: criação lexical')
+        self.assertEqual(self.titulos(por_pagina=10, pagina=2), self.titulos(por_pagina=10))  # página além do fim
+
+    def test_parcial_traz_so_a_tabela_e_abnt(self):
+        resposta = self.client.get(reverse('web:referencias'), {'parcial': '1', 'q': 'internet'})
+
+        self.assertNotContains(resposta, '<html')
+        self.assertContains(resposta, 'Neologismos na internet. In: <strong>Revista de Letras</strong>. 2021.')
+        self.assertNotContains(resposta, 'parcial=1')
+
+    def test_selo_de_nova(self):
+        from datetime import timedelta
+
+        from django.utils import timezone
+
+        from .models import Referencia
+
+        Referencia.objects.exclude(pk=self.artigo.pk).update(criada_em=timezone.now() - timedelta(days=90))
+        resposta = self.client.get(reverse('web:referencias'))
+
+        self.assertContains(resposta, 'class="selo-nova"', count=1)
+
+    def test_painel_adicionar_editar_remover(self):
+        from .models import Referencia
+
+        self.client.login(username='moderadora', password=SENHA)
+        self.assertEqual(self.client.get(reverse('web:painel_leituras')).status_code, 200)
+
+        resposta = self.client.post(reverse('web:painel_referencia_nova'), {
+            'area': self.neologia.pk, 'categoria': 'livro', 'autoria': 'BASÍLIO, Margarida.',
+            'titulo': 'Formação e classes de palavras.', 'ano': 2004, 'idioma': 'pt',
+            'publicado_em': '', 'detalhes': 'São Paulo: Contexto', 'url': '',
+        })
+        self.assertRedirects(resposta, reverse('web:painel_leituras'), fetch_redirect_response=False)
+        nova = Referencia.objects.get(autoria='BASÍLIO, Margarida')
+        self.assertEqual(nova.titulo, 'Formação e classes de palavras')
+
+        resposta = self.client.post(reverse('web:painel_referencia', args=[nova.pk]), {
+            'area': self.lexico.pk, 'categoria': 'livro', 'autoria': nova.autoria,
+            'titulo': nova.titulo, 'ano': 3000, 'idioma': 'pt',
+        })
+        self.assertContains(resposta, 'Informe um ano válido')
+
+        self.client.post(reverse('web:painel_referencia_remover', args=[nova.pk]))
+        self.assertFalse(Referencia.objects.filter(pk=nova.pk).exists())
+
+    def test_areas_no_painel(self):
+        from .models import AreaTematica
+
+        self.client.login(username='moderadora', password=SENHA)
+        self.client.post(reverse('web:painel_area_adicionar'), {'nome': 'Ensino', 'cor': 'ceu'})
+        ensino = AreaTematica.objects.get(nome='Ensino')
+
+        # Área com referências não pode sumir.
+        self.client.post(reverse('web:painel_area_remover', args=[self.neologia.pk]))
+        self.assertTrue(AreaTematica.objects.filter(pk=self.neologia.pk).exists())
+
+        self.client.post(reverse('web:painel_area_remover', args=[ensino.pk]))
+        self.assertFalse(AreaTematica.objects.filter(pk=ensino.pk).exists())
+
+    def test_so_a_equipe_cadastra(self):
+        self.client.login(username='autora', password=SENHA)
+
+        self.assertEqual(self.client.get(reverse('web:painel_leituras')).status_code, 403)
+        resposta = self.client.post(reverse('web:painel_referencia_remover', args=[self.alves.pk]))
+        self.assertEqual(resposta.status_code, 403)
+
+
+class SincronizarEquipeTests(TestCase):
+    ATUAIS = [
+        'Prof. Ana Maria Ribeiro', 'Fernanda Assef', 'Julia Magnavita', 'Matheus Lima',
+        'Amanda Candido', 'Igor Varejão', 'Karina Marques', 'Pyetra Werneck',
+        'Beatriz Latini - UFMG', 'João Colombo', 'Luis Eduardo', 'Rômulo Ferreira',
+        'João Victor Ifran', 'Bruno Maroneze - UFGD',
+    ]
+
+    def test_reconhece_quem_ja_existe_e_mantem_a_foto(self):
+        from io import StringIO
+
+        from django.core.management import call_command
+
+        from .models import MembroEquipe
+
+        # A migração de dados já cria a equipe; o teste parte do zero.
+        MembroEquipe.objects.all().delete()
+        for ordem, nome in enumerate(self.ATUAIS):
+            MembroEquipe.objects.create(
+                nome=nome, funcao='x', ordem=ordem, foto=f'equipe/{ordem}.jpg', bio=f'bio {ordem}',
+            )
+
+        call_command('sincronizar_equipe', stdout=StringIO())
+
+        self.assertEqual(MembroEquipe.objects.count(), 38)
+        igor = MembroEquipe.objects.get(nome='Igor Mattos dos Santos Varejao')
+        self.assertEqual(igor.foto.name, 'equipe/5.jpg')
+        self.assertEqual(igor.bio, 'bio 5')
+        self.assertEqual(igor.grupo, MembroEquipe.EX_INTEGRANTE)
+        ana = MembroEquipe.objects.get(nome='Ana Maria Ribeiro de Jesus')
+        self.assertEqual((ana.foto.name, ana.ordem), ('equipe/0.jpg', 0))
+        matheus = MembroEquipe.objects.get(nome='Matheus Lima Jardim')
+        self.assertEqual(matheus.foto.name, 'equipe/3.jpg')
+        self.assertEqual(
+            MembroEquipe.objects.filter(grupo=MembroEquipe.INTEGRANTE).count(), 14
+        )
+
+        # Rodar de novo não duplica.
+        call_command('sincronizar_equipe', stdout=StringIO())
+        self.assertEqual(MembroEquipe.objects.count(), 38)
+

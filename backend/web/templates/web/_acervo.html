@@ -1,0 +1,67 @@
+{% load verbetes %}
+<p class="acervo__total" data-acervo-total>
+  {% with total=pagina.paginator.count %}
+    {% if total %}
+      Mostrando {{ pagina.start_index }}–{{ pagina.end_index }} de <strong>{{ total }}</strong> referência{{ total|pluralize }}{% if consulta.filtrando %} encontrada{{ total|pluralize }}{% endif %}
+    {% else %}
+      Nenhuma referência encontrada.
+    {% endif %}
+  {% endwith %}
+</p>
+
+{% if pagina.object_list %}
+<div class="tabela-rolagem">
+  <table class="tabela tabela--responsiva acervo__tabela">
+    <caption class="visualmente-oculto">Referências{% if consulta.filtrando %} filtradas{% endif %}. Clique no título de uma coluna para ordenar.</caption>
+    <thead>
+      <tr>
+        {% for coluna in colunas %}
+          <th scope="col" {% if coluna.sentido %}aria-sort="{{ coluna.sentido }}"{% endif %}>
+            <a class="ordenar" href="{% consulta ordem=coluna.proxima %}#acervo" data-acervo-link data-ordem="{{ coluna.proxima }}">
+              {{ coluna.rotulo }}<span class="ordenar__seta" aria-hidden="true">{% if coluna.sentido == 'ascending' %}▲{% elif coluna.sentido == 'descending' %}▼{% else %}↕{% endif %}</span>
+            </a>
+          </th>
+        {% endfor %}
+        <th scope="col">Publicado em</th>
+        <th scope="col">Link</th>
+        <th scope="col" {% if consulta.ordem == '-adicao' %}aria-sort="descending"{% elif consulta.ordem == 'adicao' %}aria-sort="ascending"{% endif %}>
+          <a class="ordenar" href="{% if consulta.ordem == '-adicao' %}{% consulta ordem='adicao' %}{% else %}{% consulta ordem='-adicao' %}{% endif %}#acervo" data-acervo-link>
+            Últimas adições<span class="ordenar__seta" aria-hidden="true">{% if consulta.ordem == '-adicao' %}▼{% elif consulta.ordem == 'adicao' %}▲{% else %}↕{% endif %}</span>
+          </a>
+        </th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for ref in pagina.object_list %}
+        <tr>
+          <td data-rotulo="Área"><span class="area area--{{ ref.area.cor }}">{{ ref.area.nome }}</span></td>
+          <td data-rotulo="Categoria">{{ ref.get_categoria_display }}</td>
+          <td data-rotulo="Autoria" class="acervo__autoria">{{ ref.autoria|sem_ponto }}</td>
+          <td data-rotulo="Título" class="acervo__titulo-obra">
+            <cite>{{ ref.titulo|sem_ponto }}</cite>
+            {% if ref.idioma != 'pt' %}<span class="idioma">{{ ref.get_idioma_display }}</span>{% endif %}
+            <details class="abnt">
+              <summary>Referência ABNT</summary>
+              <p>{{ ref.autoria|sem_ponto }}. {% if ref.destaca_publicacao %}{{ ref.titulo|sem_ponto }}. In: <strong>{{ ref.publicado_em|sem_ponto }}</strong>.{% else %}<strong>{{ ref.titulo|sem_ponto }}</strong>.{% if ref.publicado_em %} In: {{ ref.publicado_em|sem_ponto }}.{% endif %}{% endif %} {% if ref.detalhes %}{{ ref.detalhes|sem_ponto }}, {% endif %}{{ ref.ano }}.{% if ref.url %} Disponível em: {{ ref.url }}.{% endif %}</p>
+            </details>
+          </td>
+          <td data-rotulo="Ano" class="acervo__ano">{{ ref.ano }}</td>
+          <td data-rotulo="Publicado em">{{ ref.publicado_em|default:"—" }}</td>
+          <td data-rotulo="Link">
+            {% if ref.url %}<a class="acervo__link" href="{{ ref.url }}" target="_blank" rel="noopener noreferrer">Acessar<span class="visualmente-oculto"> {{ ref.titulo }} (abre em nova aba)</span> <span aria-hidden="true">↗</span></a>{% else %}<span class="acervo__sem" aria-label="Sem link">—</span>{% endif %}
+          </td>
+          <td data-rotulo="Adicionada">
+            {% if ref.criada_em >= limite_nova %}<span class="selo-nova">Nova</span>{% else %}<span class="acervo__data">{{ ref.criada_em|date:"d/m/Y" }}</span>{% endif %}
+          </td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% include 'web/_paginacao.html' with ancora='#acervo' %}
+{% else %}
+<div class="vazio">
+  <p class="vazio__titulo">Nada encontrado com esses filtros</p>
+  <p>Tente outra palavra, desmarque alguma categoria ou <a href="{% url 'web:referencias' %}#acervo" data-acervo-link>limpe os filtros</a>.</p>
+</div>
+{% endif %}

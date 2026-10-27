@@ -1,0 +1,1 @@
+{% load allauth %}<div class="aviso{% if "error" in attrs.tags or "danger" in attrs.tags %} aviso--error{% else %} aviso--info{% endif %}" role="status">{% slot message %}{% endslot %}</div>

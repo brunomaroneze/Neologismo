@@ -17,10 +17,10 @@
 {% block conteudo %}
 <div class="conteiner">
   <article class="verbete">
-    <a class="voltar" href="{% url 'web:inicio' %}">← Voltar ao dicionário</a>
+    <a class="voltar" href="{% url 'web:inicio' %}">← Voltar ao Banco de Neologismos</a>
 
     {% if verbete.status == 'pendente' %}
-      <div class="estado"><p><strong>Em moderação.</strong> Só você e a equipe conseguem ver este verbete até que ele seja aprovado.</p></div>
+      <div class="estado"><p><strong>Em moderação.</strong> Só você e a equipe conseguem ver este neologismo até que ele seja aprovado.</p></div>
     {% elif verbete.status == 'rejeitado' %}
       <div class="estado estado--rejeitado"><p><strong>Rejeitado.</strong> {{ verbete.motivo_rejeicao|default:"Sem motivo registrado." }}</p></div>
     {% endif %}
@@ -42,9 +42,9 @@
       <dl class="ficha">
         <div><dt>Autor</dt><dd>{{ verbete.autor.username }}</dd></div>
         <div><dt>Publicado em</dt><dd><time datetime="{{ verbete.data_criacao|date:'c' }}">{{ verbete.data_criacao|data_curta }}</time></dd></div>
-        {% if verbete.elaborado_por %}<div><dt>Elaborado por</dt><dd>elaborado por {{ verbete.elaborado_por }}</dd></div>{% endif %}
-        {% if verbete.data_registro %}<div><dt>Registrado na fonte em</dt><dd>registrado em <time datetime="{{ verbete.data_registro|date:'c' }}">{{ verbete.data_registro|date:"d/m/Y" }}</time></dd></div>{% endif %}
-        {% if verbete.reativado_em %}<div><dt>Reativado em</dt><dd>reativado em {{ verbete.reativado_em|date:"d/m/Y" }}</dd></div>{% endif %}
+        {% if verbete.elaborado_por %}<div><dt>Elaborado por</dt><dd>{{ verbete.elaborado_por }}</dd></div>{% endif %}
+        {% if verbete.data_registro %}<div><dt>Registrado na fonte em</dt><dd><time datetime="{{ verbete.data_registro|date:'c' }}">{{ verbete.data_registro|date:"d/m/Y" }}</time></dd></div>{% endif %}
+        {% if verbete.reativado_em %}<div><dt>Reativado em</dt><dd>{{ verbete.reativado_em|date:"d/m/Y" }}</dd></div>{% endif %}
       </dl>
 
       <div class="verbete__acoes">
@@ -86,7 +86,7 @@
 <section class="chamada">
   <div class="conteiner chamada__corpo">
     <h2 class="titulo-2">Conhece uma palavra que ainda não está aqui?</h2>
-    <p>O banco de neologismos cresce com quem usa a língua todo dia.</p>
+    <p>Envie a palavra. A equipe revisa e publica no banco.</p>
     <a class="botao" href="{% url 'web:enviar' %}">Enviar um neologismo</a>
   </div>
 </section>

@@ -39,13 +39,13 @@ jobs:
           - linguagem: python
             caminho: backend
           - linguagem: javascript-typescript
-            caminho: frontend
+            caminho: backend
 
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v5
 
       - name: Inicializar o CodeQL
-        uses: github/codeql-action/init@v4
+        uses: github/codeql-action/init@v3
         with:
           languages: ${{ matrix.linguagem }}
           # `security-and-quality` traz, além das falhas de segurança, os
@@ -53,6 +53,6 @@ jobs:
           queries: security-and-quality
 
       - name: Analisar
-        uses: github/codeql-action/analyze@v4
+        uses: github/codeql-action/analyze@v3
         with:
           category: /language:${{ matrix.linguagem }}

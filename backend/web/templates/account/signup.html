@@ -1,0 +1,28 @@
+{% extends "account/base_entrance.html" %}
+{% load i18n allauth account socialaccount %}
+{% block head_title %}Criar conta{% endblock head_title %}
+{% block content %}
+  <h1 class="titulo-1">Criar conta</h1>
+  <p class="lead">Com a conta você envia palavras para o banco e curte as que já estão lá.</p>
+
+  {% get_providers as provedores %}
+  {% if provedores %}
+    {% include "socialaccount/snippets/provider_list.html" with process="login" %}
+    <p class="divisor-ou"><span>ou</span></p>
+  {% endif %}
+
+  {% url 'account_signup' as action_url %}
+  {% element form form=form method="post" action=action_url %}
+    {% slot body %}
+      {% csrf_token %}
+      {% element fields form=form %}{% endelement %}
+      {{ redirect_field }}
+      <p class="campo__ajuda">Enviaremos um link de confirmação para o seu e-mail. A conta é ativada depois do clique.</p>
+    {% endslot %}
+    {% slot actions %}
+      <button class="botao" type="submit">Cadastrar</button>
+    {% endslot %}
+  {% endelement %}
+
+  <p class="painel-conta__rodape">Já tem conta? <a href="{{ login_url }}">Entrar</a></p>
+{% endblock content %}

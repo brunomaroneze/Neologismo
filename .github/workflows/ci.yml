@@ -69,21 +69,22 @@ jobs:
       ALLOWED_HOSTS: localhost,127.0.0.1
 
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-python@v7
+      - uses: actions/setup-python@v6
         with:
           python-version: '3.13'
           cache: pip
           cache-dependency-path: |
             backend/requirements.txt
+            backend/requirements-modelos.txt
             backend/requirements-dev.txt
 
       - name: Instalar dependências
         working-directory: backend
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt -r requirements-dev.txt
+          pip install -r requirements.txt -r requirements-modelos.txt -r requirements-dev.txt
 
       - name: Lint (ruff)
         working-directory: backend
@@ -115,7 +116,7 @@ jobs:
 
       - name: Guardar relatório de cobertura
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v4
         with:
           name: cobertura-backend
           path: backend/coverage-backend.xml
@@ -138,75 +139,18 @@ jobs:
         working-directory: backend
         run: python manage.py spectacular --file /dev/null --validate
 
-  frontend:
-    name: Frontend (Next.js)
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v7
-
-      - uses: actions/setup-node@v7
-        with:
-          node-version: '22'
-          cache: npm
-          cache-dependency-path: frontend/package-lock.json
-
-      - name: Instalar dependências
-        working-directory: frontend
-        run: npm ci
-
-      - name: Tipos
-        working-directory: frontend
-        run: npm run typecheck
-
-      - name: Lint
-        working-directory: frontend
-        run: npm run lint
-
-      - name: Testes
-        working-directory: frontend
-        run: npm run test:coverage
-
-      - name: Guardar relatório de cobertura
-        if: always()
-        uses: actions/upload-artifact@v7
-        with:
-          name: cobertura-frontend
-          path: frontend/coverage/lcov.info
-          retention-days: 14
-          if-no-files-found: ignore
-
-      - name: Build
-        working-directory: frontend
-        env:
-          # Valor de fachada: o build só precisa de algo bem-formado, já que
-          # NEXT_PUBLIC_* é embutido no bundle em tempo de compilação.
-          NEXT_PUBLIC_API_URL: https://neoscopio.exemplo.com/api
-          NEXT_PUBLIC_SITE_URL: https://neoscopio.exemplo.com
-        run: npm run build
-
   auditoria:
     name: Auditoria de dependências
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-node@v7
-        with:
-          node-version: '22'
-          cache: npm
-          cache-dependency-path: frontend/package-lock.json
-
-      - uses: actions/setup-python@v7
+      - uses: actions/setup-python@v6
         with:
           python-version: '3.13'
           cache: pip
           cache-dependency-path: backend/requirements-dev.txt
-
-      - name: npm audit (falha em alta ou crítica)
-        working-directory: frontend
-        run: npm audit --audit-level=high
 
       - name: pip-audit (falha em qualquer CVE conhecida)
         working-directory: backend
@@ -224,7 +168,7 @@ jobs:
     # junto com o lint, não depois de a suíte inteira rodar.
 
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v5
 
       - name: Compose de desenvolvimento é válido
         run: docker compose -f docker-compose.yml config --quiet
@@ -248,7 +192,6 @@ jobs:
           POSTGRES_PASSWORD: senha_ci
           POSTGRES_DB: neoscopio
           IMAGEM_BACKEND: ghcr.io/exemplo/neologismo-backend:ci
-          IMAGEM_FRONTEND: ghcr.io/exemplo/neologismo-frontend:ci
         # É o arquivo que o cd.yml usa na VPS. Um erro de sintaxe aqui só
         # apareceria no meio de um deploy.
         run: |
@@ -262,33 +205,21 @@ jobs:
     runs-on: ubuntu-latest
     # Só roda se o código já passou: buildar imagem de um commit quebrado é
     # gastar minuto de runner por nada.
-    needs: [backend, frontend]
+    needs: [backend]
     # Em push e pull_request `inputs` não existe, então a condição é
     # verdadeira e o job roda normalmente.
     if: ${{ !inputs.pular_imagens }}
 
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v5
 
-      - uses: docker/setup-buildx-action@v4
+      - uses: docker/setup-buildx-action@v3
 
       - name: Build da imagem do backend
-        uses: docker/build-push-action@v7
+        uses: docker/build-push-action@v6
         with:
           context: ./backend
           target: final
           push: false
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-      - name: Build da imagem do frontend
-        uses: docker/build-push-action@v7
-        with:
-          context: ./frontend
-          target: final
-          push: false
-          build-args: |
-            NEXT_PUBLIC_API_URL=https://neoscopio.exemplo.com/api
-            NEXT_PUBLIC_SITE_URL=https://neoscopio.exemplo.com
           cache-from: type=gha
           cache-to: type=gha,mode=max

@@ -1,7 +1,9 @@
 """Rotas do projeto Neoscópio."""
 
+from django.conf import settings
 from django.contrib import admin
-from django.urls import include, path
+from django.urls import include, path, re_path
+from django.views.static import serve
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 from rest_framework.routers import DefaultRouter
 
@@ -44,6 +46,14 @@ urlpatterns = [
     # Documentação (OpenAPI + Swagger UI)
     path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
     path('api/docs/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
+
+    # Fotos enviadas pelo painel (equipe). Em produção o nginx manda tudo ao
+    # Django e o WhiteNoise só cobre os estáticos; o volume é pequeno e os
+    # arquivos são só imagens já reprocessadas pelo Pillow.
+    re_path(r'^media/(?P<path>.*)$', serve, {'document_root': settings.MEDIA_ROOT}),
+
+    # Contas: login, cadastro, login social, confirmação de e-mail e senha.
+    path('conta/', include('allauth.urls')),
 
     # Site (páginas renderizadas pelo Django). Por último: as rotas acima têm
     # prefixo próprio e não podem ser sombreadas por uma página.

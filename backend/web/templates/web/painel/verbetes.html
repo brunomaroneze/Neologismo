@@ -1,0 +1,117 @@
+{% extends 'web/painel/base.html' %}
+{% load verbetes %}
+{% block titulo_painel %}Neologismos{% endblock %}
+{% block titulo_h1 %}Moderação{% endblock %}
+{% block painel %}
+<nav class="abas abas--secundarias" aria-label="Filtrar por status">
+  {% for valor, rotulo, total in abas %}
+    <a href="?status={{ valor }}" {% if status == valor %}aria-current="page"{% endif %}>{{ rotulo }} <span class="abas__total">{{ total }}</span></a>
+  {% endfor %}
+</nav>
+
+<form class="filtro-moderacao" method="get" role="search">
+  <input type="hidden" name="status" value="{{ status }}">
+  <label class="visualmente-oculto" for="filtrar">Filtrar neologismos</label>
+  <input class="entrada" id="filtrar" type="search" name="q" value="{{ busca }}" placeholder="Filtrar por título, definição ou tag…">
+</form>
+
+{% if pagina.object_list %}
+  {# Barra de ações em lote: as caixas de cada verbete apontam para este formulário pelo atributo form. #}
+  <form class="lote" id="form-lote" method="post" action="{% url 'web:painel_lote' %}" data-lote>
+    {% csrf_token %}
+    <input type="hidden" name="voltar" value="{{ request.get_full_path }}">
+    <label class="marcar"><input type="checkbox" data-marcar-todos> <span>Marcar todos desta página</span></label>
+    <span class="lote__contagem" data-lote-contagem aria-live="polite">Nenhum marcado</span>
+    <div class="lote__acoes">
+      {% if status != 'aprovado' %}<button class="botao botao--pequeno" type="submit" name="acao" value="aprovar">Aprovar marcados</button>{% endif %}
+      {% if status != 'rejeitado' %}
+        <details class="rejeitar">
+          <summary class="botao botao--secundario botao--pequeno">Rejeitar marcados…</summary>
+          <div class="rejeitar__corpo">
+            <label class="campo__rotulo" for="motivo-lote">Motivo da rejeição <span class="campo__opcional">(vai para todos os autores)</span></label>
+            <textarea class="entrada" id="motivo-lote" name="motivo" rows="2" maxlength="1000"></textarea>
+            <div class="acoes"><button class="botao botao--pequeno" type="submit" name="acao" value="rejeitar">Confirmar rejeição</button></div>
+          </div>
+        </details>
+      {% endif %}
+    </div>
+  </form>
+
+  <ul class="lista">
+    {% for verbete in pagina.object_list %}
+      <li class="item item--selecionavel">
+        <label class="item__marcar"><input type="checkbox" name="ids" value="{{ verbete.pk }}" form="form-lote" data-lote-item><span class="visualmente-oculto">Marcar {{ verbete.titulo }}</span></label>
+        <article aria-labelledby="mod-{{ verbete.pk }}">
+          <div class="item__topo">
+            <h2 class="item__titulo" id="mod-{{ verbete.pk }}">{{ verbete.titulo|lower }}</h2>
+            <a href="{% url 'web:verbete' verbete.pk %}">Ver</a>
+          </div>
+          <p class="item__meta">
+            {{ verbete.classe_gramatical }}{% if verbete.tipologia %} · {{ verbete.tipologia }}{% endif %}
+            · {{ verbete.autor.username }}{% if verbete.autor.email %} ({{ verbete.autor.email }}){% endif %}
+            · {{ verbete.data_criacao|data_curta }}
+            {% if verbete.tags %} · {{ verbete.tags|join:", " }}{% endif %}
+          </p>
+          <p class="item__definicao">{{ verbete.definicao }}</p>
+
+          {% if verbete.contexto_uso %}<blockquote class="citacao"><p>&ldquo;{{ verbete.contexto_uso }}&rdquo;</p></blockquote>{% endif %}
+          {% for contexto in verbete.contextos.all %}
+            <blockquote class="citacao">
+              <p>{{ contexto.citacao }}</p>
+              {% if contexto.fonte or contexto.link %}<footer>{{ contexto.fonte }}{% if contexto.link %} · <a href="{{ contexto.link }}" target="_blank" rel="noopener noreferrer nofollow" class="citacao__link-inline">abrir fonte</a>{% endif %}</footer>{% endif %}
+            </blockquote>
+          {% endfor %}
+
+          {% if verbete.status == 'rejeitado' %}
+            <div class="motivo"><strong>Motivo registrado</strong>{{ verbete.motivo_rejeicao|default:"Sem motivo registrado." }}</div>
+          {% endif %}
+          {% if verbete.moderado_por %}<p class="nota">Última decisão: {{ verbete.moderado_por.username }}, {{ verbete.moderado_em|data_curta }}</p>{% endif %}
+
+          <div class="item__acoes">
+            {% if verbete.status == 'pendente' %}
+              <form method="post" action="{% url 'web:moderar' verbete.pk 'aprovar' %}">
+                {% csrf_token %}<input type="hidden" name="voltar" value="{{ request.get_full_path }}">
+                <button class="botao botao--pequeno" type="submit">Aprovar</button>
+              </form>
+            {% elif verbete.status == 'rejeitado' %}
+              <form method="post" action="{% url 'web:moderar' verbete.pk 'reativar' %}">
+                {% csrf_token %}<input type="hidden" name="voltar" value="{{ request.get_full_path }}">
+                <button class="botao botao--pequeno" type="submit">Reativar</button>
+              </form>
+            {% endif %}
+            <a class="botao botao--secundario botao--pequeno" href="{% url 'web:painel_editar_verbete' verbete.pk %}?voltar={{ request.get_full_path|urlencode }}">Editar</a>
+            {% if verbete.status != 'rejeitado' %}
+              <details class="rejeitar">
+                <summary class="botao botao--discreto botao--pequeno">Rejeitar</summary>
+                <form class="rejeitar__corpo" method="post" action="{% url 'web:moderar' verbete.pk 'rejeitar' %}">
+                  {% csrf_token %}<input type="hidden" name="voltar" value="{{ request.get_full_path }}">
+                  <label class="campo__rotulo" for="motivo-{{ verbete.pk }}">Motivo da rejeição <span class="campo__opcional">(o autor vai ler isto)</span></label>
+                  <textarea class="entrada" id="motivo-{{ verbete.pk }}" name="motivo" rows="3" maxlength="1000" placeholder="Ex.: já existe um neologismo equivalente; falta fonte de uso real."></textarea>
+                  <div class="acoes">
+                    <button class="botao botao--pequeno" type="submit">Confirmar rejeição</button>
+                    <button class="botao botao--discreto botao--pequeno" type="button" data-fechar-detalhes>Cancelar</button>
+                  </div>
+                </form>
+              </details>
+            {% endif %}
+          </div>
+        </article>
+      </li>
+    {% endfor %}
+  </ul>
+  {% include 'web/_paginacao.html' %}
+{% else %}
+  <div class="vazio">
+    {% if busca %}
+      <p class="vazio__titulo">Nenhum resultado para essa busca</p>
+      <p>Ajuste os filtros para ver outros verbetes.</p>
+    {% elif status == 'pendente' %}
+      <p class="vazio__titulo">Fila de moderação zerada</p>
+      <p>Nenhum neologismo aguardando revisão. Bom trabalho.</p>
+    {% else %}
+      <p class="vazio__titulo">Nada neste status</p>
+      <p>Ajuste os filtros para ver outros verbetes.</p>
+    {% endif %}
+  </div>
+{% endif %}
+{% endblock %}

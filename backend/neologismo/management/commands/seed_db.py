@@ -58,7 +58,7 @@ class Command(BaseCommand):
                     'classe_gramatical': row['Classe gramatical'].strip(),
                     'tipologia': row['Tipologia'].strip(),
                     'elaborado_por': row['Elaborado por:'].strip(),
-                    'definicao': 'Definição não disponível na fonte original.',
+                    'definicao': Neologismo.DEFINICAO_AUSENTE,
                     'contexto_uso': contextos[0]['citacao'] if contextos else '',
                     'tags': [row['Tipologia'].strip()] if row['Tipologia'].strip() else [],
                     'status': 'aprovado',

@@ -1,0 +1,44 @@
+{% extends 'web/painel/base.html' %}
+{% load verbetes %}
+{% block titulo_painel %}Editar {{ verbete.titulo }}{% endblock %}
+{% block titulo_h1 %}Editar neologismo{% endblock %}
+{% block painel %}
+<div class="painel__duas-colunas">
+  <form class="formulario cartao" method="post" novalidate>
+    {% csrf_token %}
+    <input type="hidden" name="voltar" value="{{ voltar }}">
+    {% if form.non_field_errors %}<p class="aviso aviso--error" role="alert">{{ form.non_field_errors|join:" " }}</p>{% endif %}
+    {% for campo in form %}
+      <div class="campo">
+        <label class="campo__rotulo" for="{{ campo.id_for_label }}">{{ campo.label }}</label>
+        {{ campo }}
+        {% if campo.help_text %}<p class="campo__ajuda">{{ campo.help_text }}</p>{% endif %}
+        {% for erro in campo.errors %}<p class="campo__erro">{{ erro }}</p>{% endfor %}
+      </div>
+    {% endfor %}
+    <div class="acoes">
+      {% if verbete.status != 'aprovado' %}<button class="botao" type="submit" name="aprovar" value="1">Salvar e aprovar</button>{% endif %}
+      <button class="botao {% if verbete.status != 'aprovado' %}botao--secundario{% endif %}" type="submit">Salvar</button>
+      <a href="{{ voltar }}">Cancelar</a>
+    </div>
+  </form>
+
+  <aside class="cartao">
+    <h2 class="cartao__titulo">Sobre o envio</h2>
+    <dl class="ficha ficha--coluna">
+      <div><dt>Situação</dt><dd><span class="situacao situacao--{{ verbete.status }}">{{ verbete.get_status_display }}</span></dd></div>
+      <div><dt>Autor</dt><dd>{{ verbete.autor.username }}{% if verbete.autor.email %}<br><small>{{ verbete.autor.email }}</small>{% endif %}</dd></div>
+      <div><dt>Enviado em</dt><dd>{{ verbete.data_criacao|data_curta }}</dd></div>
+      {% if verbete.moderado_por %}<div><dt>Última decisão</dt><dd>{{ verbete.moderado_por.username }}, {{ verbete.moderado_em|data_curta }}</dd></div>{% endif %}
+    </dl>
+    {% with citacoes=verbete.contextos.all %}
+      {% if citacoes %}
+        <h3 class="cartao__titulo cartao__titulo--menor">Citações</h3>
+        {% for contexto in citacoes %}
+          <blockquote class="citacao"><p>{{ contexto.citacao }}</p>{% if contexto.fonte %}<footer>{{ contexto.fonte }}</footer>{% endif %}</blockquote>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+  </aside>
+</div>
+{% endblock %}

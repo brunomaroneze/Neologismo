@@ -1,0 +1,24 @@
+{% extends 'web/base.html' %}
+{% block titulo %}{% block titulo_painel %}Painel{% endblock %} — Neoscópio{% endblock %}
+{% block meta %}<meta name="robots" content="noindex">{% endblock %}
+{% block conteudo %}
+<div class="painel">
+  <div class="conteiner">
+    <div class="painel__topo">
+      <span class="rotulo">Administração</span>
+      <h1 class="titulo-1">{% block titulo_h1 %}Painel{% endblock %}</h1>
+    </div>
+    <nav class="abas painel__abas" aria-label="Seções do painel">
+      <a href="{% url 'web:moderacao' %}" {% if aba == 'inicio' %}aria-current="page"{% endif %}>Visão geral</a>
+      <a href="{% url 'web:painel_verbetes' %}" {% if aba == 'verbetes' %}aria-current="page"{% endif %}>Neologismos</a>
+      <a href="{% url 'web:painel_detector' %}" {% if aba == 'detector' %}aria-current="page"{% endif %}>Detector</a>
+      <a href="{% url 'web:painel_leituras' %}" {% if aba == 'leituras' %}aria-current="page"{% endif %}>Leituras</a>
+      {% if pode_administrar %}
+        <a href="{% url 'web:painel_usuarios' %}" {% if aba == 'usuarios' %}aria-current="page"{% endif %}>Usuários</a>
+        <a href="{% url 'web:painel_equipe' %}" {% if aba == 'equipe' %}aria-current="page"{% endif %}>Equipe</a>
+      {% endif %}
+    </nav>
+    {% block painel %}{% endblock %}
+  </div>
+</div>
+{% endblock %}
