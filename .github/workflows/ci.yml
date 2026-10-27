@@ -69,9 +69,9 @@ jobs:
       ALLOWED_HOSTS: localhost,127.0.0.1
 
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         with:
           python-version: '3.13'
           cache: pip
@@ -116,7 +116,7 @@ jobs:
 
       - name: Guardar relatório de cobertura
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: cobertura-backend
           path: backend/coverage-backend.xml
@@ -144,9 +144,9 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         with:
           python-version: '3.13'
           cache: pip
@@ -168,7 +168,7 @@ jobs:
     # junto com o lint, não depois de a suíte inteira rodar.
 
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
       - name: Compose de desenvolvimento é válido
         run: docker compose -f docker-compose.yml config --quiet
@@ -211,12 +211,12 @@ jobs:
     if: ${{ !inputs.pular_imagens }}
 
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
-      - uses: docker/setup-buildx-action@v3
+      - uses: docker/setup-buildx-action@v4
 
       - name: Build da imagem do backend
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: ./backend
           target: final
