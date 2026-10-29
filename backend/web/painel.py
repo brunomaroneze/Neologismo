@@ -117,7 +117,10 @@ def inicio(request):
         fila=Neologismo.objects.filter(status=Neologismo.PENDENTE)
             .select_related('autor').order_by('data_criacao')[:5],
         mais_curtidos=Neologismo.objects.filter(status=Neologismo.APROVADO)
-            .annotate(total=Count('likes')).filter(total__gt=0).order_by('-total', 'titulo')[:5],
+            .annotate(
+                total=Count('likes', distinct=True) + Count('curtidas_anonimas', distinct=True)
+            )
+            .filter(total__gt=0).order_by('-total', 'titulo')[:5],
     ))
 
 

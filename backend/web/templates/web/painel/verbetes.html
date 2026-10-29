@@ -48,7 +48,7 @@
           </div>
           <p class="item__meta">
             {{ verbete.classe_gramatical }}{% if verbete.tipologia %} · {{ verbete.tipologia }}{% endif %}
-            · {{ verbete.autor.username }}{% if verbete.autor.email %} ({{ verbete.autor.email }}){% endif %}
+            · {% firstof verbete.autor.username "Visitante sem conta" %}{% if verbete.autor.email %} ({{ verbete.autor.email }}){% endif %}
             · {{ verbete.data_criacao|data_curta }}
             {% if verbete.tags %} · {{ verbete.tags|join:", " }}{% endif %}
           </p>

@@ -182,7 +182,7 @@ class NeologismoViewSet(viewsets.ModelViewSet):
         return Response({
             'id': neologismo.pk,
             'curtido_por_mim': curtido,
-            'total_likes': neologismo.likes.count(),
+            'total_likes': neologismo.total_likes,
         })
 
     # Nome antigo do endpoint, mantido para não quebrar clientes já publicados.

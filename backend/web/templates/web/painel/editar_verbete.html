@@ -27,7 +27,7 @@
     <h2 class="cartao__titulo">Sobre o envio</h2>
     <dl class="ficha ficha--coluna">
       <div><dt>Situação</dt><dd><span class="situacao situacao--{{ verbete.status }}">{{ verbete.get_status_display }}</span></dd></div>
-      <div><dt>Autor</dt><dd>{{ verbete.autor.username }}{% if verbete.autor.email %}<br><small>{{ verbete.autor.email }}</small>{% endif %}</dd></div>
+      <div><dt>Autor</dt><dd>{% firstof verbete.autor.username "Visitante sem conta" %}{% if verbete.autor.email %}<br><small>{{ verbete.autor.email }}</small>{% endif %}</dd></div>
       <div><dt>Enviado em</dt><dd>{{ verbete.data_criacao|data_curta }}</dd></div>
       {% if verbete.moderado_por %}<div><dt>Última decisão</dt><dd>{{ verbete.moderado_por.username }}, {{ verbete.moderado_em|data_curta }}</dd></div>{% endif %}
     </dl>

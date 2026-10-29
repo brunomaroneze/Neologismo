@@ -22,10 +22,10 @@ from django.views.decorators.http import require_GET, require_POST
 
 from neologismo import consultas
 from neologismo import facetas as indice_facetas
-from neologismo.models import Neologismo
+from neologismo.models import CurtidaAnonima, Neologismo
 from neologismo.serializers import NeologismoSerializer
 
-from . import conteudo, leituras
+from . import conteudo, leituras, visitante
 from .forms import PerfilForm
 from .limites import excedeu
 from .models import MembroEquipe, Referencia
@@ -79,16 +79,26 @@ def _erros_planos(erros):
     return planos
 
 
-def _visiveis(usuario):
+def _anotados(request):
+    return consultas.anotados(request.user, visitante.obter(request))
+
+
+def _meus(request):
+    """Filtro dos envios de quem está navegando, com ou sem conta."""
+    if request.user.is_authenticated:
+        return Q(autor=request.user)
+    cookie = visitante.obter(request)
+    # Q(pk__in=[]) não casa com nada: sem cookie, não há envios seus.
+    return Q(visitante=cookie, autor__isnull=True) if cookie else Q(pk__in=[])
+
+
+def _visiveis(request):
     """Verbetes que o usuário pode abrir individualmente."""
-    qs = consultas.anotados(usuario)
-    if usuario.is_staff:
+    qs = _anotados(request)
+    if request.user.is_staff:
         return qs
-    visivel = Q(status=Neologismo.APROVADO)
-    if usuario.is_authenticated:
-        # O autor acompanha o próprio verbete enquanto ele está em moderação.
-        visivel |= Q(autor=usuario)
-    return qs.filter(visivel)
+    # O autor acompanha o próprio verbete enquanto ele está em moderação.
+    return qs.filter(Q(status=Neologismo.APROVADO) | _meus(request))
 
 
 # --- Consulta pública -----------------------------------------------------------
@@ -101,7 +111,7 @@ def inicio(request):
     tag = (params.get('tag') or '').strip()
 
     qs = consultas.filtrar(
-        consultas.anotados(request.user).filter(status=Neologismo.APROVADO),
+        _anotados(request).filter(status=Neologismo.APROVADO),
         busca=busca,
         tag=tag,
         ordem=ordem,
@@ -125,7 +135,7 @@ def inicio(request):
 
 @require_GET
 def verbete(request, pk):
-    neologismo = get_object_or_404(_visiveis(request.user), pk=pk)
+    neologismo = get_object_or_404(_visiveis(request), pk=pk)
     endereco = request.build_absolute_uri(reverse('web:verbete', args=[pk]))
     return render(request, 'web/verbete.html', {
         'verbete': neologismo,
@@ -134,10 +144,26 @@ def verbete(request, pk):
     })
 
 
+def _alternar_curtida(request, neologismo):
+    """Curte ou descurte; quem não tem conta é identificado pelo cookie."""
+    if request.user.is_authenticated:
+        if neologismo.likes.filter(pk=request.user.pk).exists():
+            neologismo.likes.remove(request.user)
+            return False
+        neologismo.likes.add(request.user)
+        return True
+
+    cookie = visitante.garantir(request)
+    removidas, _ = CurtidaAnonima.objects.filter(neologismo=neologismo, visitante=cookie).delete()
+    if removidas:
+        return False
+    CurtidaAnonima.objects.create(neologismo=neologismo, visitante=cookie)
+    return True
+
+
 @require_POST
-@login_required
 def curtir(request, pk):
-    neologismo = get_object_or_404(_visiveis(request.user), pk=pk)
+    neologismo = get_object_or_404(_visiveis(request), pk=pk)
     quer_json = 'application/json' in request.headers.get('Accept', '')
 
     if excedeu(request, 'curtida'):
@@ -151,16 +177,13 @@ def curtir(request, pk):
     with transaction.atomic():
         # Bloqueia a linha para dois cliques rápidos não se atropelarem.
         neologismo = Neologismo.objects.select_for_update().get(pk=neologismo.pk)
-        if neologismo.likes.filter(pk=request.user.pk).exists():
-            neologismo.likes.remove(request.user)
-            curtido = False
-        else:
-            neologismo.likes.add(request.user)
-            curtido = True
+        curtido = _alternar_curtida(request, neologismo)
 
     if quer_json:
-        return JsonResponse({'curtido': curtido, 'total': neologismo.likes.count()})
-    return redirect(_destino_seguro(request, request.POST.get('next')))
+        resposta = JsonResponse({'curtido': curtido, 'total': neologismo.total_likes})
+    else:
+        resposta = redirect(_destino_seguro(request, request.POST.get('next')))
+    return visitante.gravar(request, resposta)
 
 
 # --- Contribuição ---------------------------------------------------------------
@@ -178,16 +201,13 @@ def _validar_envio(valores):
 
 
 def enviar(request):
-    if not request.user.is_authenticated:
-        if request.method == 'POST':
-            return redirect(f"{reverse('account_login')}?next={reverse('web:enviar')}")
-        return render(request, 'web/enviar.html', {'precisa_entrar': True})
+    anonimo = not request.user.is_authenticated
 
     if request.GET.get('enviado'):
         return render(request, 'web/enviar.html', {'enviado': True})
 
     valores = dict.fromkeys(
-        ('titulo', 'classe_gramatical', 'definicao', 'contexto_uso', 'tags'), ''
+        ('titulo', 'classe_gramatical', 'definicao', 'contexto_uso', 'tags', 'nome'), ''
     )
     citacoes = []
     erros = {}
@@ -217,6 +237,8 @@ def enviar(request):
                     campo: valores[campo]
                     for campo in ('titulo', 'classe_gramatical', 'definicao', 'contexto_uso')
                 },
+                # Sem conta, o crédito vai para o nome informado (opcional).
+                'elaborado_por': valores['nome'].strip()[:150] if anonimo else '',
                 'tags': [t for t in valores['tags'].split(',') if t.strip()],
                 # Citações sem texto são descartadas pelo serializer.
                 'contextos': [
@@ -226,8 +248,13 @@ def enviar(request):
             }
             serializer = NeologismoSerializer(data=dados, context={'request': request})
             if serializer.is_valid():
-                serializer.save(autor=request.user)
-                return redirect(f"{reverse('web:enviar')}?enviado=1")
+                if anonimo:
+                    serializer.save(autor=None, visitante=visitante.garantir(request))
+                else:
+                    serializer.save(autor=request.user)
+                return visitante.gravar(
+                    request, redirect(f"{reverse('web:enviar')}?enviado=1")
+                )
             erros = _erros_planos(serializer.errors)
         if erros and 'geral' not in erros:
             erros['geral'] = 'Revise os campos destacados abaixo.'
@@ -236,16 +263,16 @@ def enviar(request):
         'valores': valores,
         'citacoes': citacoes,
         'erros': erros,
+        'anonimo': anonimo,
         'classes': conteudo.CLASSES_GRAMATICAIS,
         'sugestoes_tags': [t['nome'] for t in indice_facetas.obter()['tags'][:6]],
     })
 
 
-@login_required
 @require_GET
 def meus_envios(request):
     status = request.GET.get('status', '')
-    qs = consultas.anotados(request.user).filter(autor=request.user)
+    qs = _anotados(request).filter(_meus(request))
     if status in dict(Neologismo.STATUS_CHOICES):
         qs = qs.filter(status=status)
     else:
@@ -255,6 +282,7 @@ def meus_envios(request):
         'pagina': Paginator(qs, POR_PAGINA).get_page(request.GET.get('pagina')),
         'status': status,
         'status_rotulo': STATUS_ROTULO,
+        'anonimo': not request.user.is_authenticated,
         'abas': [
             ('', 'Todos'),
             (Neologismo.PENDENTE, 'Em moderação'),
@@ -296,6 +324,8 @@ def perfil(request):
         'enviados': meus.count(),
         'publicados': meus.filter(status=Neologismo.APROVADO).count(),
         'curtidas_recebidas': Neologismo.likes.through.objects.filter(
+            neologismo__autor=usuario, neologismo__status=Neologismo.APROVADO,
+        ).count() + CurtidaAnonima.objects.filter(
             neologismo__autor=usuario, neologismo__status=Neologismo.APROVADO,
         ).count(),
         'curtidos': curtidos[:30],

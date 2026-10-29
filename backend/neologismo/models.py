@@ -101,10 +101,20 @@ class Neologismo(models.Model):
 
     data_criacao = models.DateTimeField(auto_now_add=True, db_index=True)
     data_atualizacao = models.DateTimeField(auto_now=True)
+    # Vazio nos envios feitos sem conta: aí quem enviou é reconhecido pelo
+    # cookie de visitante (ver web/visitante.py), gravado em `visitante`.
     autor = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
         related_name='meus_neologismos',
+        blank=True,
+        null=True,
+    )
+    visitante = models.CharField(
+        max_length=32,
+        blank=True,
+        db_index=True,
+        help_text='Identificador do cookie de quem enviou sem conta',
     )
 
     # --- Curtidas ---
@@ -147,7 +157,35 @@ class Neologismo(models.Model):
 
     @property
     def total_likes(self):
-        return self.likes.count()
+        return self.likes.count() + self.curtidas_anonimas.count()
+
+
+class CurtidaAnonima(models.Model):
+    """Curtida de quem não tem conta, identificada pelo cookie de visitante.
+
+    Fica separada de `Neologismo.likes` porque aquela relação aponta para
+    usuários; o total exibido soma as duas.
+    """
+
+    neologismo = models.ForeignKey(
+        Neologismo,
+        on_delete=models.CASCADE,
+        related_name='curtidas_anonimas',
+    )
+    visitante = models.CharField(max_length=32)
+    data_criacao = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'curtida anônima'
+        verbose_name_plural = 'curtidas anônimas'
+        constraints = [
+            models.UniqueConstraint(
+                fields=['neologismo', 'visitante'], name='curtida_anonima_unica'
+            ),
+        ]
+
+    def __str__(self):
+        return f'Curtida anônima em {self.neologismo.titulo}'
 
 
 class Contexto(models.Model):

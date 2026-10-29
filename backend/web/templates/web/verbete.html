@@ -40,7 +40,7 @@
       <p class="verbete__definicao">{{ verbete.definicao }}</p>
 
       <dl class="ficha">
-        <div><dt>Autor</dt><dd>{{ verbete.autor.username }}</dd></div>
+        <div><dt>Autor</dt><dd>{% firstof verbete.autor.username verbete.elaborado_por "Visitante" %}</dd></div>
         <div><dt>Publicado em</dt><dd><time datetime="{{ verbete.data_criacao|date:'c' }}">{{ verbete.data_criacao|data_curta }}</time></dd></div>
         {% if verbete.elaborado_por %}<div><dt>Elaborado por</dt><dd>{{ verbete.elaborado_por }}</dd></div>{% endif %}
         {% if verbete.data_registro %}<div><dt>Registrado na fonte em</dt><dd><time datetime="{{ verbete.data_registro|date:'c' }}">{{ verbete.data_registro|date:"d/m/Y" }}</time></dd></div>{% endif %}

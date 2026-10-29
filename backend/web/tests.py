@@ -5,7 +5,8 @@ from django.core.cache import cache
 from django.test import TestCase, override_settings
 from django.urls import reverse
 
-from neologismo.models import Contexto, Neologismo
+from neologismo.models import Contexto, CurtidaAnonima, Neologismo
+from web import visitante
 
 Usuario = get_user_model()
 SENHA = 'SenhaBemForte123'
@@ -136,13 +137,43 @@ class AssistenteTests(BaseWeb):
 
 
 class CurtirTests(BaseWeb):
-    def test_curtir_exige_login(self):
+    def test_curtir_sem_conta_usa_o_cookie_de_visitante(self):
         verbete = criar_verbete(self.autor, 'Tankar')
+        url = reverse('web:curtir', args=[verbete.pk])
 
-        resposta = self.client.post(reverse('web:curtir', args=[verbete.pk]))
+        primeira = self.client.post(url, HTTP_ACCEPT='application/json')
 
-        self.assertRedirects(resposta, f"{reverse('account_login')}?next={reverse('web:curtir', args=[verbete.pk])}", fetch_redirect_response=False)
-        self.assertEqual(verbete.likes.count(), 0)
+        self.assertEqual(primeira.json(), {'curtido': True, 'total': 1})
+        self.assertIn(visitante.COOKIE, primeira.cookies)
+        self.assertEqual(CurtidaAnonima.objects.filter(neologismo=verbete).count(), 1)
+        # A página reconhece a curtida pelo cookie.
+        self.assertContains(self.client.get(reverse('web:verbete', args=[verbete.pk])), 'aria-pressed="true"')
+
+        segunda = self.client.post(url, HTTP_ACCEPT='application/json')
+        self.assertEqual(segunda.json(), {'curtido': False, 'total': 0})
+
+    def test_curtidas_com_e_sem_conta_somam(self):
+        verbete = criar_verbete(self.autor, 'Tankar')
+        url = reverse('web:curtir', args=[verbete.pk])
+        self.client.post(url)
+        self.client.cookies.clear()
+        self.client.post(url)
+        self.client.login(username='autora', password=SENHA)
+
+        resposta = self.client.post(url, HTTP_ACCEPT='application/json')
+
+        self.assertEqual(resposta.json(), {'curtido': True, 'total': 3})
+        populares = self.client.get(reverse('web:inicio'), {'ordem': 'populares'})
+        self.assertEqual(populares.context['pagina'][0].likes_count, 3)
+
+    def test_cookie_adulterado_nao_reaproveita_curtida(self):
+        verbete = criar_verbete(self.autor, 'Tankar')
+        CurtidaAnonima.objects.create(neologismo=verbete, visitante='a' * 32)
+        self.client.cookies[visitante.COOKIE] = 'a' * 32
+
+        resposta = self.client.post(reverse('web:curtir', args=[verbete.pk]), HTTP_ACCEPT='application/json')
+
+        self.assertEqual(resposta.json(), {'curtido': True, 'total': 2})
 
     def test_curtir_alterna_e_responde_json(self):
         verbete = criar_verbete(self.autor, 'Tankar')
@@ -211,12 +242,41 @@ class EnvioTests(BaseWeb):
         self.assertContains(resposta, 'value="Ok"')
         self.assertFalse(Neologismo.objects.exists())
 
-    def test_envio_exige_login(self):
-        self.assertContains(self.client.get(reverse('web:enviar')), 'Entre para enviar')
+    def test_envio_sem_conta_fica_ligado_ao_navegador(self):
+        resposta = self.client.post(reverse('web:enviar'), {
+            'titulo': 'Desver',
+            'classe_gramatical': 'Verbo',
+            'definicao': 'Fazer de conta que não viu algo constrangedor.',
+            'nome': '  Ana Souza ',
+            'tags': '',
+            'citacao': [''], 'fonte': [''], 'link': [''],
+        })
 
-        resposta = self.client.post(reverse('web:enviar'), {'titulo': 'X'})
-        self.assertRedirects(resposta, f"{reverse('account_login')}?next={reverse('web:enviar')}", fetch_redirect_response=False)
-        self.assertFalse(Neologismo.objects.exists())
+        self.assertRedirects(resposta, f"{reverse('web:enviar')}?enviado=1", fetch_redirect_response=False)
+        verbete = Neologismo.objects.get(titulo='Desver')
+        self.assertIsNone(verbete.autor)
+        self.assertEqual(verbete.elaborado_por, 'Ana Souza')
+        self.assertEqual(verbete.status, Neologismo.PENDENTE)
+        self.assertTrue(verbete.visitante)
+
+        # Mesmo pendente, quem enviou acompanha o verbete neste navegador...
+        self.assertContains(self.client.get(reverse('web:meus_envios')), 'desver')
+        self.assertEqual(self.client.get(reverse('web:verbete', args=[verbete.pk])).status_code, 200)
+        # ...e outro navegador, não.
+        self.client.cookies.clear()
+        self.assertNotContains(self.client.get(reverse('web:meus_envios')), 'desver')
+        self.assertEqual(self.client.get(reverse('web:verbete', args=[verbete.pk])).status_code, 404)
+
+    def test_moderar_envio_sem_conta_nao_manda_email(self):
+        verbete = criar_verbete(None, 'Desver', Neologismo.PENDENTE, visitante='b' * 32)
+        self.client.login(username='moderadora', password=SENHA)
+
+        self.client.post(reverse('web:moderar', args=[verbete.pk, 'aprovar']))
+
+        verbete.refresh_from_db()
+        self.assertEqual(verbete.status, Neologismo.APROVADO)
+        self.assertEqual(len(mail.outbox), 0)
+        self.assertContains(self.client.get(reverse('web:verbete', args=[verbete.pk])), '<dd>Visitante</dd>')
 
     def test_meus_envios_mostra_motivo_da_rejeicao(self):
         criar_verbete(self.autor, 'Recusado', Neologismo.REJEITADO, motivo_rejeicao='Falta fonte verificável.')

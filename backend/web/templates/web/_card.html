@@ -14,7 +14,7 @@
     {% if verbete.contexto_uso %}
       <blockquote class="citacao">
         <p>&ldquo;{{ verbete.contexto_uso }}&rdquo;</p>
-        <footer>— {{ verbete.autor.username }}</footer>
+        <footer>— {% firstof verbete.autor.username verbete.elaborado_por "Visitante" %}</footer>
         {% with primeira=verbete.contextos.all.0 %}
           {% if primeira.link %}<a href="{{ primeira.link }}" target="_blank" rel="noopener noreferrer nofollow">{{ primeira.link }}</a>{% endif %}
         {% endwith %}

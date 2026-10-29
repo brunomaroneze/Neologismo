@@ -21,7 +21,8 @@ class ContextoSerializer(serializers.ModelSerializer):
 
 
 class NeologismoSerializer(serializers.ModelSerializer):
-    autor_nome = serializers.ReadOnlyField(source='autor.username')
+    # Nulo nos verbetes enviados sem conta.
+    autor_nome = serializers.ReadOnlyField(source='autor.username', allow_null=True)
 
     # Preenchidos pelas anotações do queryset (ver NeologismoViewSet). O
     # fallback para o método do model cobre quem serializa um objeto solto,
@@ -57,7 +58,7 @@ class NeologismoSerializer(serializers.ModelSerializer):
 
     def get_total_likes(self, obj) -> int:
         anotado = getattr(obj, 'likes_count', None)
-        return anotado if anotado is not None else obj.likes.count()
+        return anotado if anotado is not None else obj.total_likes
 
     def get_curtido_por_mim(self, obj) -> bool:
         anotado = getattr(obj, 'curtido_por_mim', None)

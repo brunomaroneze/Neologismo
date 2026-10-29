@@ -6,11 +6,11 @@ página inicial e a da API passem a dar resultados diferentes.
 """
 
 from django.contrib.auth import get_user_model
-from django.db.models import Count, Exists, OuterRef, Q, TextField
-from django.db.models.functions import Cast
+from django.db.models import Count, Exists, IntegerField, OuterRef, Q, Subquery, TextField
+from django.db.models.functions import Cast, Coalesce
 
 from . import facetas as indice_facetas
-from .models import Neologismo
+from .models import CurtidaAnonima, Neologismo
 
 ORDENACOES = {
     'recentes': ['-data_criacao', '-id'],
@@ -20,18 +20,31 @@ ORDENACOES = {
 }
 
 
-def anotados(usuario):
+def anotados(usuario, visitante=None):
     """Queryset com as contagens e a curtida do usuário já anotadas.
 
     As contagens vêm anotadas em vez de `obj.likes.count()` para não
-    disparar uma query por verbete renderizado.
+    disparar uma query por verbete renderizado. `visitante` é o cookie de
+    quem navega sem conta (web/visitante.py) e decide `curtido_por_mim`
+    quando não há usuário logado.
     """
+    # Subquery, e não um terceiro Count com join: somado aos joins de likes
+    # e deslikes, ele multiplicaria as linhas agrupadas por verbete.
+    anonimas = Coalesce(
+        Subquery(
+            CurtidaAnonima.objects.filter(neologismo=OuterRef('pk'))
+            .order_by().values('neologismo')
+            .annotate(total=Count('pk')).values('total'),
+            output_field=IntegerField(),
+        ),
+        0,
+    )
     qs = (
         Neologismo.objects
         .select_related('autor', 'moderado_por')
         .prefetch_related('contextos')
         .annotate(
-            likes_count=Count('likes', distinct=True),
+            likes_count=Count('likes', distinct=True) + anonimas,
             deslikes_count=Count('deslikes', distinct=True),
         )
         # Ordem explícita: sem ela a paginação pode repetir ou pular itens
@@ -45,6 +58,14 @@ def anotados(usuario):
                 get_user_model().objects.filter(
                     pk=usuario.pk,
                     neologismos_curtidos=OuterRef('pk'),
+                )
+            )
+        )
+    elif visitante:
+        qs = qs.annotate(
+            curtido_por_mim=Exists(
+                CurtidaAnonima.objects.filter(
+                    neologismo=OuterRef('pk'), visitante=visitante,
                 )
             )
         )

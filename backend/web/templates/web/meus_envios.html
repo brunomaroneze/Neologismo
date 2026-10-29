@@ -6,9 +6,10 @@
 
 {% block conteudo %}
 <div class="conteiner secao">
-  <span class="rotulo">Sua conta</span>
+  <span class="rotulo">{% if anonimo %}Neste navegador{% else %}Sua conta{% endif %}</span>
   <h1 class="titulo-1">Minhas palavras</h1>
   <p class="lead">Acompanhe o que você enviou e em que pé está a moderação.</p>
+  {% if anonimo %}<p class="nota">Sem conta, seus envios ficam ligados a este navegador. Se você apagar os cookies ou trocar de aparelho, eles deixam de aparecer aqui.</p>{% endif %}
 
   <nav class="abas" aria-label="Filtrar por status">
     {% for valor, rotulo in abas %}

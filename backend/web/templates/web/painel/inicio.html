@@ -56,7 +56,7 @@
         {% for verbete in fila %}
           <li>
             <a href="{% url 'web:painel_editar_verbete' verbete.pk %}?voltar={% url 'web:moderacao' %}">{{ verbete.titulo|lower }}</a>
-            <span>{{ verbete.autor.username }} · {{ verbete.data_criacao|data_curta }}</span>
+            <span>{% firstof verbete.autor.username "Visitante sem conta" %} · {{ verbete.data_criacao|data_curta }}</span>
           </li>
         {% endfor %}
       </ol>

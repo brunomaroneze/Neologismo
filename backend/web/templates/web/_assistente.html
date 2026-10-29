@@ -52,7 +52,6 @@ num <template> abaixo. Sem JavaScript, a bolinha não aparece.
   <template data-resposta="enviar">
     <p>É assim:</p>
     <ol>
-      <li>Crie uma conta e confirme seu e-mail.</li>
       <li>Abra <a href="{% url 'web:enviar' %}">Enviar um neologismo</a>.</li>
       <li>Preencha a palavra, a definição e a classe gramatical. Se puder, inclua um exemplo de uso real com a fonte.</li>
     </ol>
@@ -83,7 +82,8 @@ num <template> abaixo. Sem JavaScript, a bolinha não aparece.
 
   <template data-resposta="conta">
     <p>Para <strong>ler e pesquisar</strong>, não precisa.</p>
-    <p>Para <strong>enviar</strong> neologismos e <strong>curtir</strong>, sim: <a href="{% url 'account_signup' %}">crie sua conta</a> e confirme o e-mail.</p>
+    <p>Para <strong>enviar</strong> neologismos e <strong>curtir</strong>, também não: o site lembra de você por um cookie neste navegador.</p>
+    <p>Com uma <a href="{% url 'account_signup' %}">conta</a>, você recebe por e-mail o resultado da moderação e vê seus envios e curtidas em qualquer aparelho.</p>
   </template>
 
   <template data-resposta="equipe">

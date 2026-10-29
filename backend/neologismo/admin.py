@@ -33,7 +33,7 @@ class NeologismoAdmin(admin.ModelAdmin):
 
     @admin.display(description='Curtidas')
     def total_likes(self, obj):
-        return obj.likes.count()
+        return obj.total_likes
 
     @admin.action(description='Aprovar neologismos selecionados')
     def aprovar_selecionados(self, request, queryset):

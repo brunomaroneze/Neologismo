@@ -54,6 +54,12 @@ def enviar_email(assunto, template, contexto, destinatarios):
         return False
 
 
+def _email_do_autor(neologismo):
+    # Envio feito sem conta não tem para quem avisar; `enviar_email` ignora
+    # destinatário vazio.
+    return neologismo.autor.email if neologismo.autor else ''
+
+
 def avisar_verbete_aprovado(neologismo):
     return enviar_email(
         assunto=f'Seu neologismo "{neologismo.titulo}" foi publicado',
@@ -62,7 +68,7 @@ def avisar_verbete_aprovado(neologismo):
             'neologismo': neologismo,
             'url_verbete': f'{settings.SITE_URL}/neologismo/{neologismo.pk}',
         },
-        destinatarios=[neologismo.autor.email],
+        destinatarios=[_email_do_autor(neologismo)],
     )
 
 
@@ -75,7 +81,7 @@ def avisar_verbete_rejeitado(neologismo):
             'url_meus_envios': f'{settings.SITE_URL}/minhas-palavras',
             'url_enviar': f'{settings.SITE_URL}/enviar',
         },
-        destinatarios=[neologismo.autor.email],
+        destinatarios=[_email_do_autor(neologismo)],
     )
 
 

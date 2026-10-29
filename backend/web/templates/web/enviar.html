@@ -4,17 +4,7 @@
 
 {% block conteudo %}
 <div class="conteiner">
-{% if precisa_entrar %}
-  <div class="sucesso">
-    <h1 class="titulo-2">Entre para enviar</h1>
-    <p>Para sugerir um neologismo você precisa de uma conta. É por ela que damos o crédito pela palavra e avisamos você do resultado da moderação.</p>
-    <div class="botoes">
-      <a class="botao" href="{% url 'account_login' %}?next={% url 'web:enviar' %}">Entrar</a>
-      <a class="botao botao--secundario" href="{% url 'account_signup' %}?next={% url 'web:enviar' %}">Criar conta</a>
-    </div>
-  </div>
-
-{% elif enviado %}
+{% if enviado %}
   <div class="sucesso" role="status">
     <h1 class="titulo-2">Neologismo enviado!</h1>
     <p>Ele entra na fila de moderação e aparece no banco assim que for aprovado. Você acompanha o andamento em Minhas palavras.</p>
@@ -29,6 +19,7 @@
     <span class="rotulo">Enviar neologismo</span>
     <h1 class="titulo-1">Registre uma nova palavra</h1>
     <p class="lead">Sua sugestão passa por moderação antes de ser publicada. Campos com <span class="campo__obrigatorio">*</span> são obrigatórios.</p>
+    {% if anonimo %}<p class="nota">Não precisa de conta: este navegador guarda seus envios em Minhas palavras. Com uma <a href="{% url 'account_signup' %}?next={% url 'web:enviar' %}">conta</a>, você também recebe por e-mail o resultado da moderação.</p>{% endif %}
 
     {% if erros.geral %}<div class="aviso aviso--error" role="alert" tabindex="-1" data-foco-inicial>{{ erros.geral }}</div>{% endif %}
 
@@ -69,6 +60,14 @@
         <p class="campo__ajuda" id="ajuda-tags">Enter ou vírgula para adicionar. <span data-etiquetas-total>0</span>/8</p>
         {% if erros.tags %}<p class="campo__erro" id="erro-tags">{{ erros.tags }}</p>{% endif %}
       </div>
+
+      {% if anonimo %}
+      <div class="campo">
+        <label class="campo__rotulo" for="nome">Seu nome <span class="campo__opcional">(opcional)</span></label>
+        <input class="entrada" id="nome" name="nome" maxlength="150" value="{{ valores.nome }}" autocomplete="name" aria-describedby="ajuda-nome">
+        <p class="campo__ajuda" id="ajuda-nome">Aparece como “Elaborado por” no verbete publicado.</p>
+      </div>
+      {% endif %}
 
       <fieldset class="grupo-campos">
         <legend>Citações com fonte <span class="campo__opcional">(opcional)</span></legend>
