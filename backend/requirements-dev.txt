@@ -4,10 +4,10 @@
 #   pip install -r requirements.txt -r requirements-dev.txt
 
 # Lint e formatação.
-ruff==0.17.3
+ruff==0.17.4
 
 # Cobertura dos testes do Django.
-coverage==7.17.0
+coverage==7.17.2
 
 # Varredura de CVE nas dependências instaladas.
 pip-audit==2.10.1
