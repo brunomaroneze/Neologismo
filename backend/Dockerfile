@@ -1,7 +1,7 @@
 # --- Estágio 1: dependências ------------------------------------------------
 # Instala os pacotes em um venv próprio para copiar só o resultado adiante,
 # deixando o compilador e os headers de build fora da imagem final.
-FROM python:3.13-slim AS dependencias
+FROM python:3.15-slim AS dependencias
 
 ENV PIP_NO_CACHE_DIR=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1
@@ -15,7 +15,7 @@ RUN pip install --upgrade pip && pip install -r requirements.txt -r requirements
 
 
 # --- Estágio 2: imagem final ------------------------------------------------
-FROM python:3.13-slim AS final
+FROM python:3.15-slim AS final
 
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
